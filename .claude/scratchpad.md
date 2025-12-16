@@ -1,152 +1,176 @@
-# REPLAYER Session Scratchpad
+# VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-14 21:00
+Last Updated: 2025-12-16 00:30
 
 ---
 
 ## Quick Start for Fresh Sessions
 
-### PRIMARY: Technical Debt Audit (Parallel Track)
+```bash
+# Read key context files
+Read the following files:
+1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
+2. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-15-canonical-database-design.md
+3. /home/nomad/Desktop/VECTRA-PLAYER/src/models/events/CONTEXT.md
 
-```
-Read the following files to understand the current project state:
-1. /home/nomad/Desktop/REPLAYER/docs/plans/2025-12-14-technical-debt-audit-design.md
-2. /home/nomad/Desktop/REPLAYER/CLAUDE.md
+# Run tests (VECTRA-PLAYER has its own venv now)
+cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/test_models/ -v --tb=short
 
-Then check current issues:
-gh issue list --repo Dutchthenomad/REPLAYER --milestone "Tech Debt Audit - Phase 1: Mapping"
-
-I'm working on the Technical Debt Audit using the parallel track approach.
-Methodology: "Working Effectively with Legacy Code" (Michael Feathers)
-
-Current phase: Phase 1 - Mapping
-- Create repair/technical-debt-audit branch
-- Run automated analysis (vulture, pydeps, radon)
-- Write characterization tests
-- Create issues from findings
-
-Key tracking issues:
-- #17: Master tracking issue
-- #18: Recording state mismatch (P0-critical) - logs "disabled", UI shows "enabled"
-- #19: Venv migration from rugs-rl-bot to REPLAYER (P1-high)
-
-Test command: /home/nomad/Desktop/rugs-rl-bot/.venv/bin/python -m pytest src/tests/ -v --tb=short
+# Check GitHub issues
+gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 ```
 
 ---
 
-## Technical Debt Audit Status
+## Active Work
 
-**Approach:** Parallel Track (repair branch alongside main, cherry-pick urgent fixes)
+### Current Phase: Phase 12 - Unified Data Architecture
 
-**GitHub Infrastructure:** COMPLETE
-- Labels: `tech-debt/*`, `P0-P3`, `component/*`
-- Milestones: Phases 1-4
-- Tracking issues: #17, #18, #19
+**Mission:** Clean-slate refactor from REPLAYER with:
+1. Unified data storage (DuckDB/Parquet as canonical truth + LanceDB vectors)
+2. Server-authoritative state (trust socket feed)
+3. RAG integration (LanceDB powers rugs-expert agent)
+4. Technical debt cleanup (remove deprecated code)
 
-### Phase 1: Mapping (CURRENT)
-- [x] Design document: `docs/plans/2025-12-14-technical-debt-audit-design.md`
-- [x] GitHub labels created
-- [x] Milestones created
-- [x] Tracking issues created
-- [ ] Create `repair/technical-debt-audit` branch
-- [ ] Run automated analysis (vulture, pydeps, radon)
-- [ ] Write characterization tests for event flow
-- [ ] Write characterization tests for UI state
-- [ ] Write characterization tests for recording
-- [ ] Generate findings report
-- [ ] Create individual issues from findings
+### Phase 12A: Event Schemas - COMPLETE ✅
 
-### Phase 2: Foundation (PENDING)
-- [ ] Fix WebSocket → EventBus → UI state conflicts
-- [ ] Consolidate event handling
+All 8 event schemas defined with 58 tests passing:
 
-### Phase 3: Recording (PENDING)
-- [ ] Fix recording state mismatch (#18)
-- [ ] Consolidate recording services
+| Issue | Event | Status | Tests |
+|-------|-------|--------|-------|
+| #1 | GameStateUpdate | ✅ | 20 |
+| #2 | PlayerUpdate | ✅ | 15 |
+| #3 | UsernameStatus | ✅ | 3 |
+| #4 | PlayerLeaderboardPosition | ✅ | 3 |
+| #5 | NewTrade | ✅ | 2 |
+| #6 | SidebetRequest/Response | ✅ | 4 |
+| #7 | BuyOrder/SellOrder | ✅ | 4 |
+| #8 | SystemEvents | ✅ | 6 |
 
-### Phase 4: Infrastructure (PENDING)
-- [ ] Migrate venv to REPLAYER (#19)
-- [ ] Set up pre-commit hooks
-- [ ] Set up GitHub Actions CI
-- [ ] Enable branch protection
+**Commit:** `86de4a7` - `feat(schema): Add Phase 12A event schemas (Issues #1-8)`
 
 ---
 
-## Known Bugs
+## Next Steps: Phase 12B - Storage Layer
 
-### Recording State Mismatch (#18) - P0-CRITICAL
-- **Symptom:** Log shows `recording disabled` but UI shows enabled
-- **Location:** `core/replay_engine.py:352`
-- **Root cause:** Multiple sources of truth:
-  - `replay_engine.auto_recording` (from config)
-  - `main_window.recording_var` (UI checkbox)
-  - `recorder_sink.is_recording()` (actual state)
-  - `recording_controller` state
+1. [ ] **Issue #9**: Parquet writer with buffering
+   - Atomic writes, 100 events or 5 seconds
+   - Partition by doc_type/date
 
-### External venv Dependency (#19) - P1-HIGH
-- **Current:** `/home/nomad/Desktop/rugs-rl-bot/.venv`
-- **Target:** `/home/nomad/Desktop/REPLAYER/.venv`
+2. [ ] **Issue #10**: DuckDB query layer
+   - Use MCP MotherDuck server when available
+   - Query helpers for common operations
+
+3. [ ] **Issue #11**: Ingestion pipeline
+   - EventBus subscription
+   - Schema validation via Pydantic models
+   - Error handling
+
+---
+
+## Key Design Decisions
+
+1. **Decimal for all money/prices** - Prevents float precision drift
+2. **Parquet is canonical truth** - Vector indexes are derived and rebuildable
+3. **Partition by doc_type/date** - NOT by game_id (too many small files)
+4. **Extra='allow' in Pydantic** - Forward compatibility with new server fields
+5. **CONTEXT.md documentation** - Sister files to scripts, indexed to LanceDB
+6. **meta_* prefix for ingestion fields** - `meta_ts`, `meta_seq`, `meta_source`
+
+---
+
+## Data Directory Structure
+
+```
+~/rugs_data/                          # RUGS_DATA_DIR (env var)
+├── events_parquet/                   # Canonical truth store
+│   ├── doc_type=ws_event/
+│   ├── doc_type=game_tick/
+│   ├── doc_type=player_action/
+│   ├── doc_type=server_state/
+│   └── doc_type=system_event/
+├── vectors/                          # Derived LanceDB index
+│   ├── events.lance/                 # WebSocket events ONLY
+│   ├── code_context.lance/           # CONTEXT.md files ONLY
+│   └── debug_notes.lance/            # AI reasoning ONLY
+└── manifests/
+    ├── schema_version.json
+    └── vector_index_checkpoint.json
+```
+
+---
+
+## GitHub Repo
+
+**URL:** https://github.com/Dutchthenomad/VECTRA-PLAYER
+**Branch:** main
+**Latest commit:** `86de4a7`
+
+### Staged Issues (Phase 12A)
+- #1-8: Event schemas (COMPLETED in commit 86de4a7)
+
+### TODO: Create Issues for Phase 12B-C
+- #9-11: Storage layer (Parquet, DuckDB, Ingestion)
+- #12-14: Vector DB (LanceDB tables)
+- #15-16: DevOps (CONTEXT.md hooks, /context command)
+
+---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `docs/plans/2025-12-15-canonical-database-design.md` | Master design document |
+| `src/models/events/` | Pydantic schemas (Issues #1-8) |
+| `src/services/event_store/` | EventStore skeleton |
+| `docs/specs/WEBSOCKET_EVENTS_SPEC.md` | WebSocket protocol spec |
 
 ---
 
 ## Commands
 
 ```bash
-# View audit issues
-gh issue list --milestone "Tech Debt Audit - Phase 1: Mapping"
+# Run event schema tests
+cd /home/nomad/Desktop/VECTRA-PLAYER/src
+../.venv/bin/python -m pytest tests/test_models/ -v --tb=short
 
-# Run tests (using rugs-rl-bot venv until #19 complete)
-/home/nomad/Desktop/rugs-rl-bot/.venv/bin/python -m pytest src/tests/ -v --tb=short
+# View GitHub issues
+gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 
-# Start repair branch (when ready)
-git checkout -b repair/technical-debt-audit
-
-# Run dead code analysis
-pip install vulture pydeps radon
-vulture src/ --min-confidence 80 > reports/dead_code.txt
-pydeps src/ --max-bacon 3 -o reports/dependency_graph.svg
-radon cc src/ -a -s > reports/complexity.txt
-
-# View milestones
-gh api repos/Dutchthenomad/REPLAYER/milestones
+# DuckDB query (once Parquet files exist)
+import duckdb
+conn = duckdb.connect()
+df = conn.execute("SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet' LIMIT 10").df()
 ```
 
 ---
 
-## Key Files for Audit
+## MCP Server Status
 
-| File | Purpose | Issue |
-|------|---------|-------|
-| `docs/plans/2025-12-14-technical-debt-audit-design.md` | Full audit methodology | #17 |
-| `src/core/replay_engine.py:352` | Recording state bug location | #18 |
-| `src/ui/main_window.py:221` | recording_var initialization | #18 |
-| `src/sources/websocket_feed.py` | Event flow entry point | Phase 2 |
+| Server | Purpose | Status |
+|--------|---------|--------|
+| mcp-server-motherduck | DuckDB cloud | Configured (needs testing) |
+| mcp-lance-db | Vector search | Configured (needs testing) |
+| mcp-chroma | Legacy RAG | Configured |
+
+**Note:** Use MotherDuck MCP for DuckDB operations when available.
 
 ---
 
-## Previous Work (Reference)
+## Related Projects
 
-### Issue #8 - WebSocket Server State Fix
-- Hardcoded credentials approach implemented
-- `HARDCODED_PLAYER_ID = "did:privy:cmaibr7rt0094jp0mc2mbpfu4"`
-- `HARDCODED_USERNAME = "Dutch"`
-
-### Phase 11 - CDP WebSocket Interception
-- Complete and merged to main
-- Debug Terminal wired to WebSocketFeed
-- Events publishing to EventBus via `WS_RAW_EVENT`
-
-### Raw Capture Tool
-- Location: Developer Tools menu
-- Output: `/home/nomad/rugs_recordings/raw_captures/`
-- 554 events captured in test session
+| Project | Location | Purpose |
+|---------|----------|---------|
+| REPLAYER | `/home/nomad/Desktop/REPLAYER/` | Production system (Phase 11) |
+| rugs-rl-bot | `/home/nomad/Desktop/rugs-rl-bot/` | RL training |
+| claude-flow | `/home/nomad/Desktop/claude-flow/` | DevOps layer |
+| Recordings | `/home/nomad/rugs_recordings/` | 929 games |
 
 ---
 
 ## Session History
-- 2025-12-14: Technical Debt Audit design complete, GitHub infrastructure created
-- 2025-12-14: Phase 11 merged, Debug Terminal wired to WebSocketFeed
-- 2025-12-13: Issues #8, #9 design documents created
-- 2025-12-12: Hardcoded credentials workaround implemented
-- 2025-12-10: Raw Capture Tool implementation complete
+
+- **2025-12-16**: Phase 12A complete (58 tests), pushed to GitHub
+- **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
+- **2025-12-15**: Canonical database design document written
+- **2025-12-15**: All 8 event schemas (Issues #1-8) implemented
