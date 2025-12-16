@@ -5,20 +5,19 @@ Non-intrusive notifications that appear briefly and auto-dismiss.
 Used for recording status updates.
 """
 
-import tkinter as tk
-from tkinter import ttk
-from typing import Optional
 import logging
+import tkinter as tk
 
 logger = logging.getLogger(__name__)
 
 
 class ToastType:
     """Toast notification types with associated colors."""
+
     SUCCESS = "success"  # Green
     WARNING = "warning"  # Yellow/Orange
-    INFO = "info"        # Blue
-    ERROR = "error"      # Red
+    INFO = "info"  # Blue
+    ERROR = "error"  # Red
 
 
 class ToastNotification:
@@ -41,19 +40,14 @@ class ToastNotification:
     COLORS = {
         ToastType.SUCCESS: {"bg": "#4CAF50", "fg": "white"},  # Green
         ToastType.WARNING: {"bg": "#FF9800", "fg": "white"},  # Orange
-        ToastType.INFO: {"bg": "#2196F3", "fg": "white"},     # Blue
-        ToastType.ERROR: {"bg": "#f44336", "fg": "white"},    # Red
+        ToastType.INFO: {"bg": "#2196F3", "fg": "white"},  # Blue
+        ToastType.ERROR: {"bg": "#f44336", "fg": "white"},  # Red
     }
 
     # Track active toasts for stacking
     _active_toasts = []
 
-    def __init__(
-        self,
-        parent: tk.Tk,
-        position: str = "bottom-right",
-        default_duration: int = 3000
-    ):
+    def __init__(self, parent: tk.Tk, position: str = "bottom-right", default_duration: int = 3000):
         """
         Initialize toast notification manager.
 
@@ -65,14 +59,11 @@ class ToastNotification:
         self.parent = parent
         self.position = position
         self.default_duration = default_duration
-        self._toast_frame: Optional[tk.Frame] = None
-        self._after_id: Optional[str] = None
+        self._toast_frame: tk.Frame | None = None
+        self._after_id: str | None = None
 
     def show(
-        self,
-        message: str,
-        toast_type: str = ToastType.INFO,
-        duration: Optional[int] = None
+        self, message: str, toast_type: str = ToastType.INFO, duration: int | None = None
     ) -> None:
         """
         Show a toast notification.
@@ -89,12 +80,7 @@ class ToastNotification:
         colors = self.COLORS.get(toast_type, self.COLORS[ToastType.INFO])
 
         # Create toast frame
-        self._toast_frame = tk.Frame(
-            self.parent,
-            bg=colors["bg"],
-            padx=15,
-            pady=10
-        )
+        self._toast_frame = tk.Frame(self.parent, bg=colors["bg"], padx=15, pady=10)
 
         # Add message label
         label = tk.Label(
@@ -103,7 +89,7 @@ class ToastNotification:
             bg=colors["bg"],
             fg=colors["fg"],
             font=("Segoe UI", 10),
-            wraplength=300
+            wraplength=300,
         )
         label.pack()
 
@@ -114,7 +100,7 @@ class ToastNotification:
             bg=colors["bg"],
             fg=colors["fg"],
             font=("Segoe UI", 12, "bold"),
-            cursor="hand2"
+            cursor="hand2",
         )
         close_btn.place(relx=1.0, rely=0, anchor="ne", x=-5, y=2)
         close_btn.bind("<Button-1>", lambda e: self.dismiss())
@@ -219,26 +205,18 @@ class RecordingToastManager:
     def recording_stopped(self, games_captured: int) -> None:
         """Show recording stopped toast with count."""
         self.toast.show(
-            f"Recording stopped - {games_captured} games captured",
-            ToastType.INFO,
-            duration=5000
+            f"Recording stopped - {games_captured} games captured", ToastType.INFO, duration=5000
         )
 
     def session_limit_reached(self) -> None:
         """Show session limit reached toast."""
         self.toast.show(
-            "Session limit reached - finishing current game",
-            ToastType.INFO,
-            duration=4000
+            "Session limit reached - finishing current game", ToastType.INFO, duration=4000
         )
 
     def data_integrity_issue(self, issue: str) -> None:
         """Show data integrity issue toast."""
-        self.toast.show(
-            f"Data integrity issue: {issue}",
-            ToastType.WARNING,
-            duration=5000
-        )
+        self.toast.show(f"Data integrity issue: {issue}", ToastType.WARNING, duration=5000)
 
     def dismiss(self) -> None:
         """Dismiss current toast."""

@@ -9,7 +9,7 @@ Simulates realistic betting with:
 """
 
 import numpy as np
-from typing import List, Dict
+
 from .data_processor import GameDataProcessor
 from .feature_extractor import FeatureExtractor
 
@@ -58,7 +58,7 @@ class SidebetBacktester:
         self.sequences = []
         self.bankroll_history = [initial_bankroll]
 
-    def backtest(self, game_files: List[str]) -> Dict:
+    def backtest(self, game_files: list[str]) -> dict:
         """
         Run backtest on list of games
 
@@ -68,22 +68,22 @@ class SidebetBacktester:
         Returns:
             Dictionary with backtest results
         """
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"BACKTESTING ON {len(game_files)} GAMES")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         processor = GameDataProcessor()
         feature_extractor = FeatureExtractor()
 
         for i, game_file in enumerate(game_files):
             if i % 50 == 0:
-                print(f"Processing game {i+1}/{len(game_files)}...")
+                print(f"Processing game {i + 1}/{len(game_files)}...")
 
             self.backtest_game(game_file, processor, feature_extractor)
 
             # Check bankruptcy
             if self.bankroll < self.martingale.total_risk:
-                print(f"\n⚠️  BANKRUPTCY at game {i+1}")
+                print(f"\n⚠️  BANKRUPTCY at game {i + 1}")
                 print(f"   Bankroll: {self.bankroll:.4f} SOL")
                 print(f"   Required: {self.martingale.total_risk:.4f} SOL")
                 break
@@ -96,10 +96,7 @@ class SidebetBacktester:
         return results
 
     def backtest_game(
-        self,
-        game_file: str,
-        processor: GameDataProcessor,
-        feature_extractor: FeatureExtractor
+        self, game_file: str, processor: GameDataProcessor, feature_extractor: FeatureExtractor
     ):
         """Backtest single game"""
 
@@ -116,11 +113,11 @@ class SidebetBacktester:
 
         for sample in game_data:
             # Skip early game
-            if sample['tick'] < 100:
+            if sample["tick"] < 100:
                 continue
 
             # Check cooldown
-            if sample['tick'] - last_bet_tick < 5:
+            if sample["tick"] - last_bet_tick < 5:
                 continue
 
             # Check if sequence complete
@@ -131,50 +128,51 @@ class SidebetBacktester:
                 continue
 
             # Get prediction
-            prediction, probability = self.model.predict(sample['features'])
+            prediction, probability = self.model.predict(sample["features"])
 
             if prediction == 1:
                 # Place bet
                 self.total_bets += 1
-                outcome = self.martingale.calculate_outcome(
-                    sequence_attempts,
-                    sample['label'] == 1
-                )
+                outcome = self.martingale.calculate_outcome(sequence_attempts, sample["label"] == 1)
 
                 self.bankroll += outcome
 
-                current_sequence.append({
-                    'attempt': sequence_attempts,
-                    'tick': sample['tick'],
-                    'probability': probability,
-                    'won': sample['label'] == 1,
-                    'profit': outcome
-                })
+                current_sequence.append(
+                    {
+                        "attempt": sequence_attempts,
+                        "tick": sample["tick"],
+                        "probability": probability,
+                        "won": sample["label"] == 1,
+                        "profit": outcome,
+                    }
+                )
 
-                if sample['label'] == 1:
+                if sample["label"] == 1:
                     # WIN - sequence complete
                     self.winning_bets += 1
-                    self.sequences.append({
-                        'attempts': sequence_attempts + 1,
-                        'profit': sum(bet['profit'] for bet in current_sequence),
-                        'ticks': [bet['tick'] for bet in current_sequence]
-                    })
+                    self.sequences.append(
+                        {
+                            "attempts": sequence_attempts + 1,
+                            "profit": sum(bet["profit"] for bet in current_sequence),
+                            "ticks": [bet["tick"] for bet in current_sequence],
+                        }
+                    )
                     sequence_attempts = 0
                     current_sequence = []
                 else:
                     # LOSS - continue sequence
                     sequence_attempts += 1
 
-                last_bet_tick = sample['tick']
+                last_bet_tick = sample["tick"]
 
                 # Skip ahead 45 ticks (40 window + 5 cooldown)
                 # This prevents multiple bets in same window
-                last_bet_tick = sample['tick'] + 45
+                last_bet_tick = sample["tick"] + 45
 
         # Record bankroll after game
         self.bankroll_history.append(self.bankroll)
 
-    def calculate_results(self) -> Dict:
+    def calculate_results(self) -> dict:
         """Calculate final backtest metrics"""
 
         win_rate = self.winning_bets / max(self.total_bets, 1)
@@ -182,22 +180,26 @@ class SidebetBacktester:
 
         max_dd = self.calculate_max_drawdown()
 
-        profitable_sequences = sum(1 for s in self.sequences if s['profit'] > 0)
+        profitable_sequences = sum(1 for s in self.sequences if s["profit"] > 0)
 
         return {
-            'total_bets': self.total_bets,
-            'winning_bets': self.winning_bets,
-            'win_rate': win_rate,
-            'initial_bankroll': self.initial_bankroll,
-            'final_bankroll': self.bankroll,
-            'profit': self.bankroll - self.initial_bankroll,
-            'roi': roi,
-            'max_drawdown': max_dd,
-            'total_sequences': len(self.sequences),
-            'profitable_sequences': profitable_sequences,
-            'avg_attempts': np.mean([s['attempts'] for s in self.sequences]) if self.sequences else 0,
-            'avg_profit_per_sequence': np.mean([s['profit'] for s in self.sequences]) if self.sequences else 0,
-            'bankrupt': self.bankroll < self.martingale.total_risk
+            "total_bets": self.total_bets,
+            "winning_bets": self.winning_bets,
+            "win_rate": win_rate,
+            "initial_bankroll": self.initial_bankroll,
+            "final_bankroll": self.bankroll,
+            "profit": self.bankroll - self.initial_bankroll,
+            "roi": roi,
+            "max_drawdown": max_dd,
+            "total_sequences": len(self.sequences),
+            "profitable_sequences": profitable_sequences,
+            "avg_attempts": np.mean([s["attempts"] for s in self.sequences])
+            if self.sequences
+            else 0,
+            "avg_profit_per_sequence": np.mean([s["profit"] for s in self.sequences])
+            if self.sequences
+            else 0,
+            "bankrupt": self.bankroll < self.martingale.total_risk,
         }
 
     def calculate_max_drawdown(self) -> float:
@@ -213,35 +215,39 @@ class SidebetBacktester:
 
         return max_dd
 
-    def print_results(self, results: Dict):
+    def print_results(self, results: dict):
         """Print formatted results"""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("BACKTEST RESULTS")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
-        print(f"\nBetting Performance:")
+        print("\nBetting Performance:")
         print(f"  Total bets: {results['total_bets']}")
         print(f"  Winning bets: {results['winning_bets']}")
-        print(f"  Win rate: {results['win_rate']:.3%} {'✅' if results['win_rate'] >= 0.25 else '❌'}")
+        print(
+            f"  Win rate: {results['win_rate']:.3%} {'✅' if results['win_rate'] >= 0.25 else '❌'}"
+        )
 
-        print(f"\nBankroll:")
+        print("\nBankroll:")
         print(f"  Initial: {results['initial_bankroll']:.4f} SOL")
         print(f"  Final: {results['final_bankroll']:.4f} SOL")
         print(f"  Profit: {results['profit']:+.4f} SOL {'✅' if results['profit'] > 0 else '❌'}")
         print(f"  ROI: {results['roi']:.3%} {'✅' if results['roi'] > 0.3 else '❌'}")
         print(f"  Max Drawdown: {results['max_drawdown']:.3%}")
 
-        print(f"\nSequence Performance:")
+        print("\nSequence Performance:")
         print(f"  Total sequences: {results['total_sequences']}")
         print(f"  Profitable sequences: {results['profitable_sequences']}")
-        if results['total_sequences'] > 0:
-            seq_success = results['profitable_sequences'] / results['total_sequences']
-            print(f"  Sequence success rate: {seq_success:.3%} {'✅' if seq_success >= 0.8 else '❌'}")
+        if results["total_sequences"] > 0:
+            seq_success = results["profitable_sequences"] / results["total_sequences"]
+            print(
+                f"  Sequence success rate: {seq_success:.3%} {'✅' if seq_success >= 0.8 else '❌'}"
+            )
         print(f"  Avg attempts: {results['avg_attempts']:.2f}")
         print(f"  Avg profit/sequence: {results['avg_profit_per_sequence']:+.4f} SOL")
 
         print(f"\nStatus: {'✅ PROFITABLE' if results['roi'] > 0 else '❌ UNPROFITABLE'}")
-        if results['bankrupt']:
-            print(f"⚠️  BANKRUPT")
+        if results["bankrupt"]:
+            print("⚠️  BANKRUPT")
 
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")

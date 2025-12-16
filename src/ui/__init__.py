@@ -6,23 +6,23 @@ dependencies (e.g., Playwright) via deep import chains.
 
 from __future__ import annotations
 
-from typing import Any
 import importlib
+from typing import Any
 
 from .layout_manager import LayoutManager, Panel, PanelConfig, PanelPosition, ResizeMode
-from .panels import StatusPanel, ChartPanel, TradingPanel, BotPanel, ControlsPanel
+from .panels import BotPanel, ChartPanel, ControlsPanel, StatusPanel, TradingPanel
 
 __all__ = [
+    "BotPanel",
+    "ChartPanel",
+    "ControlsPanel",
     "LayoutManager",
     "Panel",
     "PanelConfig",
     "PanelPosition",
     "ResizeMode",
     "StatusPanel",
-    "ChartPanel",
     "TradingPanel",
-    "BotPanel",
-    "ControlsPanel",
 ]
 
 

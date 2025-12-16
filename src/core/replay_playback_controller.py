@@ -10,10 +10,9 @@ Classes:
 
 import logging
 import threading
-from typing import Optional, Callable, List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from models import GameTick
-from services import event_bus, Events
+from services import Events, event_bus
 
 if TYPE_CHECKING:
     from core.replay_engine import ReplayEngine
@@ -39,12 +38,7 @@ class PlaybackController:
         controller.pause()
     """
 
-    def __init__(
-        self,
-        engine: 'ReplayEngine',
-        lock: threading.RLock,
-        stop_event: threading.Event
-    ):
+    def __init__(self, engine: "ReplayEngine", lock: threading.RLock, stop_event: threading.Event):
         """
         Initialize playback controller.
 
@@ -60,7 +54,7 @@ class PlaybackController:
         # Playback state
         self.is_playing = False
         self.playback_speed = 1.0
-        self.playback_thread: Optional[threading.Thread] = None
+        self.playback_thread: threading.Thread | None = None
 
     # ========================================================================
     # PLAYBACK CONTROL
@@ -82,13 +76,11 @@ class PlaybackController:
 
             # Start playback thread
             self.playback_thread = threading.Thread(
-                target=self._playback_loop,
-                name="ReplayEngine-Playback",
-                daemon=True
+                target=self._playback_loop, name="ReplayEngine-Playback", daemon=True
             )
             self.playback_thread.start()
 
-            event_bus.publish(Events.REPLAY_STARTED, {'game_id': self.engine.game_id})
+            event_bus.publish(Events.REPLAY_STARTED, {"game_id": self.engine.game_id})
             logger.info("Playback started")
 
     def pause(self):
@@ -107,7 +99,7 @@ class PlaybackController:
                 self.playback_thread.join(timeout=2.0)
             # else: We're in the playback thread - don't join, just return
 
-        event_bus.publish(Events.REPLAY_PAUSED, {'game_id': self.engine.game_id})
+        event_bus.publish(Events.REPLAY_PAUSED, {"game_id": self.engine.game_id})
         logger.info("Playback paused")
 
     def stop(self):
@@ -122,7 +114,7 @@ class PlaybackController:
         if self.engine.ticks:
             self.engine.display_tick(0)
 
-        event_bus.publish(Events.REPLAY_STOPPED, {'game_id': self.engine.game_id})
+        event_bus.publish(Events.REPLAY_STOPPED, {"game_id": self.engine.game_id})
         logger.info("Playback stopped")
 
     def reset(self):
@@ -145,11 +137,11 @@ class PlaybackController:
                 current_price=first_tick.price,
                 current_phase=first_tick.phase,
                 game_active=first_tick.active,
-                rugged=first_tick.rugged
+                rugged=first_tick.rugged,
             )
             self.engine.display_tick(0)
 
-        event_bus.publish(Events.REPLAY_RESET, {'game_id': self.engine.game_id})
+        event_bus.publish(Events.REPLAY_RESET, {"game_id": self.engine.game_id})
         logger.info("Game reset to initial state")
 
     # ========================================================================
@@ -231,7 +223,7 @@ class PlaybackController:
             self.playback_speed = max(0.1, min(10.0, speed))
             new_speed = self.playback_speed
 
-        event_bus.publish(Events.REPLAY_SPEED_CHANGED, {'speed': new_speed})
+        event_bus.publish(Events.REPLAY_SPEED_CHANGED, {"speed": new_speed})
         logger.info(f"Playback speed set to {new_speed}x")
 
     def get_speed(self) -> float:

@@ -8,13 +8,12 @@ side effects.
 
 from __future__ import annotations
 
-from typing import Any
 import importlib
 
-from .event_bus import event_bus, Events
-from .logger import setup_logging, get_logger
+from .event_bus import Events, event_bus
+from .logger import get_logger, setup_logging
 
-__all__ = ["event_bus", "Events", "setup_logging", "get_logger"]
+__all__ = ["Events", "event_bus", "get_logger", "setup_logging"]
 
 
 _LAZY_EXPORTS = {

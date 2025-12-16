@@ -9,16 +9,17 @@ Classes:
     GameStateMachine: Validates game state transitions and detects phases
 """
 
-import time
 import logging
-from typing import Dict, Any, Optional, List
+import time
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 
 @dataclass
 class GameSignal:
     """Clean game state signal (9 fields + metadata)"""
+
     # Core identifiers
     gameId: str
 
@@ -38,7 +39,7 @@ class GameSignal:
     tradeCount: int
 
     # Post-game data
-    gameHistory: Optional[List[Dict[str, Any]]]
+    gameHistory: list[dict[str, Any]] | None
 
     # Metadata (added by collector)
     phase: str = "UNKNOWN"
@@ -80,7 +81,7 @@ class GameStateMachine:
         self.transition_history = []
         self.anomaly_count = 0
 
-    def detect_phase(self, data: Dict[str, Any]) -> str:
+    def detect_phase(self, data: dict[str, Any]) -> str:
         """
         Detect game phase from raw data.
 
@@ -91,47 +92,52 @@ class GameStateMachine:
             Phase string (PRESALE, ACTIVE_GAMEPLAY, RUG_EVENT_1, etc.)
         """
         # RUG EVENT - gameHistory ONLY appears during rug events
-        if data.get('gameHistory'):
-            if data.get('active') and data.get('rugged'):
-                return 'RUG_EVENT_1'  # Seed reveal
-            if not data.get('active') and data.get('rugged'):
-                return 'RUG_EVENT_2'  # New game setup
+        if data.get("gameHistory"):
+            if data.get("active") and data.get("rugged"):
+                return "RUG_EVENT_1"  # Seed reveal
+            if not data.get("active") and data.get("rugged"):
+                return "RUG_EVENT_2"  # New game setup
 
         # PRESALE - 10-second window before game starts
-        cooldown = data.get('cooldownTimer', 0)
-        if (0 < cooldown <= 10000 and
-            data.get('allowPreRoundBuys', False)):
-            return 'PRESALE'
+        cooldown = data.get("cooldownTimer", 0)
+        if 0 < cooldown <= 10000 and data.get("allowPreRoundBuys", False):
+            return "PRESALE"
 
         # COOLDOWN - 5-second settlement buffer
-        if (cooldown > 10000 and
-            data.get('rugged', False) and
-            not data.get('active', True)):
-            return 'COOLDOWN'
+        if cooldown > 10000 and data.get("rugged", False) and not data.get("active", True):
+            return "COOLDOWN"
 
         # ACTIVE GAMEPLAY - Main game phase
-        if (data.get('active', False) and
-            data.get('tickCount', 0) > 0 and
-            not data.get('rugged', False)):
-            return 'ACTIVE_GAMEPLAY'
+        if (
+            data.get("active", False)
+            and data.get("tickCount", 0) > 0
+            and not data.get("rugged", False)
+        ):
+            return "ACTIVE_GAMEPLAY"
 
         # GAME ACTIVATION - Instant transition from presale
-        if (data.get('active', False) and
-            data.get('tickCount', 0) == 0 and
-            not data.get('rugged', False)):
-            return 'GAME_ACTIVATION'
+        if (
+            data.get("active", False)
+            and data.get("tickCount", 0) == 0
+            and not data.get("rugged", False)
+        ):
+            return "GAME_ACTIVATION"
 
         # Log unknown states for debugging
-        logging.debug(f"UNKNOWN state detected - active:{data.get('active')} rugged:{data.get('rugged')} tick:{data.get('tickCount')} cooldown:{cooldown}")
+        logging.debug(
+            f"UNKNOWN state detected - active:{data.get('active')} rugged:{data.get('rugged')} tick:{data.get('tickCount')} cooldown:{cooldown}"
+        )
 
         # If we can't determine state but game is active, stay in current phase
         # This handles brief moments where data might be in transition
-        if self.current_phase in ['ACTIVE_GAMEPLAY', 'GAME_ACTIVATION'] and data.get('active', False):
+        if self.current_phase in ["ACTIVE_GAMEPLAY", "GAME_ACTIVATION"] and data.get(
+            "active", False
+        ):
             return self.current_phase
 
-        return 'UNKNOWN'
+        return "UNKNOWN"
 
-    def validate_transition(self, new_phase: str, data: Dict[str, Any]) -> bool:
+    def validate_transition(self, new_phase: str, data: dict[str, Any]) -> bool:
         """
         Validate state transition is legal.
 
@@ -143,46 +149,54 @@ class GameStateMachine:
             True if transition is legal, False otherwise
         """
         # First state is always valid
-        if self.current_phase == 'UNKNOWN':
+        if self.current_phase == "UNKNOWN":
             return True
 
         # Transitioning TO unknown is allowed (data ambiguity, not an error)
         # But log it for monitoring
-        if new_phase == 'UNKNOWN':
+        if new_phase == "UNKNOWN":
             logging.debug(f"Transitioning from {self.current_phase} to UNKNOWN (data ambiguity)")
             return True
 
         # Legal transition map
         legal_transitions = {
-            'GAME_ACTIVATION': ['ACTIVE_GAMEPLAY', 'RUG_EVENT_1'],
-            'ACTIVE_GAMEPLAY': ['ACTIVE_GAMEPLAY', 'RUG_EVENT_1'],
-            'RUG_EVENT_1': ['RUG_EVENT_2'],
-            'RUG_EVENT_2': ['COOLDOWN'],
-            'COOLDOWN': ['PRESALE'],
-            'PRESALE': ['PRESALE', 'GAME_ACTIVATION', 'ACTIVE_GAMEPLAY'],  # FIX: Allow direct PRESALE → ACTIVE_GAMEPLAY
-            'UNKNOWN': ['GAME_ACTIVATION', 'ACTIVE_GAMEPLAY', 'PRESALE', 'COOLDOWN']
+            "GAME_ACTIVATION": ["ACTIVE_GAMEPLAY", "RUG_EVENT_1"],
+            "ACTIVE_GAMEPLAY": ["ACTIVE_GAMEPLAY", "RUG_EVENT_1"],
+            "RUG_EVENT_1": ["RUG_EVENT_2"],
+            "RUG_EVENT_2": ["COOLDOWN"],
+            "COOLDOWN": ["PRESALE"],
+            "PRESALE": [
+                "PRESALE",
+                "GAME_ACTIVATION",
+                "ACTIVE_GAMEPLAY",
+            ],  # FIX: Allow direct PRESALE → ACTIVE_GAMEPLAY
+            "UNKNOWN": ["GAME_ACTIVATION", "ACTIVE_GAMEPLAY", "PRESALE", "COOLDOWN"],
         }
 
         allowed_next = legal_transitions.get(self.current_phase, [])
         is_legal = new_phase in allowed_next or new_phase == self.current_phase
 
         if not is_legal:
-            logging.warning(f"Illegal transition: {self.current_phase} → {new_phase} (allowed: {allowed_next})")
+            logging.warning(
+                f"Illegal transition: {self.current_phase} → {new_phase} (allowed: {allowed_next})"
+            )
             return False
 
         # Validate tick progression in active gameplay
-        if new_phase == 'ACTIVE_GAMEPLAY' and self.current_phase == 'ACTIVE_GAMEPLAY':
-            game_id = data.get('gameId')
-            tick_count = data.get('tickCount', 0)
+        if new_phase == "ACTIVE_GAMEPLAY" and self.current_phase == "ACTIVE_GAMEPLAY":
+            game_id = data.get("gameId")
+            tick_count = data.get("tickCount", 0)
 
             if game_id == self.current_game_id:
                 if tick_count <= self.last_tick_count:
-                    logging.warning(f"Tick regression detected: {self.last_tick_count} → {tick_count}")
+                    logging.warning(
+                        f"Tick regression detected: {self.last_tick_count} → {tick_count}"
+                    )
                     return False
 
         return True
 
-    def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Process game state update and return validation result.
 
@@ -202,13 +216,15 @@ class GameStateMachine:
         # Track transition
         previous_phase = self.current_phase
         if phase != self.current_phase:
-            self.transition_history.append({
-                'from': self.current_phase,
-                'to': phase,
-                'gameId': data.get('gameId'),
-                'tick': data.get('tickCount', 0),
-                'timestamp': int(time.time() * 1000)
-            })
+            self.transition_history.append(
+                {
+                    "from": self.current_phase,
+                    "to": phase,
+                    "gameId": data.get("gameId"),
+                    "tick": data.get("tickCount", 0),
+                    "timestamp": int(time.time() * 1000),
+                }
+            )
 
             # Keep only last 20 transitions
             if len(self.transition_history) > 20:
@@ -216,14 +232,10 @@ class GameStateMachine:
 
         # Update state
         self.current_phase = phase
-        self.current_game_id = data.get('gameId')
-        self.last_tick_count = data.get('tickCount', 0)
+        self.current_game_id = data.get("gameId")
+        self.last_tick_count = data.get("tickCount", 0)
 
-        return {
-            'phase': phase,
-            'isValid': is_valid,
-            'previousPhase': previous_phase
-        }
+        return {"phase": phase, "isValid": is_valid, "previousPhase": previous_phase}
 
     def reset(self):
         """Reset state machine to initial state."""
@@ -233,7 +245,7 @@ class GameStateMachine:
         self.transition_history = []
         self.anomaly_count = 0
 
-    def recover_from_disconnect(self) -> Dict[str, Any]:
+    def recover_from_disconnect(self) -> dict[str, Any]:
         """
         PHASE 3.4 AUDIT FIX: Recover state machine after a disconnect.
 
@@ -245,21 +257,23 @@ class GameStateMachine:
             Dict with recovery info (previous state, game_id, etc.)
         """
         recovery_info = {
-            'previous_phase': self.current_phase,
-            'previous_game_id': self.current_game_id,
-            'previous_tick': self.last_tick_count,
-            'anomaly_count_before': self.anomaly_count,
-            'recovered': True
+            "previous_phase": self.current_phase,
+            "previous_game_id": self.current_game_id,
+            "previous_tick": self.last_tick_count,
+            "anomaly_count_before": self.anomaly_count,
+            "recovered": True,
         }
 
         # Record the disconnect in transition history
-        self.transition_history.append({
-            'from': self.current_phase,
-            'to': 'DISCONNECT_RECOVERY',
-            'gameId': self.current_game_id,
-            'tick': self.last_tick_count,
-            'timestamp': int(time.time() * 1000)
-        })
+        self.transition_history.append(
+            {
+                "from": self.current_phase,
+                "to": "DISCONNECT_RECOVERY",
+                "gameId": self.current_game_id,
+                "tick": self.last_tick_count,
+                "timestamp": int(time.time() * 1000),
+            }
+        )
 
         # Keep only last 20 transitions
         if len(self.transition_history) > 20:
@@ -278,7 +292,7 @@ class GameStateMachine:
 
         return recovery_info
 
-    def get_state_summary(self) -> Dict[str, Any]:
+    def get_state_summary(self) -> dict[str, Any]:
         """
         PHASE 3.4 AUDIT FIX: Get a summary of current state for debugging.
 
@@ -286,9 +300,9 @@ class GameStateMachine:
             Dict with current state info
         """
         return {
-            'phase': self.current_phase,
-            'game_id': self.current_game_id,
-            'tick': self.last_tick_count,
-            'anomaly_count': self.anomaly_count,
-            'recent_transitions': self.transition_history[-5:] if self.transition_history else []
+            "phase": self.current_phase,
+            "game_id": self.current_game_id,
+            "tick": self.last_tick_count,
+            "anomaly_count": self.anomaly_count,
+            "recent_transitions": self.transition_history[-5:] if self.transition_history else [],
         }

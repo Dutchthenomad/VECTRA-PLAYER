@@ -10,7 +10,7 @@ Classes:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, List
+from typing import Any
 
 
 @dataclass
@@ -27,6 +27,7 @@ class ExecutionTiming:
         confirmation_time: Timestamp when state change was confirmed
         success: Whether the execution succeeded
     """
+
     action: str  # BUY, SELL, SIDEBET
     decision_time: float  # When bot decided to act
     click_time: float  # When click was sent
@@ -61,7 +62,8 @@ class TimingMetrics:
         executions: List of ExecutionTiming records
         max_history: Maximum number of executions to retain (default: 100)
     """
-    executions: List[ExecutionTiming] = field(default_factory=list)
+
+    executions: list[ExecutionTiming] = field(default_factory=list)
     max_history: int = 100  # Keep last 100 executions
 
     def add_execution(self, timing: ExecutionTiming) -> None:
@@ -75,7 +77,7 @@ class TimingMetrics:
         if len(self.executions) > self.max_history:
             self.executions.pop(0)  # Remove oldest
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Calculate timing statistics
 
@@ -92,13 +94,13 @@ class TimingMetrics:
         """
         if not self.executions:
             return {
-                'total_executions': 0,
-                'success_rate': 0.0,
-                'avg_total_delay_ms': 0.0,
-                'avg_click_delay_ms': 0.0,
-                'avg_confirmation_delay_ms': 0.0,
-                'p50_total_delay_ms': 0.0,
-                'p95_total_delay_ms': 0.0,
+                "total_executions": 0,
+                "success_rate": 0.0,
+                "avg_total_delay_ms": 0.0,
+                "avg_click_delay_ms": 0.0,
+                "avg_confirmation_delay_ms": 0.0,
+                "p50_total_delay_ms": 0.0,
+                "p95_total_delay_ms": 0.0,
             }
 
         successful = [e for e in self.executions if e.success]
@@ -121,21 +123,23 @@ class TimingMetrics:
             p95_value = 0.0
 
         return {
-            'total_executions': len(self.executions),
-            'successful_executions': len(successful),
-            'success_rate': len(successful) / len(self.executions),
-            'avg_total_delay_ms': sum(total_delays) / len(total_delays) if total_delays else 0.0,
-            'avg_click_delay_ms': sum(click_delays) / len(click_delays) if click_delays else 0.0,
-            'avg_confirmation_delay_ms': sum(confirm_delays) / len(confirm_delays) if confirm_delays else 0.0,
-            'p50_total_delay_ms': p50_value,
-            'p95_total_delay_ms': p95_value,
+            "total_executions": len(self.executions),
+            "successful_executions": len(successful),
+            "success_rate": len(successful) / len(self.executions),
+            "avg_total_delay_ms": sum(total_delays) / len(total_delays) if total_delays else 0.0,
+            "avg_click_delay_ms": sum(click_delays) / len(click_delays) if click_delays else 0.0,
+            "avg_confirmation_delay_ms": sum(confirm_delays) / len(confirm_delays)
+            if confirm_delays
+            else 0.0,
+            "p50_total_delay_ms": p50_value,
+            "p95_total_delay_ms": p95_value,
         }
 
     def clear(self) -> None:
         """Clear all execution history"""
         self.executions.clear()
 
-    def get_recent(self, n: int = 10) -> List[ExecutionTiming]:
+    def get_recent(self, n: int = 10) -> list[ExecutionTiming]:
         """
         Get the N most recent executions
 

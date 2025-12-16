@@ -3,11 +3,11 @@ Browser Connection Dialog - Phase 9.1 (CDP Update)
 Connection wizard for browser automation using CDP connection
 """
 
+import asyncio
+import logging
+import threading
 import tkinter as tk
 from tkinter import ttk
-import asyncio
-import threading
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,7 @@ class BrowserConnectionDialog:
             "CDP Mode: Connects to YOUR Chrome browser (not Playwright's Chromium).\n"
             "Your Phantom wallet and profile will persist across sessions."
         )
-        ttk.Label(
-            info_frame,
-            text=info_text,
-            wraplength=550,
-            foreground="blue"
-        ).pack(anchor=tk.W)
+        ttk.Label(info_frame, text=info_text, wraplength=550, foreground="blue").pack(anchor=tk.W)
 
         # Profile selection
         profile_frame = ttk.Frame(self.dialog, padding=10)
@@ -76,8 +71,8 @@ class BrowserConnectionDialog:
             profile_frame,
             textvariable=self.profile_var,
             values=["rugs_bot", "rugs_observer"],
-            state='readonly',
-            width=20
+            state="readonly",
+            width=20,
         )
         profile_dropdown.pack(side=tk.LEFT, padx=10)
 
@@ -89,14 +84,14 @@ class BrowserConnectionDialog:
         ttk.Checkbutton(
             options_frame,
             text="Navigate to rugs.fun (if not already there)",
-            variable=self.navigate_var
+            variable=self.navigate_var,
         ).pack(anchor=tk.W)
 
         # Note about wallet (already persisted in Chrome)
         ttk.Label(
             options_frame,
             text="Note: Phantom wallet is managed in your Chrome profile",
-            foreground="gray"
+            foreground="gray",
         ).pack(anchor=tk.W, pady=(5, 0))
 
         # Progress display
@@ -116,10 +111,10 @@ class BrowserConnectionDialog:
             text_scroll_frame,
             height=18,
             width=70,
-            state='disabled',
-            bg='#f0f0f0',
-            font=('Courier', 9),
-            yscrollcommand=scrollbar.set
+            state="disabled",
+            bg="#f0f0f0",
+            font=("Courier", 9),
+            yscrollcommand=scrollbar.set,
         )
         self.progress_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.progress_text.yview)
@@ -133,17 +128,11 @@ class BrowserConnectionDialog:
         button_frame.pack(fill=tk.X)
 
         self.connect_button = ttk.Button(
-            button_frame,
-            text="Connect Browser",
-            command=self._start_connection
+            button_frame, text="Connect Browser", command=self._start_connection
         )
         self.connect_button.pack(side=tk.LEFT, padx=5)
 
-        self.cancel_button = ttk.Button(
-            button_frame,
-            text="Cancel",
-            command=self.dialog.destroy
-        )
+        self.cancel_button = ttk.Button(button_frame, text="Cancel", command=self.dialog.destroy)
         self.cancel_button.pack(side=tk.LEFT)
 
         # Center dialog
@@ -158,20 +147,15 @@ class BrowserConnectionDialog:
             message: Message to log
             status: "info", "success", "error", "warning"
         """
-        self.progress_text.config(state='normal')
+        self.progress_text.config(state="normal")
 
         # Color prefixes
-        prefixes = {
-            'info': '  ',
-            'success': '✓ ',
-            'error': '✗ ',
-            'warning': '⚠ '
-        }
+        prefixes = {"info": "  ", "success": "✓ ", "error": "✗ ", "warning": "⚠ "}
 
-        prefix = prefixes.get(status, '  ')
+        prefix = prefixes.get(status, "  ")
         self.progress_text.insert(tk.END, f"{prefix}{message}\n")
         self.progress_text.see(tk.END)
-        self.progress_text.config(state='disabled')
+        self.progress_text.config(state="disabled")
         self.dialog.update()
 
     async def _connect_async(self):
@@ -215,18 +199,20 @@ class BrowserConnectionDialog:
                 if page and "rugs.fun" not in page.url:
                     self._log_progress("\nStep 2: Navigating to rugs.fun...", "info")
                     try:
-                        await page.goto("https://rugs.fun", wait_until="domcontentloaded", timeout=30000)
+                        await page.goto(
+                            "https://rugs.fun", wait_until="domcontentloaded", timeout=30000
+                        )
                         self._log_progress("Page loaded successfully!", "success")
                     except Exception as e:
                         self._log_progress(f"Navigation issue: {e}", "warning")
                 else:
                     self._log_progress("\nStep 2: Already on rugs.fun", "success")
 
-            self._log_progress("\n" + "="*60, "info")
+            self._log_progress("\n" + "=" * 60, "info")
             self._log_progress("CDP Connection Complete!", "success")
             self._log_progress("Browser is ready for trading", "success")
             self._log_progress("Wallet: Check your Chrome profile", "info")
-            self._log_progress("="*60, "info")
+            self._log_progress("=" * 60, "info")
 
             return True
 
@@ -239,12 +225,12 @@ class BrowserConnectionDialog:
     def _start_connection(self):
         """Start connection in background thread"""
         # Disable buttons during connection
-        self.connect_button.config(state='disabled')
-        self.cancel_button.config(state='disabled')
+        self.connect_button.config(state="disabled")
+        self.cancel_button.config(state="disabled")
 
-        self._log_progress("\n" + "="*60, "info")
+        self._log_progress("\n" + "=" * 60, "info")
         self._log_progress("Starting connection process...", "info")
-        self._log_progress("="*60, "info")
+        self._log_progress("=" * 60, "info")
 
         def run_async():
             """Run async connection in background thread"""
@@ -258,10 +244,7 @@ class BrowserConnectionDialog:
                 self.parent.after(0, lambda: self._connection_finished(result))
             except Exception as e:
                 logger.error(f"Async connection error: {e}", exc_info=True)
-                self.parent.after(
-                    0,
-                    lambda: self._connection_finished(False, str(e))
-                )
+                self.parent.after(0, lambda: self._connection_finished(False, str(e)))
             finally:
                 loop.close()
 
@@ -278,7 +261,7 @@ class BrowserConnectionDialog:
             error: Error message if failed
         """
         # Re-enable cancel button (connect button stays disabled after success)
-        self.cancel_button.config(state='normal')
+        self.cancel_button.config(state="normal")
 
         if success:
             # Call success callback
@@ -289,7 +272,7 @@ class BrowserConnectionDialog:
             self.parent.after(1500, self.dialog.destroy)
         else:
             # Re-enable connect button to allow retry
-            self.connect_button.config(state='normal')
+            self.connect_button.config(state="normal")
 
             # Call failure callback
             if self.on_failed:

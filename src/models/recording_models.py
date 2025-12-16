@@ -14,31 +14,33 @@ Phase 10.6 Additions:
 - RecordedAction: Full button press with dual-state validation
 """
 
+import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
-import uuid
-import time
+from typing import Any
 
 
 @dataclass
 class GameStateMeta:
     """Metadata for a single game recording."""
+
     game_id: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     duration_ticks: int = 0
     peak_multiplier: Decimal = field(default_factory=lambda: Decimal("1.0"))
-    server_seed_hash: Optional[str] = None
-    server_seed: Optional[str] = None
+    server_seed_hash: str | None = None
+    server_seed: str | None = None
 
 
 @dataclass
 class GameStateRecord:
     """Complete game state - prices tick by tick."""
+
     meta: GameStateMeta
-    prices: List[Optional[Decimal]] = field(default_factory=list)
+    prices: list[Decimal | None] = field(default_factory=list)
 
     def add_price(self, tick: int, price: Decimal):
         """Add price at tick, extending array if needed."""
@@ -69,13 +71,14 @@ class GameStateRecord:
                 "server_seed_hash": self.meta.server_seed_hash,
                 "server_seed": self.meta.server_seed,
             },
-            "prices": [str(p) if p is not None else None for p in self.prices]
+            "prices": [str(p) if p is not None else None for p in self.prices],
         }
 
 
 @dataclass
 class PlayerAction:
     """Single player action with state snapshot."""
+
     game_id: str
     tick: int
     timestamp: datetime
@@ -84,8 +87,8 @@ class PlayerAction:
     price: Decimal
     balance_after: Decimal
     position_qty_after: Decimal
-    entry_price: Optional[Decimal] = None
-    pnl: Optional[Decimal] = None
+    entry_price: Decimal | None = None
+    pnl: Decimal | None = None
 
     def to_dict(self) -> dict:
         """Serialize for JSON storage."""
@@ -106,17 +109,19 @@ class PlayerAction:
 @dataclass
 class PlayerSessionMeta:
     """Metadata for a player recording session."""
+
     player_id: str
     username: str
     session_start: datetime
-    session_end: Optional[datetime] = None
+    session_end: datetime | None = None
 
 
 @dataclass
 class PlayerSession:
     """Complete player session - all actions across games."""
+
     meta: PlayerSessionMeta
-    actions: List[PlayerAction] = field(default_factory=list)
+    actions: list[PlayerAction] = field(default_factory=list)
 
     def add_action(self, action: PlayerAction):
         """Add action to session."""
@@ -135,13 +140,14 @@ class PlayerSession:
                 "session_start": self.meta.session_start.isoformat(),
                 "session_end": self.meta.session_end.isoformat() if self.meta.session_end else None,
             },
-            "actions": [a.to_dict() for a in self.actions]
+            "actions": [a.to_dict() for a in self.actions],
         }
 
 
 # =============================================================================
 # Phase 10.6: Validation-Aware Recording Models
 # =============================================================================
+
 
 @dataclass
 class ServerState:
@@ -151,6 +157,7 @@ class ServerState:
     This is the SOURCE OF TRUTH from the game server.
     Used for zero-tolerance validation against local calculations.
     """
+
     cash: Decimal
     position_qty: Decimal
     avg_cost: Decimal
@@ -158,7 +165,7 @@ class ServerState:
     total_invested: Decimal
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize for JSON storage."""
         return {
             "cash": str(self.cash),
@@ -170,7 +177,7 @@ class ServerState:
         }
 
     @classmethod
-    def from_websocket(cls, data: Dict[str, Any]) -> "ServerState":
+    def from_websocket(cls, data: dict[str, Any]) -> "ServerState":
         """Create ServerState from WebSocket playerUpdate data."""
         return cls(
             cash=Decimal(str(data.get("cash", 0))),
@@ -190,24 +197,27 @@ class LocalStateSnapshot:
     Used for validation against ServerState to ensure
     REPLAYER logic perfectly matches the real game.
     """
+
     balance: Decimal
     position_qty: Decimal
-    position_entry_price: Optional[Decimal]
-    position_pnl: Optional[Decimal]
+    position_entry_price: Decimal | None
+    position_pnl: Decimal | None
     sidebet_active: bool
-    sidebet_amount: Optional[Decimal]
+    sidebet_amount: Decimal | None
     bet_amount: Decimal
     sell_percentage: Decimal
     current_tick: int
     current_price: Decimal
     phase: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize for JSON storage."""
         return {
             "balance": str(self.balance),
             "position_qty": str(self.position_qty),
-            "position_entry_price": str(self.position_entry_price) if self.position_entry_price else None,
+            "position_entry_price": str(self.position_entry_price)
+            if self.position_entry_price
+            else None,
             "position_pnl": str(self.position_pnl) if self.position_pnl else None,
             "sidebet_active": self.sidebet_active,
             "sidebet_amount": str(self.sidebet_amount) if self.sidebet_amount else None,
@@ -222,12 +232,13 @@ class LocalStateSnapshot:
 @dataclass
 class DriftDetails:
     """Details of a drift between local and server state."""
+
     field: str
     local_value: str
     server_value: str
     difference: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "field": self.field,
             "local": self.local_value,
@@ -249,6 +260,7 @@ class RecordedAction:
     - SELL_PERCENTAGE: 10%, 25%, 50%, 100%
     - TRADE_BUY, TRADE_SELL, TRADE_SIDEBET
     """
+
     # Identity
     action_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     game_id: str = ""
@@ -258,18 +270,18 @@ class RecordedAction:
     # Action details
     category: str = "BET_INCREMENT"  # BET_INCREMENT, SELL_PERCENTAGE, TRADE_*
     button: str = ""  # Exact button text: "BUY", "+0.01", "25%", etc.
-    amount: Optional[Decimal] = None  # For trades
+    amount: Decimal | None = None  # For trades
 
     # Dual-state validation
-    local_state: Optional[LocalStateSnapshot] = None
-    server_state: Optional[ServerState] = None
+    local_state: LocalStateSnapshot | None = None
+    server_state: ServerState | None = None
     drift_detected: bool = False
-    drift_details: Optional[List[DriftDetails]] = None
+    drift_details: list[DriftDetails] | None = None
 
     # Timing (for trade confirmations)
     timestamp_pressed_ms: int = field(default_factory=lambda: int(time.time() * 1000))
-    timestamp_confirmed_ms: Optional[int] = None
-    latency_ms: Optional[float] = None
+    timestamp_confirmed_ms: int | None = None
+    latency_ms: float | None = None
 
     def record_confirmation(self, timestamp_ms: int) -> float:
         """Record trade confirmation and calculate latency."""
@@ -277,7 +289,7 @@ class RecordedAction:
         self.latency_ms = timestamp_ms - self.timestamp_pressed_ms
         return self.latency_ms
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize for JSONL storage."""
         result = {
             "type": "action",
@@ -311,9 +323,8 @@ class RecordedAction:
 
 
 def validate_states(
-    local: LocalStateSnapshot,
-    server: ServerState
-) -> tuple[bool, Optional[List[DriftDetails]]]:
+    local: LocalStateSnapshot, server: ServerState
+) -> tuple[bool, list[DriftDetails] | None]:
     """
     Zero-tolerance validation of local state against server state.
 
@@ -328,31 +339,37 @@ def validate_states(
 
     # Compare balance
     if local.balance != server.cash:
-        drifts.append(DriftDetails(
-            field="balance",
-            local_value=str(local.balance),
-            server_value=str(server.cash),
-            difference=str(abs(local.balance - server.cash)),
-        ))
+        drifts.append(
+            DriftDetails(
+                field="balance",
+                local_value=str(local.balance),
+                server_value=str(server.cash),
+                difference=str(abs(local.balance - server.cash)),
+            )
+        )
 
     # Compare position quantity
     if local.position_qty != server.position_qty:
-        drifts.append(DriftDetails(
-            field="position_qty",
-            local_value=str(local.position_qty),
-            server_value=str(server.position_qty),
-            difference=str(abs(local.position_qty - server.position_qty)),
-        ))
+        drifts.append(
+            DriftDetails(
+                field="position_qty",
+                local_value=str(local.position_qty),
+                server_value=str(server.position_qty),
+                difference=str(abs(local.position_qty - server.position_qty)),
+            )
+        )
 
     # Compare entry price (if position exists)
     if local.position_entry_price is not None and server.avg_cost > 0:
         if local.position_entry_price != server.avg_cost:
-            drifts.append(DriftDetails(
-                field="entry_price",
-                local_value=str(local.position_entry_price),
-                server_value=str(server.avg_cost),
-                difference=str(abs(local.position_entry_price - server.avg_cost)),
-            ))
+            drifts.append(
+                DriftDetails(
+                    field="entry_price",
+                    local_value=str(local.position_entry_price),
+                    server_value=str(server.avg_cost),
+                    difference=str(abs(local.position_entry_price - server.avg_cost)),
+                )
+            )
 
     if drifts:
         return True, drifts

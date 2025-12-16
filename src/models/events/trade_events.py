@@ -14,13 +14,14 @@ Schema Version: 1.0.0
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Literal
-from pydantic import BaseModel, Field, field_validator
+from typing import Literal
 
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # ISSUE #5: standard/newTrade
 # =============================================================================
+
 
 class NewTrade(BaseModel):
     """
@@ -43,22 +44,22 @@ class NewTrade(BaseModel):
     """
 
     playerId: str = Field(..., description="Trader's player ID")
-    type: Literal['BUY', 'SELL'] = Field(..., description="Trade type")
+    type: Literal["BUY", "SELL"] = Field(..., description="Trade type")
     amount: Decimal = Field(..., description="Trade amount (SOL)")
     price: Decimal = Field(..., description="Execution price")
     timestamp: int = Field(..., description="Server timestamp (ms)")
 
     # Additional fields that may appear
-    username: Optional[str] = Field(None, description="Trader username")
-    gameId: Optional[str] = Field(None, description="Game ID")
+    username: str | None = Field(None, description="Trader username")
+    gameId: str | None = Field(None, description="Game ID")
 
     # Ingestion metadata
-    meta_ts: Optional[datetime] = Field(None)
-    meta_seq: Optional[int] = Field(None)
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None)
-    meta_session_id: Optional[str] = Field(None)
+    meta_ts: datetime | None = Field(None)
+    meta_seq: int | None = Field(None)
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(None)
+    meta_session_id: str | None = Field(None)
 
-    @field_validator('amount', 'price', mode='before')
+    @field_validator("amount", "price", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
         if isinstance(v, float):
@@ -66,11 +67,11 @@ class NewTrade(BaseModel):
         return v
 
     class Config:
-        extra = 'allow'
+        extra = "allow"
 
     @property
     def is_buy(self) -> bool:
-        return self.type == 'BUY'
+        return self.type == "BUY"
 
     @property
     def is_whale_trade(self, threshold: Decimal = Decimal("1.0")) -> bool:
@@ -82,16 +83,18 @@ class NewTrade(BaseModel):
 # ISSUE #6: sidebetResponse
 # =============================================================================
 
+
 class SidebetRequest(BaseModel):
     """
     Sidebet placement request (client → server).
 
     Socket.IO Format: 42XXX["sidebet", {...}]
     """
+
     target: int = Field(..., description="Target multiplier (e.g., 10 for 10x)")
     betSize: Decimal = Field(..., description="Bet amount (SOL)")
 
-    @field_validator('betSize', mode='before')
+    @field_validator("betSize", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
         if isinstance(v, float):
@@ -117,18 +120,18 @@ class SidebetResponse(BaseModel):
     timestamp: int = Field(..., description="Server timestamp (ms)")
 
     # Error info (if success=false)
-    error: Optional[str] = Field(None, description="Error message if failed")
-    reason: Optional[str] = Field(None, description="Failure reason")
+    error: str | None = Field(None, description="Error message if failed")
+    reason: str | None = Field(None, description="Failure reason")
 
     # Ingestion metadata
-    meta_ts: Optional[datetime] = Field(None)
-    meta_seq: Optional[int] = Field(None)
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None)
-    meta_session_id: Optional[str] = Field(None)
-    meta_request_id: Optional[int] = Field(None, description="Original request ID")
+    meta_ts: datetime | None = Field(None)
+    meta_seq: int | None = Field(None)
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(None)
+    meta_session_id: str | None = Field(None)
+    meta_request_id: int | None = Field(None, description="Original request ID")
 
     class Config:
-        extra = 'allow'
+        extra = "allow"
 
     def calculate_latency(self, client_timestamp: int) -> int:
         """Calculate round-trip latency in milliseconds."""
@@ -139,15 +142,17 @@ class SidebetResponse(BaseModel):
 # ISSUE #7: buyOrder/sellOrder
 # =============================================================================
 
+
 class BuyOrderRequest(BaseModel):
     """
     Buy order request (client → server).
 
     Socket.IO Format: 42XXX["buyOrder", {...}]
     """
+
     amount: Decimal = Field(..., description="Buy amount (SOL)")
 
-    @field_validator('amount', mode='before')
+    @field_validator("amount", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
         if isinstance(v, float):
@@ -161,6 +166,7 @@ class SellOrderRequest(BaseModel):
 
     Socket.IO Format: 42XXX["sellOrder", {...}]
     """
+
     percentage: int = Field(..., description="Sell percentage (10, 25, 50, 100)")
 
 
@@ -180,26 +186,26 @@ class TradeOrderResponse(BaseModel):
     """
 
     success: bool = Field(..., description="Order executed successfully")
-    executedPrice: Optional[Decimal] = Field(None, description="Execution price")
+    executedPrice: Decimal | None = Field(None, description="Execution price")
     timestamp: int = Field(..., description="Server timestamp (ms)")
 
     # Additional response fields
-    amount: Optional[Decimal] = Field(None, description="Executed amount")
-    fee: Optional[Decimal] = Field(None, description="Transaction fee")
+    amount: Decimal | None = Field(None, description="Executed amount")
+    fee: Decimal | None = Field(None, description="Transaction fee")
 
     # Error info
-    error: Optional[str] = Field(None, description="Error message if failed")
-    reason: Optional[str] = Field(None, description="Failure reason")
+    error: str | None = Field(None, description="Error message if failed")
+    reason: str | None = Field(None, description="Failure reason")
 
     # Ingestion metadata
-    meta_ts: Optional[datetime] = Field(None)
-    meta_seq: Optional[int] = Field(None)
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None)
-    meta_session_id: Optional[str] = Field(None)
-    meta_request_id: Optional[int] = Field(None, description="Original request ID")
-    meta_order_type: Optional[Literal['BUY', 'SELL']] = Field(None, description="Order type")
+    meta_ts: datetime | None = Field(None)
+    meta_seq: int | None = Field(None)
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(None)
+    meta_session_id: str | None = Field(None)
+    meta_request_id: int | None = Field(None, description="Original request ID")
+    meta_order_type: Literal["BUY", "SELL"] | None = Field(None, description="Order type")
 
-    @field_validator('executedPrice', 'amount', 'fee', mode='before')
+    @field_validator("executedPrice", "amount", "fee", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
         if v is None:
@@ -209,7 +215,7 @@ class TradeOrderResponse(BaseModel):
         return v
 
     class Config:
-        extra = 'allow'
+        extra = "allow"
 
     def calculate_latency(self, client_timestamp: int) -> int:
         """Calculate round-trip latency in milliseconds."""

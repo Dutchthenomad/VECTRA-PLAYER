@@ -6,7 +6,7 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
-from core import ReplayEngine, GameState
+from core import GameState, ReplayEngine
 
 
 def _write_game_file(path: Path, game_id: str = "test-game"):
@@ -20,7 +20,7 @@ def _write_game_file(path: Path, game_id: str = "test-game"):
             "active": True,
             "rugged": False,
             "cooldown_timer": 0,
-            "trade_count": 0
+            "trade_count": 0,
         },
         {
             "game_id": game_id,
@@ -31,8 +31,8 @@ def _write_game_file(path: Path, game_id: str = "test-game"):
             "active": True,
             "rugged": False,
             "cooldown_timer": 0,
-            "trade_count": 1
-        }
+            "trade_count": 1,
+        },
     ]
     with path.open("w") as fh:
         for tick in ticks:
@@ -45,19 +45,21 @@ def test_load_file_resets_state(tmp_path):
     engine = ReplayEngine(game_state)
 
     # Simulate an open position that should be cleared
-    game_state.open_position({
-        'entry_price': Decimal('1.0'),
-        'amount': Decimal('0.01'),
-        'entry_tick': 0,
-        'status': 'active'
-    })
+    game_state.open_position(
+        {
+            "entry_price": Decimal("1.0"),
+            "amount": Decimal("0.01"),
+            "entry_tick": 0,
+            "status": "active",
+        }
+    )
 
     game_file = tmp_path / "game.jsonl"
     _write_game_file(game_file, game_id="game-live")
 
     assert engine.load_file(game_file) is True
-    assert game_state.get('game_id') == "game-live"
-    assert game_state.get('position') is None
+    assert game_state.get("game_id") == "game-live"
+    assert game_state.get("position") is None
 
 
 def test_progress_reaches_100_percent_at_final_tick(tmp_path):
@@ -75,17 +77,19 @@ def test_progress_reaches_100_percent_at_final_tick(tmp_path):
     game_file = tmp_path / "game.jsonl"
     ticks = []
     for i in range(5):
-        ticks.append({
-            "game_id": "test-game",
-            "tick": i,
-            "timestamp": f"2025-01-01T00:00:{i:02d}",
-            "price": 1.0 + (i * 0.1),
-            "phase": "ACTIVE",
-            "active": True,
-            "rugged": False,
-            "cooldown_timer": 0,
-            "trade_count": i
-        })
+        ticks.append(
+            {
+                "game_id": "test-game",
+                "tick": i,
+                "timestamp": f"2025-01-01T00:00:{i:02d}",
+                "price": 1.0 + (i * 0.1),
+                "phase": "ACTIVE",
+                "active": True,
+                "rugged": False,
+                "cooldown_timer": 0,
+                "trade_count": i,
+            }
+        )
 
     with game_file.open("w") as fh:
         for tick in ticks:
@@ -112,6 +116,6 @@ def test_progress_reaches_100_percent_at_final_tick(tmp_path):
 
     # Verify get_info() also returns 100%
     info = engine.get_info()
-    assert info['progress'] == 100.0, f"Expected info progress=100.0, got {info['progress']}"
-    assert info['total_ticks'] == 5
-    assert info['current_tick'] == 4
+    assert info["progress"] == 100.0, f"Expected info progress=100.0, got {info['progress']}"
+    assert info["total_ticks"] == 5
+    assert info["current_tick"] == 4

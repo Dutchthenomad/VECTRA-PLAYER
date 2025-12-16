@@ -7,4 +7,4 @@ protocol discovery, and diagnostics.
 
 from debug.raw_capture_recorder import RawCaptureRecorder
 
-__all__ = ['RawCaptureRecorder']
+__all__ = ["RawCaptureRecorder"]

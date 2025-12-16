@@ -15,7 +15,8 @@ GitHub Issue: #3
 """
 
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -41,27 +42,30 @@ class UsernameStatus(BaseModel):
     # IDENTITY FIELDS
     # ==========================================================================
     id: str = Field(..., description="Unique player ID (Privy DID)")
-    username: Optional[str] = Field(None, description="Display name (null if not set)")
+    username: str | None = Field(None, description="Display name (null if not set)")
     hasUsername: bool = Field(False, description="Whether username is set")
 
     # ==========================================================================
     # TRACING FIELDS (internal, may be present)
     # Note: Server sends __trace but Pydantic doesn't allow leading underscores
     # ==========================================================================
-    trace_enabled: Optional[bool] = Field(None, alias="__trace", description="Tracing enabled")
-    traceparent: Optional[str] = Field(None, description="OpenTelemetry trace ID")
+    trace_enabled: bool | None = Field(None, alias="__trace", description="Tracing enabled")
+    traceparent: str | None = Field(None, description="OpenTelemetry trace ID")
 
     # ==========================================================================
     # INGESTION METADATA (added by VECTRA-PLAYER, not from socket)
     # ==========================================================================
-    meta_ts: Optional[datetime] = Field(None, description="Ingestion timestamp (UTC)")
-    meta_seq: Optional[int] = Field(None, description="Sequence number within session")
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None, description="Event source")
-    meta_session_id: Optional[str] = Field(None, description="Recording session UUID")
+    meta_ts: datetime | None = Field(None, description="Ingestion timestamp (UTC)")
+    meta_seq: int | None = Field(None, description="Sequence number within session")
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(
+        None, description="Event source"
+    )
+    meta_session_id: str | None = Field(None, description="Recording session UUID")
 
     class Config:
         """Pydantic model configuration."""
-        extra = 'allow'
+
+        extra = "allow"
         use_enum_values = True
         populate_by_name = True  # Allow field aliases
 

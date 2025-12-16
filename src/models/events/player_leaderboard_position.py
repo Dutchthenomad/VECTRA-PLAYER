@@ -13,17 +13,19 @@ GitHub Issue: #4
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 
 class LeaderboardPlayerEntry(BaseModel):
     """Player entry in surrounding entries array."""
+
     playerId: str = Field(..., description="Player's Privy DID")
-    username: Optional[str] = Field(None, description="Display name")
+    username: str | None = Field(None, description="Display name")
     pnl: Decimal = Field(0, description="Period PnL (SOL)")
 
-    @field_validator('pnl', mode='before')
+    @field_validator("pnl", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
         if v is None:
@@ -71,25 +73,29 @@ class PlayerLeaderboardPosition(BaseModel):
     # ==========================================================================
     # RANK DATA
     # ==========================================================================
-    rank: Optional[int] = Field(None, description="Current rank position")
-    total: Optional[int] = Field(None, description="Total players on leaderboard")
-    playerEntry: Optional[LeaderboardPlayerEntry] = Field(None, description="Player's entry")
-    surroundingEntries: List[LeaderboardPlayerEntry] = Field(default_factory=list, description="Nearby players")
+    rank: int | None = Field(None, description="Current rank position")
+    total: int | None = Field(None, description="Total players on leaderboard")
+    playerEntry: LeaderboardPlayerEntry | None = Field(None, description="Player's entry")
+    surroundingEntries: list[LeaderboardPlayerEntry] = Field(
+        default_factory=list, description="Nearby players"
+    )
 
     # ==========================================================================
     # INGESTION METADATA
     # ==========================================================================
-    meta_ts: Optional[datetime] = Field(None, description="Ingestion timestamp (UTC)")
-    meta_seq: Optional[int] = Field(None, description="Sequence number within session")
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None, description="Event source")
-    meta_session_id: Optional[str] = Field(None, description="Recording session UUID")
+    meta_ts: datetime | None = Field(None, description="Ingestion timestamp (UTC)")
+    meta_seq: int | None = Field(None, description="Sequence number within session")
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(
+        None, description="Event source"
+    )
+    meta_session_id: str | None = Field(None, description="Recording session UUID")
 
     class Config:
-        extra = 'allow'
+        extra = "allow"
         use_enum_values = True
 
     @property
-    def percentile(self) -> Optional[float]:
+    def percentile(self) -> float | None:
         """Calculate player's percentile ranking."""
         if self.rank and self.total and self.total > 0:
             return (1 - (self.rank / self.total)) * 100

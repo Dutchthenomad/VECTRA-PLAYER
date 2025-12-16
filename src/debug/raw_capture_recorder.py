@@ -16,10 +16,10 @@ Usage:
 import json
 import logging
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any
-
+from typing import Any
 
 # Optional dependency: python-socketio only required for live capture
 try:  # pragma: no cover
@@ -38,10 +38,10 @@ class RawCaptureRecorder:
     protocol exchange for documentation and debugging.
     """
 
-    DEFAULT_CAPTURE_DIR = Path.home() / 'rugs_recordings' / 'raw_captures'
-    SERVER_URL = 'https://backend.rugs.fun?frontend-version=1.0'
+    DEFAULT_CAPTURE_DIR = Path.home() / "rugs_recordings" / "raw_captures"
+    SERVER_URL = "https://backend.rugs.fun?frontend-version=1.0"
 
-    def __init__(self, capture_dir: Optional[Path] = None):
+    def __init__(self, capture_dir: Path | None = None):
         """
         Initialize raw capture recorder.
 
@@ -52,28 +52,28 @@ class RawCaptureRecorder:
         self.capture_dir.mkdir(parents=True, exist_ok=True)
 
         # Socket.IO client (created fresh for each capture)
-        self.sio: Optional[Any] = None  # socketio.Client when available
+        self.sio: Any | None = None  # socketio.Client when available
 
         # Capture state
         self.is_capturing = False
-        self.capture_file: Optional[Path] = None
+        self.capture_file: Path | None = None
         self.file_handle = None
         self.sequence_number = 0
-        self.event_counts: Dict[str, int] = {}
-        self.start_time: Optional[datetime] = None
+        self.event_counts: dict[str, int] = {}
+        self.start_time: datetime | None = None
 
         # Thread safety
         self._lock = threading.Lock()
 
         # Callbacks for UI updates
-        self.on_event_captured: Optional[Callable[[str, int], None]] = None
-        self.on_capture_started: Optional[Callable[[Path], None]] = None
-        self.on_capture_stopped: Optional[Callable[[Path, Dict[str, int]], None]] = None
-        self.on_connection_status: Optional[Callable[[bool, str], None]] = None
+        self.on_event_captured: Callable[[str, int], None] | None = None
+        self.on_capture_started: Callable[[Path], None] | None = None
+        self.on_capture_stopped: Callable[[Path, dict[str, int]], None] | None = None
+        self.on_connection_status: Callable[[bool, str], None] | None = None
 
         logger.info(f"RawCaptureRecorder initialized: {self.capture_dir}")
 
-    def start_capture(self) -> Optional[Path]:
+    def start_capture(self) -> Path | None:
         """
         Start capturing raw WebSocket events.
 
@@ -88,8 +88,8 @@ class RawCaptureRecorder:
                 return self.capture_file
 
             # Generate capture filename
-            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            self.capture_file = self.capture_dir / f'{timestamp}_raw.jsonl'
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.capture_file = self.capture_dir / f"{timestamp}_raw.jsonl"
 
             # Reset state
             self.sequence_number = 0
@@ -98,7 +98,7 @@ class RawCaptureRecorder:
 
             try:
                 # Open file for writing
-                self.file_handle = open(self.capture_file, 'w', encoding='utf-8')
+                self.file_handle = open(self.capture_file, "w", encoding="utf-8")
 
                 # Connect
                 logger.info(f"Starting raw capture to: {self.capture_file}")
@@ -124,10 +124,7 @@ class RawCaptureRecorder:
                     self._setup_handlers()
 
                     # Connect in background thread to not block UI
-                    connect_thread = threading.Thread(
-                        target=self._connect_async,
-                        daemon=True
-                    )
+                    connect_thread = threading.Thread(target=self._connect_async, daemon=True)
                     connect_thread.start()
 
                 return self.capture_file
@@ -143,11 +140,7 @@ class RawCaptureRecorder:
             if self.on_connection_status:
                 self.on_connection_status(False, "Connecting...")
 
-            self.sio.connect(
-                self.SERVER_URL,
-                transports=['websocket', 'polling'],
-                wait_timeout=20
-            )
+            self.sio.connect(self.SERVER_URL, transports=["websocket", "polling"], wait_timeout=20)
 
             if self.on_connection_status:
                 self.on_connection_status(True, "Connected")
@@ -163,21 +156,21 @@ class RawCaptureRecorder:
 
         @self.sio.event
         def connect():
-            self._record_event('connect', None)
+            self._record_event("connect", None)
             logger.info("Raw capture: Connected to server")
 
         @self.sio.event
         def disconnect(reason=None):
-            self._record_event('disconnect', {'reason': reason})
+            self._record_event("disconnect", {"reason": reason})
             logger.info(f"Raw capture: Disconnected ({reason})")
 
         @self.sio.event
         def connect_error(data):
-            self._record_event('connect_error', {'error': str(data)})
+            self._record_event("connect_error", {"error": str(data)})
             logger.error(f"Raw capture: Connection error: {data}")
 
         # Catch-all handler for ALL other events
-        @self.sio.on('*')
+        @self.sio.on("*")
         def catch_all(event, *args):
             # Convert args to serializable format
             data = args[0] if len(args) == 1 else list(args) if args else None
@@ -203,10 +196,10 @@ class RawCaptureRecorder:
             self.event_counts[event_name] = self.event_counts.get(event_name, 0) + 1
 
             record = {
-                'seq': seq,
-                'ts': datetime.now().isoformat(),
-                'event': event_name,
-                'data': data
+                "seq": seq,
+                "ts": datetime.now().isoformat(),
+                "event": event_name,
+                "data": data,
             }
 
             try:
@@ -224,8 +217,7 @@ class RawCaptureRecorder:
             except Exception as e:
                 logger.debug(f"on_event_captured callback error: {e}")
 
-
-    def stop_capture(self) -> Optional[Dict[str, Any]]:
+    def stop_capture(self) -> dict[str, Any] | None:
         """
         Stop capturing and close the connection.
 
@@ -245,12 +237,12 @@ class RawCaptureRecorder:
 
             # Build summary BEFORE cleanup
             summary = {
-                'capture_file': str(self.capture_file),
-                'total_events': self.sequence_number,
-                'event_counts': dict(self.event_counts),
-                'duration_seconds': duration,
-                'start_time': self.start_time.isoformat() if self.start_time else None,
-                'end_time': datetime.now().isoformat()
+                "capture_file": str(self.capture_file),
+                "total_events": self.sequence_number,
+                "event_counts": dict(self.event_counts),
+                "duration_seconds": duration,
+                "start_time": self.start_time.isoformat() if self.start_time else None,
+                "end_time": datetime.now().isoformat(),
             }
 
             # Store references for async cleanup
@@ -261,7 +253,11 @@ class RawCaptureRecorder:
             # Cleanup state immediately (don't wait for disconnect)
             self._cleanup()
 
-            logger.info(f"Capture complete: {summary['total_events']} events in {duration:.1f}s" if duration else "Capture complete")
+            logger.info(
+                f"Capture complete: {summary['total_events']} events in {duration:.1f}s"
+                if duration
+                else "Capture complete"
+            )
 
         # Disconnect Socket.IO in background thread to avoid UI freeze
         def disconnect_async():
@@ -294,7 +290,7 @@ class RawCaptureRecorder:
 
         self.sio = None
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get current capture status.
 
@@ -303,19 +299,19 @@ class RawCaptureRecorder:
         """
         with self._lock:
             return {
-                'is_capturing': self.is_capturing,
-                'capture_file': str(self.capture_file) if self.capture_file else None,
-                'total_events': self.sequence_number,
-                'event_counts': dict(self.event_counts),
-                'connected': self.sio.connected if self.sio else False
+                "is_capturing": self.is_capturing,
+                "capture_file": str(self.capture_file) if self.capture_file else None,
+                "total_events": self.sequence_number,
+                "event_counts": dict(self.event_counts),
+                "connected": self.sio.connected if self.sio else False,
             }
 
-    def get_last_capture_file(self) -> Optional[Path]:
+    def get_last_capture_file(self) -> Path | None:
         """
         Get the most recent capture file.
 
         Returns:
             Path to most recent capture, or None if no captures exist
         """
-        captures = sorted(self.capture_dir.glob('*_raw.jsonl'), reverse=True)
+        captures = sorted(self.capture_dir.glob("*_raw.jsonl"), reverse=True)
         return captures[0] if captures else None

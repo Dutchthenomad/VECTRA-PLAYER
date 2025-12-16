@@ -16,15 +16,16 @@ States:
 """
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class RecordingState(Enum):
     """Recording session state."""
+
     IDLE = "idle"
     MONITORING = "monitoring"
     RECORDING = "recording"
@@ -52,15 +53,15 @@ class RecordingStateMachine:
     def __init__(self):
         self._state = RecordingState.IDLE
         self._games_recorded = 0
-        self._session_start_time: Optional[datetime] = None
+        self._session_start_time: datetime | None = None
         self._game_in_progress = False
-        self._current_game_id: Optional[str] = None
-        self._game_limit: Optional[int] = None
+        self._current_game_id: str | None = None
+        self._game_limit: int | None = None
 
         # Callbacks
-        self.on_state_change: Optional[Callable[[RecordingState, RecordingState], None]] = None
-        self.on_game_recorded: Optional[Callable[[str], None]] = None
-        self.on_session_complete: Optional[Callable[[int], None]] = None
+        self.on_state_change: Callable[[RecordingState, RecordingState], None] | None = None
+        self.on_game_recorded: Callable[[str], None] | None = None
+        self.on_session_complete: Callable[[int], None] | None = None
 
     @property
     def state(self) -> RecordingState:
@@ -73,7 +74,7 @@ class RecordingStateMachine:
         return self._games_recorded
 
     @property
-    def session_start_time(self) -> Optional[datetime]:
+    def session_start_time(self) -> datetime | None:
         """When the current session started."""
         return self._session_start_time
 
@@ -83,12 +84,12 @@ class RecordingStateMachine:
         return self._game_in_progress
 
     @property
-    def current_game_id(self) -> Optional[str]:
+    def current_game_id(self) -> str | None:
         """ID of the game currently being recorded."""
         return self._current_game_id
 
     @property
-    def game_limit(self) -> Optional[int]:
+    def game_limit(self) -> int | None:
         """Maximum number of games to record (None = infinite)."""
         return self._game_limit
 
@@ -101,11 +102,7 @@ class RecordingStateMachine:
             if self.on_state_change:
                 self.on_state_change(old_state, new_state)
 
-    def start_session(
-        self,
-        game_in_progress: bool = False,
-        game_limit: Optional[int] = None
-    ) -> None:
+    def start_session(self, game_in_progress: bool = False, game_limit: int | None = None) -> None:
         """
         Start a new recording session.
 
@@ -217,8 +214,7 @@ class RecordingStateMachine:
         # Verify game ID matches
         if self._current_game_id and game_id != self._current_game_id:
             logger.warning(
-                f"Game end for {game_id} but currently recording {self._current_game_id}, "
-                "ignoring"
+                f"Game end for {game_id} but currently recording {self._current_game_id}, ignoring"
             )
             return
 

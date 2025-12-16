@@ -2,18 +2,18 @@
 Trading strategies for bot automation
 """
 
+from .aggressive import AggressiveStrategy
 from .base import TradingStrategy
 from .conservative import ConservativeStrategy
-from .aggressive import AggressiveStrategy
-from .sidebet import SidebetStrategy
 from .foundational import FoundationalStrategy
+from .sidebet import SidebetStrategy
 
 # Strategy registry
 STRATEGIES = {
-    'conservative': ConservativeStrategy,
-    'aggressive': AggressiveStrategy,
-    'sidebet': SidebetStrategy,
-    'foundational': FoundationalStrategy,  # Phase B: Evidence-based strategy
+    "conservative": ConservativeStrategy,
+    "aggressive": AggressiveStrategy,
+    "sidebet": SidebetStrategy,
+    "foundational": FoundationalStrategy,  # Phase B: Evidence-based strategy
 }
 
 
@@ -32,11 +32,8 @@ def get_strategy(name: str) -> TradingStrategy:
     """
     name = name.lower()
     if name not in STRATEGIES:
-        valid_strategies = ', '.join(STRATEGIES.keys())
-        raise ValueError(
-            f"Invalid strategy '{name}'. "
-            f"Valid strategies: {valid_strategies}"
-        )
+        valid_strategies = ", ".join(STRATEGIES.keys())
+        raise ValueError(f"Invalid strategy '{name}'. Valid strategies: {valid_strategies}")
 
     return STRATEGIES[name]()
 
@@ -47,11 +44,11 @@ def list_strategies() -> list:
 
 
 __all__ = [
-    'TradingStrategy',
-    'ConservativeStrategy',
-    'AggressiveStrategy',
-    'SidebetStrategy',
-    'FoundationalStrategy',  # Phase B
-    'get_strategy',
-    'list_strategies',
+    "AggressiveStrategy",
+    "ConservativeStrategy",
+    "FoundationalStrategy",  # Phase B
+    "SidebetStrategy",
+    "TradingStrategy",
+    "get_strategy",
+    "list_strategies",
 ]

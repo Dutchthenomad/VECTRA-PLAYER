@@ -9,23 +9,24 @@ Config File Location: ~/.replayer/recording_config.json (or src/recording_config
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class CaptureMode(Enum):
     """Recording capture mode - what data to record."""
+
     GAME_STATE_ONLY = "game_state_only"
     GAME_AND_PLAYER = "game_and_player"
 
 
 class MonitorThresholdType(Enum):
     """Type of threshold for monitor mode activation."""
+
     TICKS = "ticks"
     GAMES = "games"
 
@@ -45,14 +46,15 @@ class RecordingConfig:
         auto_start_on_launch: Auto-start recording on app launch
         last_modified: When config was last saved
     """
+
     capture_mode: CaptureMode = CaptureMode.GAME_STATE_ONLY
-    game_count: Optional[int] = None  # None = infinite
-    time_limit_minutes: Optional[int] = None  # None = no limit
+    game_count: int | None = None  # None = infinite
+    time_limit_minutes: int | None = None  # None = no limit
     monitor_threshold_type: MonitorThresholdType = MonitorThresholdType.TICKS
     monitor_threshold_value: int = 20
     audio_cues: bool = True
     auto_start_on_launch: bool = False
-    last_modified: Optional[datetime] = None
+    last_modified: datetime | None = None
 
     def to_dict(self) -> dict:
         """Serialize config to dictionary for JSON storage."""
@@ -85,7 +87,7 @@ class RecordingConfig:
             last_modified=last_modified,
         )
 
-    def save(self, filepath: Optional[str] = None) -> None:
+    def save(self, filepath: str | None = None) -> None:
         """Save config to JSON file. Creates parent directories if needed.
 
         Args:
@@ -94,13 +96,13 @@ class RecordingConfig:
         path = Path(filepath) if filepath else self.get_default_config_path()
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
 
         logger.info(f"Recording config saved to {path}")
 
     @classmethod
-    def load(cls, filepath: Optional[str] = None) -> "RecordingConfig":
+    def load(cls, filepath: str | None = None) -> "RecordingConfig":
         """
         Load config from JSON file.
 
@@ -116,7 +118,7 @@ class RecordingConfig:
             return cls()
 
         try:
-            with open(path, 'r') as f:
+            with open(path) as f:
                 data = json.load(f)
             config = cls.from_dict(data)
             logger.info(f"Recording config loaded from {filepath}")

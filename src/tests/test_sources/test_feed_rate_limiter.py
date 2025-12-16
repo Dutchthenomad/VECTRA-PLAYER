@@ -8,15 +8,13 @@ Tests cover:
 - PriorityRateLimiter: critical signal bypass
 """
 
-import pytest
 import time
 from unittest.mock import MagicMock
 
+import pytest
+
 # These imports will FAIL until we create the module (TDD RED phase)
-from sources.feed_rate_limiter import (
-    TokenBucketRateLimiter,
-    PriorityRateLimiter
-)
+from sources.feed_rate_limiter import PriorityRateLimiter, TokenBucketRateLimiter
 
 
 class TestTokenBucketRateLimiter:
@@ -86,15 +84,15 @@ class TestTokenBucketRateLimiter:
 
         stats = limiter.get_stats()
 
-        assert 'rate' in stats
-        assert 'burst' in stats
-        assert 'tokens_available' in stats
-        assert 'total_requests' in stats
-        assert 'total_allowed' in stats
-        assert 'total_dropped' in stats
-        assert 'drop_rate' in stats
-        assert stats['total_requests'] == 3
-        assert stats['total_allowed'] == 3
+        assert "rate" in stats
+        assert "burst" in stats
+        assert "tokens_available" in stats
+        assert "total_requests" in stats
+        assert "total_allowed" in stats
+        assert "total_dropped" in stats
+        assert "drop_rate" in stats
+        assert stats["total_requests"] == 3
+        assert stats["total_allowed"] == 3
 
 
 class TestPriorityRateLimiter:
@@ -107,10 +105,10 @@ class TestPriorityRateLimiter:
 
     def test_critical_phases_defined(self):
         """Test critical phases are defined"""
-        assert hasattr(PriorityRateLimiter, 'CRITICAL_PHASES')
-        assert 'RUG_EVENT' in PriorityRateLimiter.CRITICAL_PHASES
-        assert 'RUG_EVENT_1' in PriorityRateLimiter.CRITICAL_PHASES
-        assert 'RUG_EVENT_2' in PriorityRateLimiter.CRITICAL_PHASES
+        assert hasattr(PriorityRateLimiter, "CRITICAL_PHASES")
+        assert "RUG_EVENT" in PriorityRateLimiter.CRITICAL_PHASES
+        assert "RUG_EVENT_1" in PriorityRateLimiter.CRITICAL_PHASES
+        assert "RUG_EVENT_2" in PriorityRateLimiter.CRITICAL_PHASES
 
     def test_should_process_critical_rugged(self):
         """Test critical signals with rugged=True always pass"""
@@ -122,7 +120,7 @@ class TestPriorityRateLimiter:
         # Create mock signal with rugged=True
         signal = MagicMock()
         signal.rugged = True
-        signal.phase = ''
+        signal.phase = ""
 
         # Should always allow critical signals
         result = limiter.should_process(signal)
@@ -138,7 +136,7 @@ class TestPriorityRateLimiter:
         # Create mock signal with critical phase
         signal = MagicMock()
         signal.rugged = False
-        signal.phase = 'RUG_EVENT_1'
+        signal.phase = "RUG_EVENT_1"
 
         # Should always allow critical phase signals
         result = limiter.should_process(signal)
@@ -154,7 +152,7 @@ class TestPriorityRateLimiter:
         # Create mock non-critical signal
         signal = MagicMock()
         signal.rugged = False
-        signal.phase = 'ACTIVE_GAMEPLAY'
+        signal.phase = "ACTIVE_GAMEPLAY"
 
         # Should be rate limited
         result = limiter.should_process(signal)
@@ -167,12 +165,12 @@ class TestPriorityRateLimiter:
         # Create mock non-critical signal
         signal = MagicMock()
         signal.rugged = False
-        signal.phase = 'ACTIVE_GAMEPLAY'
+        signal.phase = "ACTIVE_GAMEPLAY"
 
         # Should be allowed
         result = limiter.should_process(signal)
         assert result is True
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

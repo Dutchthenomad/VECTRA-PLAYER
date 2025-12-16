@@ -4,7 +4,7 @@ Side Bet data model
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
+
 from .enums import SideBetStatus
 
 
@@ -22,6 +22,7 @@ class SideBet:
         placed_price: Price when bet was placed
         status: Bet status (active/won/lost)
     """
+
     amount: Decimal
     placed_tick: int
     placed_price: Decimal
@@ -33,14 +34,15 @@ class SideBet:
         Args:
             preserve_precision: If True, keep Decimals as strings
         """
+
         def convert(value):
             if isinstance(value, Decimal):
                 return str(value) if preserve_precision else float(value)
             return value
 
         return {
-            'amount': convert(self.amount),
-            'placed_tick': self.placed_tick,
-            'placed_price': convert(self.placed_price),
-            'status': self.status
+            "amount": convert(self.amount),
+            "placed_tick": self.placed_tick,
+            "placed_price": convert(self.placed_price),
+            "status": self.status,
         }

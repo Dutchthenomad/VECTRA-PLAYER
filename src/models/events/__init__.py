@@ -7,83 +7,83 @@ Schema Version: 1.0.0
 
 # Issue #1: gameStateUpdate
 from .game_state_update import (
+    AvailableShitcoin,
+    GameHistoryEntry,
     GameStateUpdate,
     LeaderboardEntry,
     PartialPrices,
-    GameHistoryEntry,
     ProvablyFair,
-    RugRoyale,
-    AvailableShitcoin,
     Rugpool,
-    SideBet,
+    RugRoyale,
     ShortPosition,
+    SideBet,
+)
+
+# Issue #4: playerLeaderboardPosition
+from .player_leaderboard_position import (
+    LeaderboardPlayerEntry,
+    PlayerLeaderboardPosition,
 )
 
 # Issue #2: playerUpdate
 from .player_update import PlayerUpdate
 
-# Issue #3: usernameStatus
-from .username_status import UsernameStatus
-
-# Issue #4: playerLeaderboardPosition
-from .player_leaderboard_position import (
-    PlayerLeaderboardPosition,
-    LeaderboardPlayerEntry,
+# Issue #8: System events
+from .system_events import (
+    AuthEvent,
+    ConnectionEvent,
+    GameLifecycleEvent,
+    SessionEvent,
+    SystemEvent,
+    SystemEventType,
 )
 
 # Issues #5, #6, #7: Trade events
 from .trade_events import (
+    BuyOrderRequest,
     NewTrade,
+    SellOrderRequest,
     SidebetRequest,
     SidebetResponse,
-    BuyOrderRequest,
-    SellOrderRequest,
     TradeOrderResponse,
 )
 
-# Issue #8: System events
-from .system_events import (
-    SystemEventType,
-    SystemEvent,
-    ConnectionEvent,
-    AuthEvent,
-    GameLifecycleEvent,
-    SessionEvent,
-)
+# Issue #3: usernameStatus
+from .username_status import UsernameStatus
 
 __all__ = [
     # Issue #1: gameStateUpdate
-    'GameStateUpdate',
-    'LeaderboardEntry',
-    'PartialPrices',
-    'GameHistoryEntry',
-    'ProvablyFair',
-    'RugRoyale',
-    'AvailableShitcoin',
-    'Rugpool',
-    'SideBet',
-    'ShortPosition',
+    "GameStateUpdate",
+    "LeaderboardEntry",
+    "PartialPrices",
+    "GameHistoryEntry",
+    "ProvablyFair",
+    "RugRoyale",
+    "AvailableShitcoin",
+    "Rugpool",
+    "SideBet",
+    "ShortPosition",
     # Issue #2: playerUpdate
-    'PlayerUpdate',
+    "PlayerUpdate",
     # Issue #3: usernameStatus
-    'UsernameStatus',
+    "UsernameStatus",
     # Issue #4: playerLeaderboardPosition
-    'PlayerLeaderboardPosition',
-    'LeaderboardPlayerEntry',
+    "PlayerLeaderboardPosition",
+    "LeaderboardPlayerEntry",
     # Issue #5: standard/newTrade
-    'NewTrade',
+    "NewTrade",
     # Issue #6: sidebetResponse
-    'SidebetRequest',
-    'SidebetResponse',
+    "SidebetRequest",
+    "SidebetResponse",
     # Issue #7: buyOrder/sellOrder
-    'BuyOrderRequest',
-    'SellOrderRequest',
-    'TradeOrderResponse',
+    "BuyOrderRequest",
+    "SellOrderRequest",
+    "TradeOrderResponse",
     # Issue #8: System events
-    'SystemEventType',
-    'SystemEvent',
-    'ConnectionEvent',
-    'AuthEvent',
-    'GameLifecycleEvent',
-    'SessionEvent',
+    "SystemEventType",
+    "SystemEvent",
+    "ConnectionEvent",
+    "AuthEvent",
+    "GameLifecycleEvent",
+    "SessionEvent",
 ]

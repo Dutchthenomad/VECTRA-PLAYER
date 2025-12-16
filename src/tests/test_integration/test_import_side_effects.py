@@ -48,4 +48,3 @@ def test_import_services_and_sources_does_not_require_socketio():
     assert proc.returncode == 0, proc.stderr
     combined = (proc.stdout or "") + (proc.stderr or "")
     assert "No module named 'socketio'" not in combined
-

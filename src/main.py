@@ -6,10 +6,10 @@ Phase 8.5: Added --live flag for browser automation mode
 
 __version__ = "2.0.0"
 
-import sys
 import os
-import signal
 import platform
+import signal
+import sys
 from pathlib import Path
 
 # Add parent directory to Python path for browser_automation imports
@@ -17,15 +17,15 @@ parent_dir = Path(__file__).resolve().parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-import logging
 import argparse
+import logging
 import tkinter as tk
+
 import ttkbootstrap as ttk
-from typing import Optional
 
 from config import config
 from core.game_state import GameState
-from services.event_bus import event_bus, Events
+from services.event_bus import Events, event_bus
 from services.logger import setup_logging
 from ui.main_window import MainWindow
 
@@ -45,9 +45,9 @@ class Application:
             live_mode: If True, enable live browser automation mode (Phase 8.5)
         """
         self._initialized_components = []
-        self.main_window: Optional[MainWindow] = None
-        self.root: Optional[tk.Tk] = None
-        self.state: Optional[GameState] = None
+        self.main_window: MainWindow | None = None
+        self.root: tk.Tk | None = None
+        self.state: GameState | None = None
         self.event_bus = event_bus
 
         try:
@@ -76,10 +76,8 @@ class Application:
             except Exception as e:
                 self.logger.critical(f"Configuration validation failed: {e}")
                 self._show_error_and_exit(
-                    (
-                        "Invalid configuration detected:\n\n"
-                        f"{e}\n\nPlease check your config.py settings."
-                    )
+                    "Invalid configuration detected:\n\n"
+                    f"{e}\n\nPlease check your config.py settings."
                 )
 
             # Initialize core components
@@ -138,8 +136,8 @@ class Application:
         self.root.geometry(f"{config.UI['window_width']}x{config.UI['window_height']}")
 
         # Set minimum size
-        min_width = config.UI.get('min_width', 800)
-        min_height = config.UI.get('min_height', 600)
+        min_width = config.UI.get("min_width", 800)
+        min_height = config.UI.get("min_height", 600)
         self.root.minsize(min_width, min_height)
 
         # Configure grid weights for responsive design
@@ -147,10 +145,10 @@ class Application:
         self.root.grid_columnconfigure(0, weight=1)
 
         # Set icon if available
-        assets_dir = Path(__file__).parent / 'assets'
-        icon_path = assets_dir / ('icon.ico' if platform.system() == 'Windows' else 'icon.png')
+        assets_dir = Path(__file__).parent / "assets"
+        icon_path = assets_dir / ("icon.ico" if platform.system() == "Windows" else "icon.png")
         if not icon_path.exists():
-            icon_path = assets_dir / 'icon.ico'
+            icon_path = assets_dir / "icon.ico"
         if icon_path.exists():
             try:
                 self.root.iconbitmap(str(icon_path))
@@ -178,33 +176,33 @@ class Application:
 
     def _handle_ui_error(self, event):
         """Handle UI errors"""
-        data = event.get('data', {})
+        data = event.get("data", {})
         self.logger.error(f"UI Error: {data}")
 
     def _handle_game_start(self, event):
         """Handle game start event"""
-        data = event.get('data', {})
+        data = event.get("data", {})
         self.logger.info(f"Game started: {data}")
-    
+
     def _handle_game_end(self, event):
         """Handle game end event"""
         metrics = self.state.calculate_metrics()
         self.logger.info(f"Game ended. Metrics: {metrics}")
-    
+
     def _handle_rug_event(self, event):
         """Handle rug event"""
-        data = event.get('data', {})
-        tick = data.get('tick', 'unknown')
+        data = event.get("data", {})
+        tick = data.get("tick", "unknown")
         self.logger.warning(f"RUG EVENT at tick {tick}")
 
     def _handle_trade_executed(self, event):
         """Handle successful trade"""
-        data = event.get('data', {})
+        data = event.get("data", {})
         self.logger.info(f"Trade executed: {data}")
 
     def _handle_trade_failed(self, event):
         """Handle failed trade"""
-        data = event.get('data', {})
+        data = event.get("data", {})
         self.logger.warning(f"Trade failed: {data}")
 
     def run(self):
@@ -216,7 +214,7 @@ class Application:
                 self.state,
                 self.event_bus,
                 self.config,
-                live_mode=self.live_mode  # Pass live mode flag
+                live_mode=self.live_mode,  # Pass live mode flag
             )
 
             # Auto-load games if directory exists (skip in live mode)
@@ -233,21 +231,18 @@ class Application:
         except Exception as e:
             self.logger.critical(f"Critical error in main loop: {e}", exc_info=True)
             self.shutdown()
-    
+
     def _auto_load_games(self):
         """Auto-load game files if available"""
-        recordings_dir = self.config.FILES['recordings_dir']
-        
+        recordings_dir = self.config.FILES["recordings_dir"]
+
         if recordings_dir.exists():
             game_files = sorted(recordings_dir.glob("game_*.jsonl"))
             if game_files:
                 self.logger.info(f"Found {len(game_files)} game files to auto-load")
                 # Notify main window about available games
-                self.event_bus.publish(
-                    Events.FILE_LOADED, 
-                    {'files': game_files}
-                )
-    
+                self.event_bus.publish(Events.FILE_LOADED, {"files": game_files})
+
     def shutdown(self):
         """Clean shutdown of application"""
         self.logger.info("Shutting down application...")
@@ -258,19 +253,19 @@ class Application:
 
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(10)
-        
+
         try:
             # Save configuration
-            config_file = self.config.FILES['config_dir'] / 'settings.json'
+            config_file = self.config.FILES["config_dir"] / "settings.json"
             self.config.save_to_file(str(config_file))
-            
+
             # Save state metrics
             metrics = self.state.calculate_metrics()
             self.logger.info(f"Final session metrics: {metrics}")
-            
+
             # Stop event bus
             self.event_bus.stop()
-            
+
             # Destroy UI
             if self.main_window:
                 self.main_window.shutdown()
@@ -278,10 +273,10 @@ class Application:
             if self.root:
                 self.root.quit()
                 self.root.destroy()
-            
+
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}")
-        
+
         finally:
             signal.alarm(0)
             self.logger.info("Application shutdown complete")
@@ -295,21 +290,21 @@ def main():
     """
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
-        description='Rugs.fun Replay Viewer - Professional Edition',
+        description="Rugs.fun Replay Viewer - Professional Edition",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
+        epilog="""
 Examples:
   %(prog)s                 # Run in replay mode (default)
   %(prog)s --live          # Run in live browser automation mode (Phase 8.5)
 
 Phase 8.5: Live mode connects to Rugs.fun via Playwright automation.
-        '''
+        """,
     )
 
     parser.add_argument(
-        '--live',
-        action='store_true',
-        help='Enable live browser automation mode (requires CV-BOILER-PLATE-FORK)'
+        "--live",
+        action="store_true",
+        help="Enable live browser automation mode (requires CV-BOILER-PLATE-FORK)",
     )
 
     args = parser.parse_args()

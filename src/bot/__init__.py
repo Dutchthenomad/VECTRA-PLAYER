@@ -1,23 +1,23 @@
 """Bot module - Trading strategies and bot controller"""
 
-from .interface import BotInterface
 from .controller import BotController
+from .interface import BotInterface
 from .strategies import (
-    TradingStrategy,
-    ConservativeStrategy,
     AggressiveStrategy,
+    ConservativeStrategy,
     SidebetStrategy,
+    TradingStrategy,
     get_strategy,
-    list_strategies
+    list_strategies,
 )
 
 __all__ = [
-    'BotInterface',
-    'BotController',
-    'TradingStrategy',
-    'ConservativeStrategy',
-    'AggressiveStrategy',
-    'SidebetStrategy',
-    'get_strategy',
-    'list_strategies',
+    "AggressiveStrategy",
+    "BotController",
+    "BotInterface",
+    "ConservativeStrategy",
+    "SidebetStrategy",
+    "TradingStrategy",
+    "get_strategy",
+    "list_strategies",
 ]

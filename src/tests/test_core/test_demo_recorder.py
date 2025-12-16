@@ -5,22 +5,21 @@ TDD: These tests are written FIRST before implementation.
 All tests should FAIL until DemoRecorderSink is implemented.
 """
 
-import pytest
-import tempfile
 import json
-import time
+import tempfile
 import threading
-from pathlib import Path
-from decimal import Decimal
+import time
 from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
 
 # These imports will fail until implementation exists
 from core.demo_recorder import DemoRecorderSink
 from models import (
     ActionCategory,
     StateSnapshot,
-    DemoAction,
-    get_category_for_button,
 )
 
 
@@ -87,7 +86,12 @@ class TestSessionManagement:
 
             # Verify timestamp is within test execution window
             from datetime import timedelta
-            assert (before_time - timedelta(seconds=1)) <= session_time <= (after_time + timedelta(seconds=1))
+
+            assert (
+                (before_time - timedelta(seconds=1))
+                <= session_time
+                <= (after_time + timedelta(seconds=1))
+            )
 
     def test_start_session_twice_ends_first(self):
         """Test starting new session ends previous session"""
@@ -111,9 +115,9 @@ class TestSessionManagement:
             summary = recorder.end_session()
 
             assert summary is not None
-            assert 'session_id' in summary
-            assert 'games_played' in summary
-            assert 'total_actions' in summary
+            assert "session_id" in summary
+            assert "games_played" in summary
+            assert "total_actions" in summary
 
     def test_end_session_creates_metadata_file(self):
         """Test end_session creates session_metadata.json"""
@@ -126,11 +130,11 @@ class TestSessionManagement:
             metadata_file = Path(tmpdir) / session_id / "session_metadata.json"
             assert metadata_file.exists()
 
-            with open(metadata_file, 'r') as f:
+            with open(metadata_file) as f:
                 metadata = json.load(f)
 
-            assert '_metadata' in metadata
-            assert metadata['_metadata']['session_id'] == session_id
+            assert "_metadata" in metadata
+            assert metadata["_metadata"]["session_id"] == session_id
 
 
 class TestGameManagement:
@@ -193,9 +197,9 @@ class TestGameManagement:
             summary = recorder.end_game()
 
             assert summary is not None
-            assert 'game_id' in summary
-            assert 'action_count' in summary
-            assert 'filepath' in summary
+            assert "game_id" in summary
+            assert "action_count" in summary
+            assert "filepath" in summary
 
     def test_game_file_has_header(self):
         """Test game file starts with header metadata"""
@@ -205,12 +209,12 @@ class TestGameManagement:
             filepath = recorder.start_game("test-game")
             recorder.end_game()
 
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 first_line = f.readline()
                 header = json.loads(first_line)
 
-            assert '_header' in header
-            assert header['_header']['game_id'] == "test-game"
+            assert "_header" in header
+            assert header["_header"]["game_id"] == "test-game"
 
     def test_game_file_has_footer(self):
         """Test game file ends with footer metadata"""
@@ -224,13 +228,13 @@ class TestGameManagement:
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 last_line = lines[-1]
                 footer = json.loads(last_line)
 
-            assert '_footer' in footer
-            assert footer['_footer']['game_id'] == "test-game"
+            assert "_footer" in footer
+            assert footer["_footer"]["game_id"] == "test-game"
 
 
 class TestActionRecording:
@@ -247,7 +251,7 @@ class TestActionRecording:
             sell_percentage=Decimal("1.0"),
             current_tick=42,
             current_price=Decimal("1.523"),
-            phase="ACTIVE"
+            phase="ACTIVE",
         )
 
     def test_record_bet_increment_action(self, sample_state):
@@ -257,10 +261,7 @@ class TestActionRecording:
             recorder.start_session()
             recorder.start_game("test-game")
 
-            action_id = recorder.record_button_press(
-                button="+0.01",
-                state_before=sample_state
-            )
+            action_id = recorder.record_button_press(button="+0.01", state_before=sample_state)
 
             assert action_id is not None
             assert recorder.action_count == 1
@@ -271,23 +272,20 @@ class TestActionRecording:
             recorder = DemoRecorderSink(tmpdir, buffer_size=1)
             recorder.start_session()
             recorder.start_game("test-game")
-            recorder.record_button_press(
-                button="+0.01",
-                state_before=sample_state
-            )
+            recorder.record_button_press(button="+0.01", state_before=sample_state)
             recorder.end_game()
 
             # Find and read game file
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 # Skip header, get action line
                 action_line = lines[1]
                 action = json.loads(action_line)
 
-            assert action['category'] == ActionCategory.BET_INCREMENT.value
+            assert action["category"] == ActionCategory.BET_INCREMENT.value
 
     def test_record_trade_action_with_amount(self, sample_state):
         """Test recording trade action captures amount"""
@@ -297,9 +295,7 @@ class TestActionRecording:
             recorder.start_game("test-game")
 
             action_id = recorder.record_button_press(
-                button="BUY",
-                state_before=sample_state,
-                amount=Decimal("0.015")
+                button="BUY", state_before=sample_state, amount=Decimal("0.015")
             )
             recorder.end_game()
 
@@ -307,13 +303,13 @@ class TestActionRecording:
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 action_line = lines[1]
                 action = json.loads(action_line)
 
-            assert action['category'] == ActionCategory.TRADE_BUY.value
-            assert action['amount'] == "0.015"
+            assert action["category"] == ActionCategory.TRADE_BUY.value
+            assert action["amount"] == "0.015"
 
     def test_record_action_captures_timestamp(self, sample_state):
         """Test that recorded action has timestamp"""
@@ -323,10 +319,7 @@ class TestActionRecording:
             recorder.start_game("test-game")
 
             before_time = int(time.time() * 1000)
-            recorder.record_button_press(
-                button="SELL",
-                state_before=sample_state
-            )
+            recorder.record_button_press(button="SELL", state_before=sample_state)
             after_time = int(time.time() * 1000)
             recorder.end_game()
 
@@ -334,13 +327,13 @@ class TestActionRecording:
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 action_line = lines[1]
                 action = json.loads(action_line)
 
-            assert 'timestamp_pressed' in action
-            assert before_time <= action['timestamp_pressed'] <= after_time
+            assert "timestamp_pressed" in action
+            assert before_time <= action["timestamp_pressed"] <= after_time
 
     def test_record_action_captures_state_before(self, sample_state):
         """Test that recorded action captures state_before"""
@@ -348,29 +341,26 @@ class TestActionRecording:
             recorder = DemoRecorderSink(tmpdir, buffer_size=1)
             recorder.start_session()
             recorder.start_game("test-game")
-            recorder.record_button_press(
-                button="+0.001",
-                state_before=sample_state
-            )
+            recorder.record_button_press(button="+0.001", state_before=sample_state)
             recorder.end_game()
 
             # Find and read game file
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 action_line = lines[1]
                 action = json.loads(action_line)
 
-            assert 'state_before' in action
-            assert action['state_before']['balance'] == "0.100"
-            assert action['state_before']['current_tick'] == 42
-            assert action['state_before']['phase'] == "ACTIVE"
+            assert "state_before" in action
+            assert action["state_before"]["balance"] == "0.100"
+            assert action["state_before"]["current_tick"] == 42
+            assert action["state_before"]["phase"] == "ACTIVE"
 
     def test_all_bet_increment_buttons(self, sample_state):
         """Test all bet increment buttons can be recorded"""
-        bet_buttons = ['X', '+0.001', '+0.01', '+0.1', '+1', '1/2', 'X2', 'MAX']
+        bet_buttons = ["X", "+0.001", "+0.01", "+0.1", "+1", "1/2", "X2", "MAX"]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = DemoRecorderSink(tmpdir, buffer_size=100)
@@ -378,16 +368,13 @@ class TestActionRecording:
             recorder.start_game("test-game")
 
             for button in bet_buttons:
-                recorder.record_button_press(
-                    button=button,
-                    state_before=sample_state
-                )
+                recorder.record_button_press(button=button, state_before=sample_state)
 
             assert recorder.action_count == len(bet_buttons)
 
     def test_all_sell_percentage_buttons(self, sample_state):
         """Test all sell percentage buttons can be recorded"""
-        pct_buttons = ['10%', '25%', '50%', '100%']
+        pct_buttons = ["10%", "25%", "50%", "100%"]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = DemoRecorderSink(tmpdir, buffer_size=100)
@@ -395,16 +382,13 @@ class TestActionRecording:
             recorder.start_game("test-game")
 
             for button in pct_buttons:
-                recorder.record_button_press(
-                    button=button,
-                    state_before=sample_state
-                )
+                recorder.record_button_press(button=button, state_before=sample_state)
 
             assert recorder.action_count == len(pct_buttons)
 
     def test_all_trade_buttons(self, sample_state):
         """Test all trade buttons can be recorded"""
-        trade_buttons = ['BUY', 'SELL', 'SIDEBET']
+        trade_buttons = ["BUY", "SELL", "SIDEBET"]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = DemoRecorderSink(tmpdir, buffer_size=100)
@@ -413,9 +397,7 @@ class TestActionRecording:
 
             for button in trade_buttons:
                 recorder.record_button_press(
-                    button=button,
-                    state_before=sample_state,
-                    amount=Decimal("0.01")
+                    button=button, state_before=sample_state, amount=Decimal("0.01")
                 )
 
             assert recorder.action_count == len(trade_buttons)
@@ -435,7 +417,7 @@ class TestLatencyTracking:
             sell_percentage=Decimal("1.0"),
             current_tick=42,
             current_price=Decimal("1.523"),
-            phase="ACTIVE"
+            phase="ACTIVE",
         )
 
     def test_record_confirmation_updates_latency(self, sample_state):
@@ -446,9 +428,7 @@ class TestLatencyTracking:
             recorder.start_game("test-game")
 
             action_id = recorder.record_button_press(
-                button="BUY",
-                state_before=sample_state,
-                amount=Decimal("0.015")
+                button="BUY", state_before=sample_state, amount=Decimal("0.015")
             )
 
             # Simulate delay
@@ -456,8 +436,7 @@ class TestLatencyTracking:
 
             # Record confirmation
             latency_ms = recorder.record_confirmation(
-                action_id=action_id,
-                server_data={'success': True, 'server_tick': 43}
+                action_id=action_id, server_data={"success": True, "server_tick": 43}
             )
 
             assert latency_ms is not None
@@ -471,14 +450,11 @@ class TestLatencyTracking:
             recorder.start_game("test-game")
 
             action_id = recorder.record_button_press(
-                button="SELL",
-                state_before=sample_state,
-                amount=Decimal("0.01")
+                button="SELL", state_before=sample_state, amount=Decimal("0.01")
             )
 
             recorder.record_confirmation(
-                action_id=action_id,
-                server_data={'success': True, 'server_tick': 50}
+                action_id=action_id, server_data={"success": True, "server_tick": 50}
             )
             recorder.end_game()
 
@@ -486,16 +462,16 @@ class TestLatencyTracking:
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
                 action_line = lines[1]
                 action = json.loads(action_line)
 
-            assert 'timestamp_confirmed' in action
-            assert action['timestamp_confirmed'] is not None
-            assert 'latency_ms' in action
-            assert 'confirmation' in action
-            assert action['confirmation']['success'] is True
+            assert "timestamp_confirmed" in action
+            assert action["timestamp_confirmed"] is not None
+            assert "latency_ms" in action
+            assert "confirmation" in action
+            assert action["confirmation"]["success"] is True
 
     def test_pending_action_not_found_returns_none(self, sample_state):
         """Test confirmation for unknown action returns None"""
@@ -505,8 +481,7 @@ class TestLatencyTracking:
             recorder.start_game("test-game")
 
             latency = recorder.record_confirmation(
-                action_id="unknown-id",
-                server_data={'success': True}
+                action_id="unknown-id", server_data={"success": True}
             )
 
             assert latency is None
@@ -526,7 +501,7 @@ class TestThreadSafety:
             sell_percentage=Decimal("1.0"),
             current_tick=0,
             current_price=Decimal("1.0"),
-            phase="ACTIVE"
+            phase="ACTIVE",
         )
 
     def test_concurrent_action_recording(self, sample_state):
@@ -538,14 +513,11 @@ class TestThreadSafety:
 
             def record_actions(button, count):
                 for i in range(count):
-                    recorder.record_button_press(
-                        button=button,
-                        state_before=sample_state
-                    )
+                    recorder.record_button_press(button=button, state_before=sample_state)
 
             # Launch 3 threads recording 10 actions each
             threads = []
-            buttons = ['+0.001', '+0.01', '+0.1']
+            buttons = ["+0.001", "+0.01", "+0.1"]
             for button in buttons:
                 t = threading.Thread(target=record_actions, args=(button, 10))
                 threads.append(t)
@@ -569,10 +541,7 @@ class TestThreadSafety:
                 try:
                     recorder.start_game(f"game-{game_num}")
                     for i in range(5):
-                        recorder.record_button_press(
-                            button="+0.001",
-                            state_before=sample_state
-                        )
+                        recorder.record_button_press(button="+0.001", state_before=sample_state)
                     recorder.end_game()
                 except Exception as e:
                     errors.append(str(e))
@@ -599,7 +568,7 @@ class TestBuffering:
             sell_percentage=Decimal("1.0"),
             current_tick=0,
             current_price=Decimal("1.0"),
-            phase="ACTIVE"
+            phase="ACTIVE",
         )
 
     def test_buffer_flushed_on_end_game(self, sample_state):
@@ -611,10 +580,7 @@ class TestBuffering:
 
             # Record fewer actions than buffer size
             for i in range(5):
-                recorder.record_button_press(
-                    button="+0.001",
-                    state_before=sample_state
-                )
+                recorder.record_button_press(button="+0.001", state_before=sample_state)
 
             recorder.end_game()
 
@@ -622,7 +588,7 @@ class TestBuffering:
             session_dir = list(Path(tmpdir).glob("session_*"))[0]
             game_file = list(session_dir.glob("game_*.jsonl"))[0]
 
-            with open(game_file, 'r') as f:
+            with open(game_file) as f:
                 lines = f.readlines()
 
             assert len(lines) == 7  # 1 header + 5 actions + 1 footer
@@ -667,9 +633,9 @@ class TestStatusMethods:
 
             status = recorder.get_status()
 
-            assert 'session_id' in status
-            assert 'session_active' in status
-            assert 'game_id' in status
-            assert 'game_active' in status
-            assert 'games_played' in status
-            assert 'total_actions' in status
+            assert "session_id" in status
+            assert "session_active" in status
+            assert "game_id" in status
+            assert "game_active" in status
+            assert "games_played" in status
+            assert "total_actions" in status

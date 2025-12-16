@@ -4,12 +4,12 @@ Phase 8.3: Now supports dual-mode execution (BACKEND vs UI_LAYER)
 """
 
 import logging
-from typing import Dict, Any, Optional
 from decimal import Decimal
+from typing import Any, Optional
 
-from .interface import BotInterface
-from .strategies import get_strategy, TradingStrategy
 from .execution_mode import ExecutionMode
+from .interface import BotInterface
+from .strategies import TradingStrategy, get_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class BotController:
         bot_interface: BotInterface,
         strategy_name: str = "conservative",
         execution_mode: ExecutionMode = ExecutionMode.BACKEND,
-        ui_controller: Optional['BotUIController'] = None
+        ui_controller: Optional["BotUIController"] = None,
     ):
         """
         Initialize bot controller
@@ -72,7 +72,7 @@ class BotController:
             f"execution_mode={execution_mode.value}"
         )
 
-    def execute_step(self) -> Dict[str, Any]:
+    def execute_step(self) -> dict[str, Any]:
         """
         Execute one decision cycle
 
@@ -114,7 +114,7 @@ class BotController:
             self.last_result = result
             self.actions_taken += 1
 
-            if result['success']:
+            if result["success"]:
                 self.successful_actions += 1
             else:
                 self.failed_actions += 1
@@ -135,10 +135,8 @@ class BotController:
     # ========================================================================
 
     def _execute_action_backend(
-        self,
-        action_type: str,
-        amount: Optional[Decimal] = None
-    ) -> Dict[str, Any]:
+        self, action_type: str, amount: Decimal | None = None
+    ) -> dict[str, Any]:
         """
         Execute action via backend (TradeManager direct calls)
 
@@ -156,11 +154,7 @@ class BotController:
         """
         return self.bot.bot_execute_action(action_type, amount)
 
-    def _execute_action_ui(
-        self,
-        action_type: str,
-        amount: Optional[Decimal] = None
-    ) -> Dict[str, Any]:
+    def _execute_action_ui(self, action_type: str, amount: Decimal | None = None) -> dict[str, Any]:
         """
         Execute action via UI layer (BotUIController clicks)
 
@@ -180,30 +174,26 @@ class BotController:
 
         try:
             # WAIT action (no UI interaction needed)
-            if action_type == 'WAIT':
-                return {
-                    'success': True,
-                    'action': 'WAIT',
-                    'reason': 'Waited (no action taken)'
-                }
+            if action_type == "WAIT":
+                return {"success": True, "action": "WAIT", "reason": "Waited (no action taken)"}
 
             # BUY action
-            if action_type == 'BUY':
+            if action_type == "BUY":
                 if amount is None:
                     return self._error_result("BUY action requires amount")
 
                 success = self.ui_controller.execute_buy_with_amount(amount)
                 if success:
                     return {
-                        'success': True,
-                        'action': 'BUY',
-                        'reason': f'BUY executed via UI ({amount} SOL)'
+                        "success": True,
+                        "action": "BUY",
+                        "reason": f"BUY executed via UI ({amount} SOL)",
                     }
                 else:
                     return self._error_result("BUY via UI failed")
 
             # SELL action (Phase 8.3: Always press 100% before SELL)
-            if action_type == 'SELL':
+            if action_type == "SELL":
                 # Set 100% sell percentage first (user requirement)
                 if not self.ui_controller.set_sell_percentage(1.0):
                     return self._error_result("Failed to set 100% sell percentage")
@@ -212,24 +202,24 @@ class BotController:
                 success = self.ui_controller.click_sell()
                 if success:
                     return {
-                        'success': True,
-                        'action': 'SELL',
-                        'reason': 'SELL executed via UI (100%)'
+                        "success": True,
+                        "action": "SELL",
+                        "reason": "SELL executed via UI (100%)",
                     }
                 else:
                     return self._error_result("SELL via UI failed")
 
             # SIDEBET action
-            if action_type == 'SIDE':
+            if action_type == "SIDE":
                 if amount is None:
                     return self._error_result("SIDE action requires amount")
 
                 success = self.ui_controller.execute_sidebet_with_amount(amount)
                 if success:
                     return {
-                        'success': True,
-                        'action': 'SIDE',
-                        'reason': f'SIDEBET executed via UI ({amount} SOL)'
+                        "success": True,
+                        "action": "SIDE",
+                        "reason": f"SIDEBET executed via UI ({amount} SOL)",
                     }
                 else:
                     return self._error_result("SIDEBET via UI failed")
@@ -270,30 +260,26 @@ class BotController:
 
         logger.info("Bot controller reset")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get bot performance statistics (Phase 8.3: includes execution_mode)"""
         success_rate = 0.0
         if self.actions_taken > 0:
             success_rate = (self.successful_actions / self.actions_taken) * 100
 
         return {
-            'strategy': self.strategy_name,
-            'execution_mode': self.execution_mode.value,  # Phase 8.3
-            'actions_taken': self.actions_taken,
-            'successful_actions': self.successful_actions,
-            'failed_actions': self.failed_actions,
-            'success_rate': success_rate,
-            'last_action': self.last_action,
-            'last_reasoning': self.last_reasoning
+            "strategy": self.strategy_name,
+            "execution_mode": self.execution_mode.value,  # Phase 8.3
+            "actions_taken": self.actions_taken,
+            "successful_actions": self.successful_actions,
+            "failed_actions": self.failed_actions,
+            "success_rate": success_rate,
+            "last_action": self.last_action,
+            "last_reasoning": self.last_reasoning,
         }
 
-    def _error_result(self, reason: str) -> Dict[str, Any]:
+    def _error_result(self, reason: str) -> dict[str, Any]:
         """Create error result"""
-        return {
-            'success': False,
-            'action': 'ERROR',
-            'reason': reason
-        }
+        return {"success": False, "action": "ERROR", "reason": reason}
 
     def __str__(self):
         return f"BotController(strategy={self.strategy_name}, mode={self.execution_mode.value})"

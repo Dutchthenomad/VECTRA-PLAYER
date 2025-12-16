@@ -5,9 +5,10 @@ AUDIT FIX: Added queue overflow protection, proper drain on stop,
 and queue health monitoring.
 """
 
-import queue
 import logging
-from typing import Callable, Any, Tuple, Optional
+import queue
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class TkDispatcher:
         self._root = root
         self._poll_interval = poll_interval
         # AUDIT FIX: Use bounded queue
-        self._queue: queue.Queue[Tuple[Callable, tuple, dict]] = queue.Queue(
+        self._queue: queue.Queue[tuple[Callable, tuple, dict]] = queue.Queue(
             maxsize=self.MAX_QUEUE_SIZE
         )
         self._running = True
@@ -64,15 +65,14 @@ class TkDispatcher:
             if qsize > self.MAX_QUEUE_SIZE * self.QUEUE_WARNING_THRESHOLD:
                 logger.warning(
                     f"TkDispatcher queue at {qsize}/{self.MAX_QUEUE_SIZE} "
-                    f"({qsize/self.MAX_QUEUE_SIZE*100:.0f}% capacity)"
+                    f"({qsize / self.MAX_QUEUE_SIZE * 100:.0f}% capacity)"
                 )
             return True
 
         except queue.Full:
             self._dropped_count += 1
             logger.warning(
-                f"TkDispatcher queue full, dropped task "
-                f"(total dropped: {self._dropped_count})"
+                f"TkDispatcher queue full, dropped task (total dropped: {self._dropped_count})"
             )
             return False
 
@@ -146,10 +146,10 @@ class TkDispatcher:
             dict: Statistics including queue size, dropped count, processed count
         """
         return {
-            'queue_size': self._queue.qsize(),
-            'max_queue_size': self.MAX_QUEUE_SIZE,
-            'queue_utilization': self._queue.qsize() / self.MAX_QUEUE_SIZE,
-            'dropped_count': self._dropped_count,
-            'total_processed': self._total_processed,
-            'running': self._running
+            "queue_size": self._queue.qsize(),
+            "max_queue_size": self.MAX_QUEUE_SIZE,
+            "queue_utilization": self._queue.qsize() / self.MAX_QUEUE_SIZE,
+            "dropped_count": self._dropped_count,
+            "total_processed": self._total_processed,
+            "running": self._running,
         }

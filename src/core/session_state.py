@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class SessionState:
     """Persistent session state manager."""
 
-    def __init__(self, config_dir: Optional[Path] = None, default_balance: Decimal = Decimal('0.01')):
+    def __init__(self, config_dir: Path | None = None, default_balance: Decimal = Decimal("0.01")):
         """
         Initialize session state.
 
@@ -37,11 +37,11 @@ class SessionState:
 
         # Determine config directory
         if config_dir is None:
-            config_dir = Path.home() / '.config' / 'replayer'
+            config_dir = Path.home() / ".config" / "replayer"
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        self.state_file = self.config_dir / 'session_state.json'
+        self.state_file = self.config_dir / "session_state.json"
 
         # Thread safety - RLock allows re-entrant locking from same thread
         self._lock = threading.RLock()
@@ -49,7 +49,7 @@ class SessionState:
         # State fields (protected by _lock)
         self._balance_sol: Decimal = default_balance
         self._last_updated: str = ""
-        self._total_pnl: Decimal = Decimal('0.0')
+        self._total_pnl: Decimal = Decimal("0.0")
         self._games_played: int = 0
         self._manual_override: bool = False  # Track if balance manually set
 
@@ -65,25 +65,29 @@ class SessionState:
         """
         with self._lock:
             if not self.state_file.exists():
-                logger.info(f"No session state file found. Using defaults (balance={self.default_balance} SOL)")
+                logger.info(
+                    f"No session state file found. Using defaults (balance={self.default_balance} SOL)"
+                )
                 self._balance_sol = self.default_balance
                 self._last_updated = datetime.now().isoformat()
                 self._save_locked()  # Create initial file
                 return False
 
             try:
-                with open(self.state_file, 'r') as f:
+                with open(self.state_file) as f:
                     data = json.load(f)
 
                 # Parse fields (convert strings to Decimal)
-                self._balance_sol = Decimal(str(data.get('balance_sol', self.default_balance)))
-                self._last_updated = data.get('last_updated', datetime.now().isoformat())
-                self._total_pnl = Decimal(str(data.get('total_pnl', '0.0')))
-                self._games_played = int(data.get('games_played', 0))
-                self._manual_override = bool(data.get('manual_override', False))
+                self._balance_sol = Decimal(str(data.get("balance_sol", self.default_balance)))
+                self._last_updated = data.get("last_updated", datetime.now().isoformat())
+                self._total_pnl = Decimal(str(data.get("total_pnl", "0.0")))
+                self._games_played = int(data.get("games_played", 0))
+                self._manual_override = bool(data.get("manual_override", False))
 
-                logger.info(f"Loaded session state: balance={self._balance_sol} SOL, "
-                           f"total_pnl={self._total_pnl}, games={self._games_played}")
+                logger.info(
+                    f"Loaded session state: balance={self._balance_sol} SOL, "
+                    f"total_pnl={self._total_pnl}, games={self._games_played}"
+                )
                 return True
 
             except (json.JSONDecodeError, ValueError) as e:
@@ -111,23 +115,23 @@ class SessionState:
         """
         try:
             data = {
-                'balance_sol': str(self._balance_sol),  # Convert Decimal to string
-                'last_updated': datetime.now().isoformat(),
-                'total_pnl': str(self._total_pnl),
-                'games_played': self._games_played,
-                'manual_override': self._manual_override
+                "balance_sol": str(self._balance_sol),  # Convert Decimal to string
+                "last_updated": datetime.now().isoformat(),
+                "total_pnl": str(self._total_pnl),
+                "games_played": self._games_played,
+                "manual_override": self._manual_override,
             }
 
             # Write atomically (write to temp file, then rename)
-            temp_file = self.state_file.with_suffix('.tmp')
-            with open(temp_file, 'w') as f:
+            temp_file = self.state_file.with_suffix(".tmp")
+            with open(temp_file, "w") as f:
                 json.dump(data, f, indent=2)
             temp_file.replace(self.state_file)
 
             logger.debug(f"Saved session state: balance={self._balance_sol} SOL")
             return True
 
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.error(f"Failed to save session state: {e}")
             return False
 
@@ -150,8 +154,10 @@ class SessionState:
             # Auto-save (already holds lock, use internal method)
             self._save_locked()
 
-            logger.info(f"Balance updated: {pnl_delta:+.4f} SOL → {self._balance_sol:.4f} SOL "
-                       f"(total P&L: {self._total_pnl:+.4f})")
+            logger.info(
+                f"Balance updated: {pnl_delta:+.4f} SOL → {self._balance_sol:.4f} SOL "
+                f"(total P&L: {self._total_pnl:+.4f})"
+            )
 
             return self._balance_sol
 
@@ -187,7 +193,7 @@ class SessionState:
         """
         with self._lock:
             self._balance_sol = self.default_balance
-            self._total_pnl = Decimal('0.0')
+            self._total_pnl = Decimal("0.0")
             self._games_played = 0
             self._manual_override = False
             self._last_updated = datetime.now().isoformat()
@@ -226,7 +232,7 @@ class SessionState:
         with self._lock:
             return self._manual_override
 
-    def get_snapshot(self) -> Dict[str, Any]:
+    def get_snapshot(self) -> dict[str, Any]:
         """
         Get immutable snapshot of session state (thread-safe).
 
@@ -235,12 +241,12 @@ class SessionState:
         """
         with self._lock:
             return {
-                'balance_sol': self._balance_sol,
-                'last_updated': self._last_updated,
-                'total_pnl': self._total_pnl,
-                'games_played': self._games_played,
-                'manual_override': self._manual_override,
-                'default_balance': self.default_balance
+                "balance_sol": self._balance_sol,
+                "last_updated": self._last_updated,
+                "total_pnl": self._total_pnl,
+                "games_played": self._games_played,
+                "manual_override": self._manual_override,
+                "default_balance": self.default_balance,
             }
 
     # Property accessors for backward compatibility

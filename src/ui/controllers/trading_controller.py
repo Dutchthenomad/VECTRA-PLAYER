@@ -12,10 +12,11 @@ Phase 10.6: Records ALL button presses to RecordingController with
 dual-state validation (local vs server).
 """
 
-import tkinter as tk
-from decimal import Decimal
-from typing import Callable, Optional, TYPE_CHECKING
 import logging
+import tkinter as tk
+from collections.abc import Callable
+from decimal import Decimal
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ui.controllers.recording_controller import RecordingController
@@ -49,7 +50,7 @@ class TradingController:
         # Phase 10.6: Recording controller (replaces demo_recorder)
         recording_controller: Optional["RecordingController"] = None,
         # Legacy: Keep demo_recorder for backwards compatibility during migration
-        demo_recorder=None
+        demo_recorder=None,
     ):
         """
         Initialize TradingController with dependencies.
@@ -118,7 +119,7 @@ class TradingController:
             try:
                 bet_amount = Decimal(self.bet_entry.get())
             except Exception:
-                bet_amount = Decimal('0')
+                bet_amount = Decimal("0")
 
             # Phase 10.6: Use new RecordingController
             if self.recording_controller:
@@ -127,15 +128,12 @@ class TradingController:
 
                 # Phase 11: Get server state for dual-state validation
                 server_state = None
-                if hasattr(self.parent, 'get_latest_server_state'):
+                if hasattr(self.parent, "get_latest_server_state"):
                     server_state = self.parent.get_latest_server_state()
 
                 # Record to new unified system with server state
                 self.recording_controller.on_button_press(
-                    button=button,
-                    local_state=local_state,
-                    amount=amount,
-                    server_state=server_state
+                    button=button, local_state=local_state, amount=amount, server_state=server_state
                 )
                 logger.debug(f"Recorded button press (Phase 10.6): {button}")
 
@@ -143,9 +141,7 @@ class TradingController:
             elif self.demo_recorder and self.demo_recorder.is_game_active():
                 state_before = self.state.capture_demo_snapshot(bet_amount)
                 self.demo_recorder.record_button_press(
-                    button=button,
-                    state_before=state_before,
-                    amount=amount
+                    button=button, state_before=state_before, amount=amount
                 )
                 logger.debug(f"Recorded button press (legacy): {button}")
 
@@ -167,11 +163,11 @@ class TradingController:
             return  # Validation failed (toast already shown), but browser click already sent
 
         # Phase 10: Record the action
-        self._record_button_press('BUY', amount)
+        self._record_button_press("BUY", amount)
 
         result = self.trade_manager.execute_buy(amount)
 
-        if result['success']:
+        if result["success"]:
             self.log(f"BUY executed at {result['price']:.4f}x")
             self.toast.show(f"Bought {amount} SOL at {result['price']:.4f}x", "success")
         else:
@@ -184,21 +180,25 @@ class TradingController:
         self.browser_bridge.on_sell_clicked()
 
         # Phase 10: Record the action
-        self._record_button_press('SELL')
+        self._record_button_press("SELL")
 
         result = self.trade_manager.execute_sell()
 
-        if result['success']:
-            pnl = result.get('pnl_sol', 0)
-            pnl_pct = result.get('pnl_percent', 0)
+        if result["success"]:
+            pnl = result.get("pnl_sol", 0)
+            pnl_pct = result.get("pnl_percent", 0)
             msg_type = "success" if pnl >= 0 else "error"
 
             # Phase 8.2: Show partial sell information
-            if result.get('partial', False):
-                percentage = result.get('percentage', 1.0)
-                remaining = result.get('remaining_amount', 0)
-                self.log(f"PARTIAL SELL ({percentage*100:.0f}%) - P&L: {pnl:+.4f} SOL, Remaining: {remaining:.4f} SOL")
-                self.toast.show(f"Sold {percentage*100:.0f}%! P&L: {pnl:+.4f} SOL ({pnl_pct:+.1f}%)", msg_type)
+            if result.get("partial", False):
+                percentage = result.get("percentage", 1.0)
+                remaining = result.get("remaining_amount", 0)
+                self.log(
+                    f"PARTIAL SELL ({percentage * 100:.0f}%) - P&L: {pnl:+.4f} SOL, Remaining: {remaining:.4f} SOL"
+                )
+                self.toast.show(
+                    f"Sold {percentage * 100:.0f}%! P&L: {pnl:+.4f} SOL ({pnl_pct:+.1f}%)", msg_type
+                )
             else:
                 self.log(f"SELL executed - P&L: {pnl:+.4f} SOL")
                 self.toast.show(f"Sold! P&L: {pnl:+.4f} SOL ({pnl_pct:+.1f}%)", msg_type)
@@ -216,14 +216,16 @@ class TradingController:
             return  # Validation failed (toast already shown), but browser click already sent
 
         # Phase 10: Record the action
-        self._record_button_press('SIDEBET', amount)
+        self._record_button_press("SIDEBET", amount)
 
         result = self.trade_manager.execute_sidebet(amount)
 
-        if result['success']:
-            potential_win = result.get('potential_win', 0)
+        if result["success"]:
+            potential_win = result.get("potential_win", 0)
             self.log(f"SIDEBET placed ({amount} SOL)")
-            self.toast.show(f"Side bet placed! {amount} SOL (potential: {potential_win:.4f} SOL)", "warning")
+            self.toast.show(
+                f"Side bet placed! {amount} SOL (potential: {potential_win:.4f} SOL)", "warning"
+            )
         else:
             self.log(f"SIDEBET failed: {result['reason']}")
             self.toast.show(f"Side bet failed: {result['reason']}", "error")
@@ -256,9 +258,9 @@ class TradingController:
             self.parent.current_sell_percentage = percentage
             # Highlight the selected button
             self.ui_dispatcher.submit(lambda: self.highlight_percentage_button(percentage))
-            self.log(f"Sell percentage set to {percentage*100:.0f}%")
+            self.log(f"Sell percentage set to {percentage * 100:.0f}%")
         else:
-            self.toast.show(f"Invalid percentage: {percentage*100:.0f}%", "error")
+            self.toast.show(f"Invalid percentage: {percentage * 100:.0f}%", "error")
 
     def highlight_percentage_button(self, selected_percentage: float):
         """
@@ -270,21 +272,13 @@ class TradingController:
             selected_percentage: The percentage value that should be highlighted
         """
         for pct, btn_info in self.percentage_buttons.items():
-            button = btn_info['button']
+            button = btn_info["button"]
             if pct == selected_percentage:
                 # Highlight selected button
-                button.config(
-                    bg=btn_info['selected_color'],
-                    relief=tk.SUNKEN,
-                    bd=3
-                )
+                button.config(bg=btn_info["selected_color"], relief=tk.SUNKEN, bd=3)
             else:
                 # Reset unselected buttons
-                button.config(
-                    bg=btn_info['default_color'],
-                    relief=tk.RAISED,
-                    bd=2
-                )
+                button.config(bg=btn_info["default_color"], relief=tk.RAISED, bd=2)
 
     # ========================================================================
     # BET AMOUNT MANAGEMENT
@@ -310,7 +304,7 @@ class TradingController:
         try:
             current_amount = Decimal(self.bet_entry.get())
         except Exception:
-            current_amount = Decimal('0')
+            current_amount = Decimal("0")
 
         new_amount = current_amount + amount
         self.bet_entry.delete(0, tk.END)
@@ -323,7 +317,7 @@ class TradingController:
         self.browser_bridge.on_clear_clicked()
 
         # Phase 10: Record the action
-        self._record_button_press('X')
+        self._record_button_press("X")
 
         # Then update local UI
         self.bet_entry.delete(0, tk.END)
@@ -333,10 +327,10 @@ class TradingController:
     def half_bet_amount(self):
         """Halve bet amount (1/2 button) - Phase 9.3: syncs to browser"""
         # Phase 9.3: ALWAYS click 1/2 button in browser FIRST
-        self.browser_bridge.on_increment_clicked('1/2')
+        self.browser_bridge.on_increment_clicked("1/2")
 
         # Phase 10: Record the action
-        self._record_button_press('1/2')
+        self._record_button_press("1/2")
 
         # Then update local UI
         try:
@@ -351,10 +345,10 @@ class TradingController:
     def double_bet_amount(self):
         """Double bet amount (X2 button) - Phase 9.3: syncs to browser"""
         # Phase 9.3: ALWAYS click X2 button in browser FIRST
-        self.browser_bridge.on_increment_clicked('X2')
+        self.browser_bridge.on_increment_clicked("X2")
 
         # Phase 10: Record the action
-        self._record_button_press('X2')
+        self._record_button_press("X2")
 
         # Then update local UI
         try:
@@ -369,19 +363,19 @@ class TradingController:
     def max_bet_amount(self):
         """Set bet to max (MAX button) - Phase 9.3: syncs to browser"""
         # Phase 9.3: ALWAYS click MAX button in browser FIRST
-        self.browser_bridge.on_increment_clicked('MAX')
+        self.browser_bridge.on_increment_clicked("MAX")
 
         # Phase 10: Record the action
-        self._record_button_press('MAX')
+        self._record_button_press("MAX")
 
         # Then update local UI
-        balance = self.state.get('balance')
+        balance = self.state.get("balance")
         if balance:
             self.bet_entry.delete(0, tk.END)
             self.bet_entry.insert(0, str(balance))
             logger.debug(f"Bet amount set to MAX: {balance}")
 
-    def get_bet_amount(self) -> Optional[Decimal]:
+    def get_bet_amount(self) -> Decimal | None:
         """
         Get and validate bet amount from entry
 
@@ -391,8 +385,8 @@ class TradingController:
         try:
             bet_amount = Decimal(self.bet_entry.get())
 
-            min_bet = self.config.FINANCIAL['min_bet']
-            max_bet = self.config.FINANCIAL['max_bet']
+            min_bet = self.config.FINANCIAL["min_bet"]
+            max_bet = self.config.FINANCIAL["max_bet"]
 
             if bet_amount < min_bet:
                 self.toast.show(f"Bet must be at least {min_bet} SOL", "error")
@@ -402,7 +396,7 @@ class TradingController:
                 self.toast.show(f"Bet cannot exceed {max_bet} SOL", "error")
                 return None
 
-            balance = self.state.get('balance')
+            balance = self.state.get("balance")
             if bet_amount > balance:
                 self.toast.show(f"Insufficient balance! Have {balance:.4f} SOL", "error")
                 return None

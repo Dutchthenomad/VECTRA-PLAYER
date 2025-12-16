@@ -2,8 +2,8 @@
 Tests for BotController and bot playthrough
 """
 
-import pytest
 from decimal import Decimal
+
 from bot import BotController
 
 
@@ -33,14 +33,14 @@ class TestBotControllerExecution:
         result = bot_controller.execute_step()
 
         assert result is not None
-        assert 'action' in result
-        assert 'success' in result
+        assert "action" in result
+        assert "success" in result
 
     def test_execute_step_returns_action(self, loaded_game_state, bot_controller):
         """Test execute_step returns action type"""
         result = bot_controller.execute_step()
 
-        assert result['action'] in ['WAIT', 'BUY', 'SELL', 'SIDE']
+        assert result["action"] in ["WAIT", "BUY", "SELL", "SIDE"]
 
     def test_last_reasoning_updated(self, loaded_game_state, bot_controller):
         """Test last_reasoning is updated after execution"""
@@ -68,18 +68,18 @@ class TestBotControllerStatistics:
         stats = bot_controller.get_stats()
 
         assert isinstance(stats, dict)
-        assert 'actions_taken' in stats
-        assert 'success_rate' in stats
+        assert "actions_taken" in stats
+        assert "success_rate" in stats
 
     def test_stats_increment_after_action(self, loaded_game_state, bot_controller):
         """Test statistics increment after actions"""
         initial_stats = bot_controller.get_stats()
-        initial_actions = initial_stats['actions_taken']
+        initial_actions = initial_stats["actions_taken"]
 
         bot_controller.execute_step()
 
         new_stats = bot_controller.get_stats()
-        new_actions = new_stats['actions_taken']
+        new_actions = new_stats["actions_taken"]
 
         assert new_actions > initial_actions
 
@@ -91,8 +91,8 @@ class TestBotControllerStatistics:
 
         stats = bot_controller.get_stats()
 
-        assert stats['success_rate'] >= 0.0
-        assert stats['success_rate'] <= 100.0
+        assert stats["success_rate"] >= 0.0
+        assert stats["success_rate"] <= 100.0
 
 
 class TestBotControllerStrategyChange:
@@ -118,7 +118,7 @@ class TestBotControllerStrategyChange:
             pass  # May raise exception or fail silently
 
         # Strategy should remain unchanged or be handled gracefully
-        assert bot_controller.strategy_name in ['conservative', 'nonexistent']
+        assert bot_controller.strategy_name in ["conservative", "nonexistent"]
 
     def test_execute_with_different_strategies(self, loaded_game_state, bot_interface):
         """Test execution with different strategies"""
@@ -135,9 +135,11 @@ class TestBotControllerStrategyChange:
 class TestBotPlaythrough:
     """Tests for bot playing through multiple ticks"""
 
-    def test_playthrough_simple_game(self, game_state, trade_manager, bot_interface, replay_engine, price_series):
+    def test_playthrough_simple_game(
+        self, game_state, trade_manager, bot_interface, replay_engine, price_series
+    ):
         """Test bot playing through a game"""
-        replay_engine.load_game(price_series, 'test-game')
+        replay_engine.load_game(price_series, "test-game")
         bot_controller = BotController(bot_interface, "conservative")
 
         # Play through all ticks
@@ -148,29 +150,33 @@ class TestBotPlaythrough:
 
         # Verify bot took actions
         stats = bot_controller.get_stats()
-        assert stats['actions_taken'] > 0
+        assert stats["actions_taken"] > 0
 
-    def test_playthrough_tracks_balance(self, game_state, trade_manager, bot_interface, replay_engine, price_series):
+    def test_playthrough_tracks_balance(
+        self, game_state, trade_manager, bot_interface, replay_engine, price_series
+    ):
         """Test balance is tracked during playthrough"""
-        replay_engine.load_game(price_series, 'test-game')
+        replay_engine.load_game(price_series, "test-game")
         bot_controller = BotController(bot_interface, "conservative")
 
-        initial_balance = game_state.get('balance')
+        initial_balance = game_state.get("balance")
 
         # Play through game
         for i in range(len(price_series)):
             replay_engine.set_tick_index(i)
             bot_controller.execute_step()
 
-        final_balance = game_state.get('balance')
+        final_balance = game_state.get("balance")
 
         # Balance should have changed (may be higher or lower)
         # Just verify it's a valid decimal
         assert isinstance(final_balance, Decimal)
 
-    def test_playthrough_final_stats(self, game_state, trade_manager, bot_interface, replay_engine, price_series):
+    def test_playthrough_final_stats(
+        self, game_state, trade_manager, bot_interface, replay_engine, price_series
+    ):
         """Test final statistics after playthrough"""
-        replay_engine.load_game(price_series, 'test-game')
+        replay_engine.load_game(price_series, "test-game")
         bot_controller = BotController(bot_interface, "conservative")
 
         # Play through game
@@ -179,28 +185,28 @@ class TestBotPlaythrough:
             bot_controller.execute_step()
 
         stats = bot_controller.get_stats()
-        final_balance = game_state.get('balance')
-        pnl = final_balance - Decimal('0.100')
+        final_balance = game_state.get("balance")
+        pnl = final_balance - Decimal("0.100")
 
         # Verify stats exist
-        assert stats['actions_taken'] >= len(price_series)
-        assert 'success_rate' in stats
+        assert stats["actions_taken"] >= len(price_series)
+        assert "success_rate" in stats
 
     def test_playthrough_with_different_strategies(self, price_series):
         """Test playthrough with different strategies"""
-        from core import GameState, TradeManager, ReplayEngine
-        from bot import BotInterface, BotController
+        from bot import BotController, BotInterface
+        from core import GameState, ReplayEngine, TradeManager
 
-        strategies = ['conservative', 'aggressive', 'sidebet']
+        strategies = ["conservative", "aggressive", "sidebet"]
 
         for strategy_name in strategies:
             # Create fresh instances for each strategy
-            game_state = GameState(Decimal('0.100'))
+            game_state = GameState(Decimal("0.100"))
             trade_manager = TradeManager(game_state)
             bot_interface = BotInterface(game_state, trade_manager)
             replay_engine = ReplayEngine(game_state)
 
-            replay_engine.load_game(price_series, 'test-game')
+            replay_engine.load_game(price_series, "test-game")
             bot_controller = BotController(bot_interface, strategy_name)
 
             # Play through game
@@ -210,7 +216,7 @@ class TestBotPlaythrough:
 
             # Verify completed
             stats = bot_controller.get_stats()
-            assert stats['actions_taken'] > 0
+            assert stats["actions_taken"] > 0
 
 
 class TestBotControllerEdgeCases:
@@ -233,8 +239,8 @@ class TestBotControllerEdgeCases:
         # State should still be valid
         obs = bot_controller.bot.bot_get_observation()
         assert obs is not None
-        assert 'current_state' in obs
-        assert 'wallet' in obs
+        assert "current_state" in obs
+        assert "wallet" in obs
 
     def test_bot_handles_invalid_actions_gracefully(self, loaded_game_state, bot_controller):
         """Test bot handles invalid actions gracefully"""
@@ -242,4 +248,4 @@ class TestBotControllerEdgeCases:
         for _ in range(10):
             result = bot_controller.execute_step()
             assert result is not None
-            assert 'action' in result
+            assert "action" in result

@@ -5,11 +5,10 @@ GitHub Issue: #2
 TDD: Tests written FIRST to validate schema design
 """
 
-import pytest
+import sys
 from decimal import Decimal
 
-import sys
-sys.path.insert(0, '/home/nomad/Desktop/VECTRA-PLAYER/src')
+sys.path.insert(0, "/home/nomad/Desktop/VECTRA-PLAYER/src")
 
 from models.events.player_update import PlayerUpdate
 
@@ -120,9 +119,9 @@ class TestValidationAgainstLocal:
             local_position=Decimal("0.2222919"),
         )
 
-        assert result['valid'] is True
-        assert result['balance_drift'] == Decimal(0)
-        assert result['position_drift'] == Decimal(0)
+        assert result["valid"] is True
+        assert result["balance_drift"] == Decimal(0)
+        assert result["position_drift"] == Decimal(0)
 
     def test_validation_passes_within_tolerance(self):
         """Validation passes when drift is within tolerance."""
@@ -136,7 +135,7 @@ class TestValidationAgainstLocal:
             tolerance=Decimal("0.0001"),  # Larger tolerance
         )
 
-        assert result['valid'] is True
+        assert result["valid"] is True
 
     def test_validation_fails_balance_drift(self):
         """Validation fails when balance drift exceeds tolerance."""
@@ -149,10 +148,10 @@ class TestValidationAgainstLocal:
             local_position=Decimal("0.2222919"),
         )
 
-        assert result['valid'] is False
-        assert result['balance_drift'] > Decimal("0.000001")
-        assert result['server_balance'] == Decimal("3.967072345")
-        assert result['local_balance'] == Decimal("3.5")
+        assert result["valid"] is False
+        assert result["balance_drift"] > Decimal("0.000001")
+        assert result["server_balance"] == Decimal("3.967072345")
+        assert result["local_balance"] == Decimal("3.5")
 
     def test_validation_fails_position_drift(self):
         """Validation fails when position drift exceeds tolerance."""
@@ -165,8 +164,8 @@ class TestValidationAgainstLocal:
             local_position=Decimal("0.3"),  # Local says 0.3 - BUG!
         )
 
-        assert result['valid'] is False
-        assert result['position_drift'] == Decimal("0.2")
+        assert result["valid"] is False
+        assert result["position_drift"] == Decimal("0.2")
 
 
 class TestMetadataFields:
@@ -192,15 +191,15 @@ class TestMetadataFields:
             cash=Decimal("1.0"),
             meta_ts=datetime.utcnow(),
             meta_seq=42,
-            meta_source='cdp',
-            meta_session_id='session-123',
-            meta_game_id='game-456',
-            meta_player_id='did:privy:player789',
+            meta_source="cdp",
+            meta_session_id="session-123",
+            meta_game_id="game-456",
+            meta_player_id="did:privy:player789",
         )
 
         assert event.meta_seq == 42
-        assert event.meta_source == 'cdp'
-        assert event.meta_game_id == 'game-456'
+        assert event.meta_source == "cdp"
+        assert event.meta_game_id == "game-456"
 
 
 class TestForwardCompatibility:
@@ -218,4 +217,4 @@ class TestForwardCompatibility:
         # Model should parse without error
         assert event.cash == Decimal("1.0")
         # Extra fields captured
-        assert 'newServerField' in event.model_extra
+        assert "newServerField" in event.model_extra

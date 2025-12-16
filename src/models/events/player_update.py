@@ -16,7 +16,8 @@ GitHub Issue: #2
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -52,14 +53,18 @@ class PlayerUpdate(BaseModel):
     # ==========================================================================
     # INGESTION METADATA (added by VECTRA-PLAYER, not from socket)
     # ==========================================================================
-    meta_ts: Optional[datetime] = Field(None, description="Ingestion timestamp (UTC)")
-    meta_seq: Optional[int] = Field(None, description="Sequence number within session")
-    meta_source: Optional[Literal['cdp', 'public_ws', 'replay', 'ui']] = Field(None, description="Event source")
-    meta_session_id: Optional[str] = Field(None, description="Recording session UUID")
-    meta_game_id: Optional[str] = Field(None, description="Game ID (from context)")
-    meta_player_id: Optional[str] = Field(None, description="Player ID (from usernameStatus)")
+    meta_ts: datetime | None = Field(None, description="Ingestion timestamp (UTC)")
+    meta_seq: int | None = Field(None, description="Sequence number within session")
+    meta_source: Literal["cdp", "public_ws", "replay", "ui"] | None = Field(
+        None, description="Event source"
+    )
+    meta_session_id: str | None = Field(None, description="Recording session UUID")
+    meta_game_id: str | None = Field(None, description="Game ID (from context)")
+    meta_player_id: str | None = Field(None, description="Player ID (from usernameStatus)")
 
-    @field_validator('cash', 'cumulativePnL', 'positionQty', 'avgCost', 'totalInvested', mode='before')
+    @field_validator(
+        "cash", "cumulativePnL", "positionQty", "avgCost", "totalInvested", mode="before"
+    )
     @classmethod
     def coerce_decimal(cls, v):
         """Coerce float to Decimal for money precision."""
@@ -71,7 +76,8 @@ class PlayerUpdate(BaseModel):
 
     class Config:
         """Pydantic model configuration."""
-        extra = 'allow'
+
+        extra = "allow"
         use_enum_values = True
 
     @property
@@ -105,11 +111,11 @@ class PlayerUpdate(BaseModel):
         position_drift = abs(self.positionQty - local_position)
 
         return {
-            'valid': balance_drift <= tolerance and position_drift <= tolerance,
-            'balance_drift': balance_drift,
-            'position_drift': position_drift,
-            'server_balance': self.cash,
-            'local_balance': local_balance,
-            'server_position': self.positionQty,
-            'local_position': local_position,
+            "valid": balance_drift <= tolerance and position_drift <= tolerance,
+            "balance_drift": balance_drift,
+            "position_drift": position_drift,
+            "server_balance": self.cash,
+            "local_balance": local_balance,
+            "server_position": self.positionQty,
+            "local_position": local_position,
         }

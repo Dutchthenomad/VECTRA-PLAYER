@@ -14,20 +14,20 @@ File Organization:
         session_metadata.json
 """
 
+import atexit
 import json
 import logging
-import threading
-import atexit
 import os
+import threading
 import time
-from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, List
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 from models import (
-    StateSnapshot,
     DemoAction,
+    StateSnapshot,
     get_category_for_button,
     is_trade_action,
 )
@@ -52,7 +52,7 @@ class DemoRecorderSink:
 
     # Class-level lock for managing multiple instances
     _instances_lock = threading.Lock()
-    _active_instances: List['DemoRecorderSink'] = []
+    _active_instances: list["DemoRecorderSink"] = []
     _shutting_down = False
 
     def __init__(self, base_dir: Path, buffer_size: int = 100):
@@ -70,23 +70,23 @@ class DemoRecorderSink:
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
         # Session state
-        self._session_id: Optional[str] = None
-        self._session_dir: Optional[Path] = None
-        self._session_start_time: Optional[datetime] = None
+        self._session_id: str | None = None
+        self._session_dir: Path | None = None
+        self._session_start_time: datetime | None = None
         self._games_played: int = 0
         self._total_actions: int = 0
 
         # Game state
-        self._game_id: Optional[str] = None
+        self._game_id: str | None = None
         self._game_number: int = 0
-        self._game_file: Optional[Path] = None
+        self._game_file: Path | None = None
         self._file_handle = None
-        self._game_start_time: Optional[datetime] = None
+        self._game_start_time: datetime | None = None
 
         # Action tracking
-        self._buffer: List[str] = []
+        self._buffer: list[str] = []
         self._action_count: int = 0
-        self._pending_actions: Dict[str, DemoAction] = {}
+        self._pending_actions: dict[str, DemoAction] = {}
 
         # Thread safety
         self._lock = threading.RLock()
@@ -155,7 +155,7 @@ class DemoRecorderSink:
             logger.info(f"Started demonstration session: {self._session_id}")
             return self._session_id
 
-    def end_session(self) -> Optional[Dict[str, Any]]:
+    def end_session(self) -> dict[str, Any] | None:
         """
         End the current demonstration session.
 
@@ -174,30 +174,34 @@ class DemoRecorderSink:
 
             # Build summary
             summary = {
-                'session_id': self._session_id,
-                'games_played': self._games_played,
-                'total_actions': self._total_actions,
+                "session_id": self._session_id,
+                "games_played": self._games_played,
+                "total_actions": self._total_actions,
             }
 
             # Write session metadata
             if self._session_dir is not None:
                 metadata_file = self._session_dir / "session_metadata.json"
                 metadata = {
-                    '_metadata': {
-                        'session_id': self._session_id,
-                        'start_time': self._session_start_time.isoformat() if self._session_start_time else None,
-                        'end_time': datetime.now().isoformat(),
-                        'games_played': self._games_played,
-                        'total_actions': self._total_actions,
+                    "_metadata": {
+                        "session_id": self._session_id,
+                        "start_time": self._session_start_time.isoformat()
+                        if self._session_start_time
+                        else None,
+                        "end_time": datetime.now().isoformat(),
+                        "games_played": self._games_played,
+                        "total_actions": self._total_actions,
                     }
                 }
                 try:
-                    with open(metadata_file, 'w', encoding='utf-8') as f:
+                    with open(metadata_file, "w", encoding="utf-8") as f:
                         json.dump(metadata, f, indent=2)
                 except Exception as e:
                     logger.error(f"Failed to write session metadata: {e}")
 
-            logger.info(f"Ended session {self._session_id}: {self._games_played} games, {self._total_actions} actions")
+            logger.info(
+                f"Ended session {self._session_id}: {self._games_played} games, {self._total_actions} actions"
+            )
 
             # Reset session state
             self._session_id = None
@@ -244,22 +248,22 @@ class DemoRecorderSink:
 
             # Open file and write header
             try:
-                self._file_handle = open(self._game_file, 'w', encoding='utf-8', buffering=8192)
+                self._file_handle = open(self._game_file, "w", encoding="utf-8", buffering=8192)
                 header = {
-                    '_header': {
-                        'game_id': game_id,
-                        'session_id': self._session_id,
-                        'game_number': self._game_number,
-                        'start_time': self._game_start_time.isoformat(),
+                    "_header": {
+                        "game_id": game_id,
+                        "session_id": self._session_id,
+                        "game_number": self._game_number,
+                        "start_time": self._game_start_time.isoformat(),
                     }
                 }
-                self._file_handle.write(json.dumps(header) + '\n')
+                self._file_handle.write(json.dumps(header) + "\n")
                 self._file_handle.flush()
             except Exception as e:
                 if self._file_handle:
                     try:
                         self._file_handle.close()
-                    except (OSError, IOError):
+                    except OSError:
                         pass
                     self._file_handle = None
                 raise DemoRecordingError(f"Failed to start game recording: {e}")
@@ -272,7 +276,7 @@ class DemoRecorderSink:
             logger.info(f"Started game recording: {filename}")
             return self._game_file
 
-    def end_game(self) -> Optional[Dict[str, Any]]:
+    def end_game(self) -> dict[str, Any] | None:
         """
         End the current game recording.
 
@@ -291,16 +295,16 @@ class DemoRecorderSink:
             # Write footer
             if self._file_handle:
                 footer = {
-                    '_footer': {
-                        'game_id': self._game_id,
-                        'session_id': self._session_id,
-                        'game_number': self._game_number,
-                        'end_time': datetime.now().isoformat(),
-                        'action_count': self._action_count,
+                    "_footer": {
+                        "game_id": self._game_id,
+                        "session_id": self._session_id,
+                        "game_number": self._game_number,
+                        "end_time": datetime.now().isoformat(),
+                        "action_count": self._action_count,
                     }
                 }
                 try:
-                    self._file_handle.write(json.dumps(footer) + '\n')
+                    self._file_handle.write(json.dumps(footer) + "\n")
                     self._file_handle.flush()
                     os.fsync(self._file_handle.fileno())
                 except Exception as e:
@@ -309,15 +313,15 @@ class DemoRecorderSink:
                 # Close file
                 try:
                     self._file_handle.close()
-                except (OSError, IOError):
+                except OSError:
                     pass
                 self._file_handle = None
 
             # Build summary
             summary = {
-                'game_id': self._game_id,
-                'action_count': self._action_count,
-                'filepath': self._game_file,
+                "game_id": self._game_id,
+                "action_count": self._action_count,
+                "filepath": self._game_file,
             }
 
             # Update session counters
@@ -344,8 +348,8 @@ class DemoRecorderSink:
         self,
         button: str,
         state_before: StateSnapshot,
-        amount: Optional[Decimal] = None,
-        state_after: Optional[Dict[str, Any]] = None
+        amount: Decimal | None = None,
+        state_after: dict[str, Any] | None = None,
     ) -> str:
         """
         Record a button press action.
@@ -366,15 +370,11 @@ class DemoRecorderSink:
             # Create action with factory method if trade, else directly
             if is_trade_action(category):
                 action = DemoAction.create_trade_action(
-                    button=button,
-                    amount=amount or Decimal('0'),
-                    state_before=state_before
+                    button=button, amount=amount or Decimal("0"), state_before=state_before
                 )
             else:
                 action = DemoAction.create_bet_action(
-                    button=button,
-                    state_before=state_before,
-                    state_after=state_after
+                    button=button, state_before=state_before, state_after=state_after
                 )
 
             # Track pending trade actions for confirmation
@@ -393,10 +393,8 @@ class DemoRecorderSink:
             return action.action_id
 
     def record_confirmation(
-        self,
-        action_id: str,
-        server_data: Optional[Dict[str, Any]] = None
-    ) -> Optional[float]:
+        self, action_id: str, server_data: dict[str, Any] | None = None
+    ) -> float | None:
         """
         Record trade confirmation from server.
 
@@ -422,11 +420,11 @@ class DemoRecorderSink:
             # Find and replace in buffer
             for i, action_json in enumerate(self._buffer):
                 action_dict = json.loads(action_json)
-                if action_dict.get('action_id') == action_id:
+                if action_dict.get("action_id") == action_id:
                     # Update with confirmation
-                    action_dict['timestamp_confirmed'] = timestamp_confirmed
-                    action_dict['latency_ms'] = latency_ms
-                    action_dict['confirmation'] = server_data
+                    action_dict["timestamp_confirmed"] = timestamp_confirmed
+                    action_dict["latency_ms"] = latency_ms
+                    action_dict["confirmation"] = server_data
                     self._buffer[i] = json.dumps(action_dict)
                     break
 
@@ -457,11 +455,11 @@ class DemoRecorderSink:
 
             for action_json in self._buffer:
                 action_dict = json.loads(action_json)
-                action_id = action_dict.get('action_id')
+                action_id = action_dict.get("action_id")
 
                 # If forcing or action is not pending confirmation, write it
                 if force or action_id not in pending_ids:
-                    self._file_handle.write(action_json + '\n')
+                    self._file_handle.write(action_json + "\n")
                 else:
                     # Keep pending actions in buffer
                     remaining_buffer.append(action_json)
@@ -492,19 +490,19 @@ class DemoRecorderSink:
         with self._lock:
             return self._game_id is not None
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get complete recorder status"""
         with self._lock:
             return {
-                'session_id': self._session_id,
-                'session_active': self._session_id is not None,
-                'game_id': self._game_id,
-                'game_active': self._game_id is not None,
-                'games_played': self._games_played,
-                'total_actions': self._total_actions,
-                'current_game_actions': self._action_count,
-                'buffer_size': len(self._buffer),
-                'pending_confirmations': len(self._pending_actions),
+                "session_id": self._session_id,
+                "session_active": self._session_id is not None,
+                "game_id": self._game_id,
+                "game_active": self._game_id is not None,
+                "games_played": self._games_played,
+                "total_actions": self._total_actions,
+                "current_game_actions": self._action_count,
+                "buffer_size": len(self._buffer),
+                "pending_confirmations": len(self._pending_actions),
             }
 
     # -------------------------------------------------------------------------

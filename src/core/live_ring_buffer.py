@@ -8,7 +8,7 @@ a fixed-size buffer that automatically discards oldest ticks when full.
 import logging
 import threading
 from collections import deque
-from typing import List, Optional
+
 from models import GameTick
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class LiveRingBuffer:
             self._buffer.append(tick)
             return True
 
-    def get_latest(self, n: Optional[int] = None) -> List[GameTick]:
+    def get_latest(self, n: int | None = None) -> list[GameTick]:
         """
         Get latest N ticks (or all if n=None)
 
@@ -81,7 +81,7 @@ class LiveRingBuffer:
             # Get last n items (or fewer if buffer is smaller)
             return list(self._buffer)[-n:]
 
-    def get_all(self) -> List[GameTick]:
+    def get_all(self) -> list[GameTick]:
         """
         Get all ticks in buffer
 
@@ -126,7 +126,7 @@ class LiveRingBuffer:
         """
         return self.max_size
 
-    def get_oldest_tick(self) -> Optional[GameTick]:
+    def get_oldest_tick(self) -> GameTick | None:
         """
         Get oldest tick in buffer
 
@@ -138,7 +138,7 @@ class LiveRingBuffer:
                 return None
             return self._buffer[0]
 
-    def get_newest_tick(self) -> Optional[GameTick]:
+    def get_newest_tick(self) -> GameTick | None:
         """
         Get newest tick in buffer
 
@@ -150,7 +150,7 @@ class LiveRingBuffer:
                 return None
             return self._buffer[-1]
 
-    def get_tick_range(self, start_tick: int, end_tick: int) -> List[GameTick]:
+    def get_tick_range(self, start_tick: int, end_tick: int) -> list[GameTick]:
         """
         Get ticks within a specific tick number range
 
@@ -162,10 +162,7 @@ class LiveRingBuffer:
             List of GameTick objects within range
         """
         with self._lock:
-            return [
-                tick for tick in self._buffer
-                if start_tick <= tick.tick <= end_tick
-            ]
+            return [tick for tick in self._buffer if start_tick <= tick.tick <= end_tick]
 
     def __len__(self) -> int:
         """Get current buffer size (supports len(buffer))"""

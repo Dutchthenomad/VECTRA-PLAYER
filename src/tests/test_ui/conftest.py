@@ -21,4 +21,3 @@ def _require_tk_display():
         root.destroy()
     except tk.TclError:
         pytest.skip("Tk display not available (headless environment)")
-

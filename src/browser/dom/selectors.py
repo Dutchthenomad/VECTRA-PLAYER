@@ -31,7 +31,7 @@ BUY_BUTTON_SELECTORS = [
     'div[class*="_buttonSection_"]:nth-child(1) button',
     '[class*="_buttonsRow_"] > div:first-child button',
     # Regex starts-with (handles "BUY+0.030 SOL")
-    'button >> text=/^BUY/i',
+    "button >> text=/^BUY/i",
     # Case-insensitive class patterns
     'button[class*="buy" i]',
     'button[class*="Buy" i]',
@@ -59,7 +59,7 @@ SELL_BUTTON_SELECTORS = [
     'div[class*="_buttonSection_"]:nth-child(2) button',
     '[class*="_buttonsRow_"] > div:nth-child(2) button',
     # Regex starts-with (handles "SELL-X.XXX SOL")
-    'button >> text=/^SELL/i',
+    "button >> text=/^SELL/i",
     # Case-insensitive class patterns
     'button[class*="sell" i]',
     'button[class*="Sell" i]',
@@ -80,14 +80,14 @@ SELL_BUTTON_SELECTORS = [
 # UPDATED 2025-12-01: New rugs.fun UI uses .bet-button class
 SIDEBET_BUTTON_SELECTORS = [
     # Primary: New rugs.fun specific class
-    '.bet-button',
+    ".bet-button",
     '[class*="bet-button"]',
-    'div.bet-button',
+    "div.bet-button",
     '[class*="sidebet-banner"] [class*="bet-button"]',
     '[class*="sidebet-container"] [class*="bet-button"]',
     # Regex starts-with
-    'button >> text=/^SIDE/i',
-    'button >> text=/^SIDEBET/i',
+    "button >> text=/^SIDE/i",
+    "button >> text=/^SIDEBET/i",
     # Case-insensitive class patterns
     'button[class*="side" i]',
     'button[class*="Side" i]',
@@ -130,7 +130,7 @@ CLEAR_BUTTON_SELECTORS = [
     '[class*="_amountInputContainer_"] [class*="_clearButton_"]',
     # Handle various X/clear button representations
     # NOTE: Exact "X" text match should be tried before starts-with to avoid matching "X2"
-    'button >> text=/^[X×✕✖]$/i',  # Exact single char match only
+    "button >> text=/^[X×✕✖]$/i",  # Exact single char match only
     'button:has-text("X")',
     'button[class*="clear" i]',
     'button[class*="clearButton" i]',
@@ -140,36 +140,36 @@ CLEAR_BUTTON_SELECTORS = [
 ]
 
 INCREMENT_001_SELECTORS = [
-    'button >> text=/^\\+0\\.001/i',
+    "button >> text=/^\\+0\\.001/i",
     'button:has-text("+0.001")',
     'button:has-text("+ 0.001")',
     'button[data-increment="0.001"]',
 ]
 
 INCREMENT_01_SELECTORS = [
-    'button >> text=/^\\+0\\.01[^0]/i',  # Match +0.01 but not +0.001
+    "button >> text=/^\\+0\\.01[^0]/i",  # Match +0.01 but not +0.001
     'button:has-text("+0.01")',
     'button:has-text("+ 0.01")',
     'button[data-increment="0.01"]',
 ]
 
 INCREMENT_10_SELECTORS = [
-    'button >> text=/^\\+0\\.1[^0]/i',  # Match +0.1 but not +0.01
+    "button >> text=/^\\+0\\.1[^0]/i",  # Match +0.1 but not +0.01
     'button:has-text("+0.1")',
     'button:has-text("+ 0.1")',
     'button[data-increment="0.1"]',
 ]
 
 INCREMENT_1_SELECTORS = [
-    'button >> text=/^\\+1$/i',
+    "button >> text=/^\\+1$/i",
     'button:has-text("+1")',
     'button:has-text("+ 1")',
     'button[data-increment="1"]',
 ]
 
 HALF_BUTTON_SELECTORS = [
-    'button >> text=/^1\\/2/i',
-    'button >> text=/^½/i',
+    "button >> text=/^1\\/2/i",
+    "button >> text=/^½/i",
     'button:has-text("1/2")',
     'button:has-text("÷2")',
     'button:has-text("½")',
@@ -178,7 +178,7 @@ HALF_BUTTON_SELECTORS = [
 ]
 
 DOUBLE_BUTTON_SELECTORS = [
-    'button >> text=/^[X×]2/i',
+    "button >> text=/^[X×]2/i",
     'button:has-text("X2")',
     'button:has-text("×2")',
     'button:has-text("x2")',
@@ -187,8 +187,8 @@ DOUBLE_BUTTON_SELECTORS = [
 ]
 
 MAX_BUTTON_SELECTORS = [
-    'button >> text=/^MAX/i',
-    'button >> text=/^ALL/i',
+    "button >> text=/^MAX/i",
+    "button >> text=/^ALL/i",
     'button:has-text("MAX")',
     'button:has-text("Max")',
     'button:has-text("All")',
@@ -208,7 +208,7 @@ PERCENTAGE_10_SELECTORS = [
     '[class*="_sellControlButtonsContainer_"] button:nth-child(1)',
     '[class*="_percentageBtn_"]:nth-child(1)',
     # Fallback text-based
-    'button >> text=/^10%/i',
+    "button >> text=/^10%/i",
     'button:has-text("10%")',
     'button:has-text("10 %")',
     '[data-percentage="10%"]',
@@ -222,7 +222,7 @@ PERCENTAGE_25_SELECTORS = [
     '[class*="_sellControlButtonsContainer_"] button:nth-child(2)',
     '[class*="_percentageBtn_"]:nth-child(2)',
     # Fallback text-based
-    'button >> text=/^25%/i',
+    "button >> text=/^25%/i",
     'button:has-text("25%")',
     'button:has-text("25 %")',
     '[data-percentage="25%"]',
@@ -236,7 +236,7 @@ PERCENTAGE_50_SELECTORS = [
     '[class*="_sellControlButtonsContainer_"] button:nth-child(3)',
     '[class*="_percentageBtn_"]:nth-child(3)',
     # Fallback text-based
-    'button >> text=/^50%/i',
+    "button >> text=/^50%/i",
     'button:has-text("50%")',
     'button:has-text("50 %")',
     '[data-percentage="50%"]',
@@ -250,8 +250,8 @@ PERCENTAGE_100_SELECTORS = [
     '[class*="_sellControlButtonsContainer_"] button:nth-child(4)',
     '[class*="_percentageBtn_"]:nth-child(4)',
     # Fallback text-based
-    'button >> text=/^100%/i',
-    'button >> text=/^ALL/i',
+    "button >> text=/^100%/i",
+    "button >> text=/^ALL/i",
     'button:has-text("100%")',
     'button:has-text("100 %")',
     'button:has-text("ALL")',
@@ -265,16 +265,16 @@ PERCENTAGE_100_SELECTORS = [
 # ============================================================================
 
 BALANCE_SELECTORS = [
-    'text=/Balance.*([0-9.]+)\\s*SOL/i',
-    '[data-balance]',
-    '.balance',
+    "text=/Balance.*([0-9.]+)\\s*SOL/i",
+    "[data-balance]",
+    ".balance",
     'span:has-text("SOL")',
 ]
 
 POSITION_SELECTORS = [
-    '[data-position]',
-    '.position',
-    'text=/Position.*([0-9.]+)x/i',
+    "[data-position]",
+    ".position",
+    "text=/Position.*([0-9.]+)x/i",
 ]
 
 # ============================================================================
@@ -282,14 +282,14 @@ POSITION_SELECTORS = [
 # ============================================================================
 
 INCREMENT_SELECTOR_MAP = {
-    'X': CLEAR_BUTTON_SELECTORS,
-    '+0.001': INCREMENT_001_SELECTORS,
-    '+0.01': INCREMENT_01_SELECTORS,
-    '+0.1': INCREMENT_10_SELECTORS,
-    '+1': INCREMENT_1_SELECTORS,
-    '1/2': HALF_BUTTON_SELECTORS,
-    'X2': DOUBLE_BUTTON_SELECTORS,
-    'MAX': MAX_BUTTON_SELECTORS,
+    "X": CLEAR_BUTTON_SELECTORS,
+    "+0.001": INCREMENT_001_SELECTORS,
+    "+0.01": INCREMENT_01_SELECTORS,
+    "+0.1": INCREMENT_10_SELECTORS,
+    "+1": INCREMENT_1_SELECTORS,
+    "1/2": HALF_BUTTON_SELECTORS,
+    "X2": DOUBLE_BUTTON_SELECTORS,
+    "MAX": MAX_BUTTON_SELECTORS,
 }
 
 PERCENTAGE_SELECTOR_MAP = {
@@ -311,27 +311,28 @@ PERCENTAGE_TEXT_MAP = {
 # SELECTOR UTILITIES (Phase 9.3 Production Fix)
 # ============================================================================
 
+
 def get_button_text_patterns(button_type: str) -> list:
     """
     Get text patterns for a button type.
     Used by multi-strategy selector system in browser_bridge.py.
     """
     patterns = {
-        'BUY': ['BUY', 'Buy', 'buy'],
-        'SELL': ['SELL', 'Sell', 'sell'],
-        'SIDEBET': ['SIDEBET', 'SIDE', 'Side', 'sidebet', 'side'],
-        'X': ['×', '✕', 'X', 'x', '✖'],
-        '+0.001': ['+0.001', '+ 0.001'],
-        '+0.01': ['+0.01', '+ 0.01'],
-        '+0.1': ['+0.1', '+ 0.1'],
-        '+1': ['+1', '+ 1'],
-        '1/2': ['1/2', '½', '0.5x', 'Half'],
-        'X2': ['X2', 'x2', '2x', '2X', 'Double'],
-        'MAX': ['MAX', 'Max', 'max', 'ALL'],
-        '10%': ['10%', '10 %'],
-        '25%': ['25%', '25 %'],
-        '50%': ['50%', '50 %'],
-        '100%': ['100%', '100 %', 'ALL'],
+        "BUY": ["BUY", "Buy", "buy"],
+        "SELL": ["SELL", "Sell", "sell"],
+        "SIDEBET": ["SIDEBET", "SIDE", "Side", "sidebet", "side"],
+        "X": ["×", "✕", "X", "x", "✖"],
+        "+0.001": ["+0.001", "+ 0.001"],
+        "+0.01": ["+0.01", "+ 0.01"],
+        "+0.1": ["+0.1", "+ 0.1"],
+        "+1": ["+1", "+ 1"],
+        "1/2": ["1/2", "½", "0.5x", "Half"],
+        "X2": ["X2", "x2", "2x", "2X", "Double"],
+        "MAX": ["MAX", "Max", "max", "ALL"],
+        "10%": ["10%", "10 %"],
+        "25%": ["25%", "25 %"],
+        "50%": ["50%", "50 %"],
+        "100%": ["100%", "100 %", "ALL"],
     }
     return patterns.get(button_type, [button_type])
 
@@ -341,8 +342,8 @@ def get_class_patterns(button_type: str) -> list:
     Get class name patterns for fallback matching.
     """
     patterns = {
-        'BUY': ['buy', 'purchase', 'long', 'bid'],
-        'SELL': ['sell', 'exit', 'short', 'ask'],
-        'SIDEBET': ['side', 'sidebet', 'hedge', 'insurance'],
+        "BUY": ["buy", "purchase", "long", "bid"],
+        "SELL": ["sell", "exit", "short", "ask"],
+        "SIDEBET": ["side", "sidebet", "hedge", "insurance"],
     }
     return patterns.get(button_type, [button_type.lower()])

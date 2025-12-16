@@ -5,25 +5,19 @@ GitHub Issue: #1
 TDD: Tests written FIRST to validate schema design
 """
 
-import pytest
-from decimal import Decimal
-from datetime import datetime
-
 # Import will fail until schema is in Python path
 import sys
-sys.path.insert(0, '/home/nomad/Desktop/VECTRA-PLAYER/src')
+from decimal import Decimal
+
+sys.path.insert(0, "/home/nomad/Desktop/VECTRA-PLAYER/src")
 
 from models.events.game_state_update import (
+    AvailableShitcoin,
+    GameHistoryEntry,
     GameStateUpdate,
     LeaderboardEntry,
     PartialPrices,
-    GameHistoryEntry,
-    ProvablyFair,
-    RugRoyale,
-    AvailableShitcoin,
     Rugpool,
-    SideBet,
-    ShortPosition,
 )
 
 
@@ -449,15 +443,11 @@ class TestHelperMethods:
     def test_is_game_active(self):
         """Test is_game_active property."""
         # Active game
-        active = GameStateUpdate(
-            gameId="test", active=True, rugged=False, price=1.0, tickCount=0
-        )
+        active = GameStateUpdate(gameId="test", active=True, rugged=False, price=1.0, tickCount=0)
         assert active.is_game_active is True
 
         # Rugged game
-        rugged = GameStateUpdate(
-            gameId="test", active=True, rugged=True, price=1.0, tickCount=0
-        )
+        rugged = GameStateUpdate(gameId="test", active=True, rugged=True, price=1.0, tickCount=0)
         assert rugged.is_game_active is False
 
         # Inactive game
@@ -469,9 +459,7 @@ class TestHelperMethods:
     def test_is_cooldown(self):
         """Test is_cooldown property."""
         # During game
-        in_game = GameStateUpdate(
-            gameId="test", active=True, rugged=False, price=1.0, tickCount=0
-        )
+        in_game = GameStateUpdate(gameId="test", active=True, rugged=False, price=1.0, tickCount=0)
         assert in_game.is_cooldown is False
 
         # In cooldown
@@ -505,7 +493,7 @@ class TestForwardCompatibility:
         # Model should parse without error
         assert event.gameId == "test"
         # Extra fields captured
-        assert hasattr(event, 'newFieldFromServer') or 'newFieldFromServer' in event.model_extra
+        assert hasattr(event, "newFieldFromServer") or "newFieldFromServer" in event.model_extra
 
 
 class TestMetadataFields:

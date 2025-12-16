@@ -24,29 +24,31 @@ Tests cover:
 - Reset on clean game
 """
 
-import pytest
 from unittest.mock import Mock
-from datetime import datetime
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
 from sources.data_integrity_monitor import (
     DataIntegrityMonitor,
-    ThresholdType,
     IntegrityIssue,
+    ThresholdType,
 )
-from models.recording_config import MonitorThresholdType
 
 
 class TestEnumValues:
     """Tests for enum values"""
 
-    @pytest.mark.parametrize("enum_val,expected", [
-        (ThresholdType.TICKS, "ticks"),
-        (ThresholdType.GAMES, "games"),
-        (IntegrityIssue.TICK_GAP, "tick_gap"),
-        (IntegrityIssue.CONNECTION_LOST, "connection_lost"),
-        (IntegrityIssue.ABNORMAL_GAME_END, "abnormal_game_end"),
-    ])
+    @pytest.mark.parametrize(
+        "enum_val,expected",
+        [
+            (ThresholdType.TICKS, "ticks"),
+            (ThresholdType.GAMES, "games"),
+            (IntegrityIssue.TICK_GAP, "tick_gap"),
+            (IntegrityIssue.CONNECTION_LOST, "connection_lost"),
+            (IntegrityIssue.ABNORMAL_GAME_END, "abnormal_game_end"),
+        ],
+    )
     def test_enum_values(self, enum_val, expected):
         """Test all enum values are correct"""
         assert enum_val.value == expected
@@ -55,27 +57,32 @@ class TestEnumValues:
 class TestDataIntegrityMonitorInitialization:
     """Tests for DataIntegrityMonitor initialization"""
 
-    @pytest.mark.parametrize("attr,expected", [
-        ("threshold_type", ThresholdType.TICKS),
-        ("threshold_value", 20),
-        ("consecutive_tick_gaps", 0),
-        ("consecutive_bad_games", 0),
-        ("is_triggered", False),
-    ])
+    @pytest.mark.parametrize(
+        "attr,expected",
+        [
+            ("threshold_type", ThresholdType.TICKS),
+            ("threshold_value", 20),
+            ("consecutive_tick_gaps", 0),
+            ("consecutive_bad_games", 0),
+            ("is_triggered", False),
+        ],
+    )
     def test_default_values(self, attr, expected):
         """Test all default values are correct"""
         monitor = DataIntegrityMonitor()
         assert getattr(monitor, attr) == expected
 
-    @pytest.mark.parametrize("threshold_type,threshold_value", [
-        (ThresholdType.TICKS, 45),
-        (ThresholdType.GAMES, 3),
-    ])
+    @pytest.mark.parametrize(
+        "threshold_type,threshold_value",
+        [
+            (ThresholdType.TICKS, 45),
+            (ThresholdType.GAMES, 3),
+        ],
+    )
     def test_custom_threshold(self, threshold_type, threshold_value):
         """Test custom threshold configuration"""
         monitor = DataIntegrityMonitor(
-            threshold_type=threshold_type,
-            threshold_value=threshold_value
+            threshold_type=threshold_type, threshold_value=threshold_value
         )
         assert monitor.threshold_type == threshold_type
         assert monitor.threshold_value == threshold_value
@@ -125,10 +132,7 @@ class TestDataIntegrityMonitorTickTracking:
 
     def test_on_tick_triggers_at_threshold(self):
         """Test monitor triggers when tick gap threshold reached"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.TICKS,
-            threshold_value=5
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.TICKS, threshold_value=5)
         callback = Mock()
         monitor.on_threshold_exceeded = callback
 
@@ -154,10 +158,7 @@ class TestDataIntegrityMonitorConnectionEvents:
 
     def test_on_connection_lost_triggers_immediately(self):
         """Test connection lost triggers immediately"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.TICKS,
-            threshold_value=5
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.TICKS, threshold_value=5)
         callback = Mock()
         monitor.on_threshold_exceeded = callback
 
@@ -202,10 +203,7 @@ class TestDataIntegrityMonitorGameTracking:
 
     def test_on_game_end_abnormal_increments_counter(self):
         """Test abnormal game end increments bad games counter"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.GAMES,
-            threshold_value=3
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.GAMES, threshold_value=3)
         monitor.on_game_start(game_id="game-1")
         monitor.on_game_end(game_id="game-1", clean=False)
 
@@ -213,10 +211,7 @@ class TestDataIntegrityMonitorGameTracking:
 
     def test_on_game_end_abnormal_triggers_at_threshold(self):
         """Test abnormal game ends trigger at threshold"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.GAMES,
-            threshold_value=2
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.GAMES, threshold_value=2)
         callback = Mock()
         monitor.on_threshold_exceeded = callback
 
@@ -236,10 +231,7 @@ class TestDataIntegrityMonitorGameTracking:
 
     def test_on_game_end_clean_resets_bad_games_counter(self):
         """Test clean game end resets bad games counter"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.GAMES,
-            threshold_value=3
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.GAMES, threshold_value=3)
         # Two bad games
         monitor.on_game_start(game_id="game-1")
         monitor.on_game_end(game_id="game-1", clean=False)
@@ -306,10 +298,7 @@ class TestDataIntegrityMonitorThresholdBehavior:
 
     def test_ticks_threshold_ignores_game_count(self):
         """Test ticks threshold doesn't trigger on bad games alone"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.TICKS,
-            threshold_value=10
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.TICKS, threshold_value=10)
         callback = Mock()
         monitor.on_threshold_exceeded = callback
 
@@ -326,10 +315,7 @@ class TestDataIntegrityMonitorThresholdBehavior:
 
     def test_games_threshold_ignores_tick_gaps(self):
         """Test games threshold doesn't trigger on tick gaps alone"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.GAMES,
-            threshold_value=3
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.GAMES, threshold_value=3)
         callback = Mock()
         monitor.on_threshold_exceeded = callback
 
@@ -414,10 +400,7 @@ class TestDataIntegrityMonitorHelpers:
 
     def test_get_status_returns_dict(self):
         """Test get_status returns status dictionary"""
-        monitor = DataIntegrityMonitor(
-            threshold_type=ThresholdType.TICKS,
-            threshold_value=20
-        )
+        monitor = DataIntegrityMonitor(threshold_type=ThresholdType.TICKS, threshold_value=20)
         status = monitor.get_status()
 
         assert isinstance(status, dict)

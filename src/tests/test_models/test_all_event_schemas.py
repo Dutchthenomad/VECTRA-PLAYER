@@ -10,41 +10,37 @@ Comprehensive tests for:
 - Issue #8: System events
 """
 
-import pytest
-from decimal import Decimal
-from datetime import datetime
-
 import sys
-sys.path.insert(0, '/home/nomad/Desktop/VECTRA-PLAYER/src')
+from decimal import Decimal
+
+sys.path.insert(0, "/home/nomad/Desktop/VECTRA-PLAYER/src")
 
 from models.events import (
-    # Issue #3
-    UsernameStatus,
+    AuthEvent,
+    # Issue #7
+    BuyOrderRequest,
+    ConnectionEvent,
+    GameLifecycleEvent,
+    NewTrade,
     # Issue #4
     PlayerLeaderboardPosition,
-    LeaderboardPlayerEntry,
-    # Issue #5
-    NewTrade,
+    SellOrderRequest,
+    SessionEvent,
     # Issue #6
     SidebetRequest,
     SidebetResponse,
-    # Issue #7
-    BuyOrderRequest,
-    SellOrderRequest,
-    TradeOrderResponse,
+    SystemEvent,
     # Issue #8
     SystemEventType,
-    SystemEvent,
-    ConnectionEvent,
-    AuthEvent,
-    GameLifecycleEvent,
-    SessionEvent,
+    TradeOrderResponse,
+    # Issue #3
+    UsernameStatus,
 )
-
 
 # =============================================================================
 # ISSUE #3: UsernameStatus
 # =============================================================================
+
 
 class TestUsernameStatus:
     """Tests for usernameStatus event."""
@@ -84,6 +80,7 @@ class TestUsernameStatus:
 # =============================================================================
 # ISSUE #4: PlayerLeaderboardPosition
 # =============================================================================
+
 
 class TestPlayerLeaderboardPosition:
     """Tests for playerLeaderboardPosition event."""
@@ -137,6 +134,7 @@ class TestPlayerLeaderboardPosition:
 # ISSUE #5: NewTrade
 # =============================================================================
 
+
 class TestNewTrade:
     """Tests for standard/newTrade event."""
 
@@ -175,6 +173,7 @@ class TestNewTrade:
 # =============================================================================
 # ISSUE #6: Sidebet Events
 # =============================================================================
+
 
 class TestSidebetEvents:
     """Tests for sidebet request/response."""
@@ -228,6 +227,7 @@ class TestSidebetEvents:
 # ISSUE #7: Trade Order Events
 # =============================================================================
 
+
 class TestTradeOrderEvents:
     """Tests for buy/sell order events."""
 
@@ -271,6 +271,7 @@ class TestTradeOrderEvents:
 # =============================================================================
 # ISSUE #8: System Events
 # =============================================================================
+
 
 class TestSystemEvents:
     """Tests for system lifecycle events."""
@@ -347,6 +348,7 @@ class TestSystemEvents:
 # IMPORT TEST
 # =============================================================================
 
+
 class TestModuleImports:
     """Verify all schemas can be imported."""
 
@@ -354,13 +356,13 @@ class TestModuleImports:
         """Ensure all exports are accessible."""
         from models.events import (
             GameStateUpdate,
-            PlayerUpdate,
-            UsernameStatus,
-            PlayerLeaderboardPosition,
             NewTrade,
+            PlayerLeaderboardPosition,
+            PlayerUpdate,
             SidebetResponse,
-            TradeOrderResponse,
             SystemEvent,
+            TradeOrderResponse,
+            UsernameStatus,
         )
 
         # Just verify they're all classes

@@ -8,11 +8,11 @@ Floating widget that displays bot execution timing metrics.
 - Mode-aware: Only visible in UI_LAYER mode
 """
 
-import tkinter as tk
-from typing import Optional, Dict, Any
 import json
 import logging
+import tkinter as tk
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +46,11 @@ class TimingOverlay:
         self.window = tk.Toplevel(parent)
         self.window.title("")  # No title bar text
         self.window.overrideredirect(True)  # Remove window decorations
-        self.window.attributes('-topmost', True)  # Always on top
-        self.window.configure(bg='#1a1a1a')
+        self.window.attributes("-topmost", True)  # Always on top
+        self.window.configure(bg="#1a1a1a")
 
         # State
-        self.expanded = self.config.get('expanded', False)
+        self.expanded = self.config.get("expanded", False)
         self.dragging = False
         self.drag_start_x = 0
         self.drag_start_y = 0
@@ -62,8 +62,8 @@ class TimingOverlay:
         self.parent.update_idletasks()
 
         # Get default position if not in config
-        x = self.config.get('x')
-        y = self.config.get('y')
+        x = self.config.get("x")
+        y = self.config.get("y")
 
         # If no saved position, calculate default (bottom-right corner)
         if x is None or y is None:
@@ -81,17 +81,13 @@ class TimingOverlay:
 
         logger.info("TimingOverlay initialized")
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load persistent configuration"""
-        default_config = {
-            'x': None,
-            'y': None,
-            'expanded': False
-        }
+        default_config = {"x": None, "y": None, "expanded": False}
 
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file) as f:
                     loaded = json.load(f)
                     default_config.update(loaded)
                     logger.debug(f"Loaded timing overlay config: {loaded}")
@@ -104,15 +100,15 @@ class TimingOverlay:
         """Save persistent configuration"""
         try:
             # Get current position
-            self.config['x'] = self.window.winfo_x()
-            self.config['y'] = self.window.winfo_y()
-            self.config['expanded'] = self.expanded
+            self.config["x"] = self.window.winfo_x()
+            self.config["y"] = self.window.winfo_y()
+            self.config["expanded"] = self.expanded
 
             # Ensure parent directory exists
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Write config
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=2)
 
             logger.debug(f"Saved timing overlay config: {self.config}")
@@ -130,23 +126,18 @@ class TimingOverlay:
     def _create_ui(self):
         """Create overlay UI"""
         # Main container
-        self.container = tk.Frame(
-            self.window,
-            bg='#2a2a2a',
-            relief=tk.RAISED,
-            bd=2
-        )
+        self.container = tk.Frame(self.window, bg="#2a2a2a", relief=tk.RAISED, bd=2)
         self.container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
         # Header (draggable, clickable)
-        self.header = tk.Frame(self.container, bg='#3a3a3a', cursor='fleur')
+        self.header = tk.Frame(self.container, bg="#3a3a3a", cursor="fleur")
         self.header.pack(fill=tk.X)
 
         # Unicode symbols with ASCII fallback
         try:
             # Test if font supports Unicode symbols
             test_label = tk.Label(self.header, text="⏱️")
-            test_font = test_label.cget('font')
+            test_font = test_label.cget("font")
             # If this doesn't raise, Unicode is supported
             timer_symbol = "⏱️"
             expand_symbol = "▼"
@@ -164,10 +155,10 @@ class TimingOverlay:
         self.title_label = tk.Label(
             self.header,
             text=f"{timer_symbol} TIMING",
-            font=('Arial', 9, 'bold'),
-            bg='#3a3a3a',
-            fg='#ffffff',
-            cursor='fleur'
+            font=("Arial", 9, "bold"),
+            bg="#3a3a3a",
+            fg="#ffffff",
+            cursor="fleur",
         )
         self.title_label.pack(side=tk.LEFT, padx=5, pady=3)
 
@@ -175,10 +166,10 @@ class TimingOverlay:
         self.toggle_label = tk.Label(
             self.header,
             text=expand_symbol if self.expanded else collapse_symbol,
-            font=('Arial', 8),
-            bg='#3a3a3a',
-            fg='#888888',
-            cursor='hand2'
+            font=("Arial", 8),
+            bg="#3a3a3a",
+            fg="#888888",
+            cursor="hand2",
         )
         self.toggle_label.pack(side=tk.RIGHT, padx=5)
 
@@ -188,65 +179,45 @@ class TimingOverlay:
         self.check_symbol = check_symbol
 
         # Bind drag events to header
-        self.header.bind('<Button-1>', self._start_drag)
-        self.header.bind('<B1-Motion>', self._on_drag)
-        self.header.bind('<ButtonRelease-1>', self._stop_drag)
-        self.title_label.bind('<Button-1>', self._start_drag)
-        self.title_label.bind('<B1-Motion>', self._on_drag)
-        self.title_label.bind('<ButtonRelease-1>', self._stop_drag)
+        self.header.bind("<Button-1>", self._start_drag)
+        self.header.bind("<B1-Motion>", self._on_drag)
+        self.header.bind("<ButtonRelease-1>", self._stop_drag)
+        self.title_label.bind("<Button-1>", self._start_drag)
+        self.title_label.bind("<B1-Motion>", self._on_drag)
+        self.title_label.bind("<ButtonRelease-1>", self._stop_drag)
 
         # Bind toggle event
-        self.toggle_label.bind('<Button-1>', self._toggle_expand)
+        self.toggle_label.bind("<Button-1>", self._toggle_expand)
 
         # Stats container (collapsed state)
-        self.compact_frame = tk.Frame(self.container, bg='#2a2a2a')
+        self.compact_frame = tk.Frame(self.container, bg="#2a2a2a")
         self.compact_frame.pack(fill=tk.X, padx=5, pady=5)
 
         self.delay_label = tk.Label(
-            self.compact_frame,
-            text="0ms",
-            font=('Arial', 11, 'bold'),
-            bg='#2a2a2a',
-            fg='#00ff88'
+            self.compact_frame, text="0ms", font=("Arial", 11, "bold"), bg="#2a2a2a", fg="#00ff88"
         )
         self.delay_label.pack(anchor=tk.W)
 
         self.success_label = tk.Label(
-            self.compact_frame,
-            text="0% ✓",
-            font=('Arial', 10),
-            bg='#2a2a2a',
-            fg='#ffffff'
+            self.compact_frame, text="0% ✓", font=("Arial", 10), bg="#2a2a2a", fg="#ffffff"
         )
         self.success_label.pack(anchor=tk.W)
 
         # Expanded stats (initially hidden)
-        self.expanded_frame = tk.Frame(self.container, bg='#2a2a2a')
+        self.expanded_frame = tk.Frame(self.container, bg="#2a2a2a")
 
         self.exec_count_label = tk.Label(
-            self.expanded_frame,
-            text="Executions: 0",
-            font=('Arial', 9),
-            bg='#2a2a2a',
-            fg='#cccccc'
+            self.expanded_frame, text="Executions: 0", font=("Arial", 9), bg="#2a2a2a", fg="#cccccc"
         )
         self.exec_count_label.pack(anchor=tk.W, padx=5, pady=2)
 
         self.p50_label = tk.Label(
-            self.expanded_frame,
-            text="P50: 0ms",
-            font=('Arial', 9),
-            bg='#2a2a2a',
-            fg='#cccccc'
+            self.expanded_frame, text="P50: 0ms", font=("Arial", 9), bg="#2a2a2a", fg="#cccccc"
         )
         self.p50_label.pack(anchor=tk.W, padx=5, pady=2)
 
         self.p95_label = tk.Label(
-            self.expanded_frame,
-            text="P95: 0ms",
-            font=('Arial', 9),
-            bg='#2a2a2a',
-            fg='#cccccc'
+            self.expanded_frame, text="P95: 0ms", font=("Arial", 9), bg="#2a2a2a", fg="#cccccc"
         )
         self.p95_label.pack(anchor=tk.W, padx=5, pady=2)
 
@@ -292,7 +263,7 @@ class TimingOverlay:
         # Save state
         self._save_config()
 
-    def update_stats(self, stats: Dict[str, Any]):
+    def update_stats(self, stats: dict[str, Any]):
         """
         Update displayed timing stats (THREAD-SAFE)
 
@@ -304,11 +275,11 @@ class TimingOverlay:
         """
         try:
             # Format compact stats (safe - no GUI access)
-            delay_ms = int(stats.get('avg_total_delay_ms', 0))
-            success_rate = int(stats.get('success_rate', 0) * 100)
-            exec_count = stats.get('total_executions', 0)
-            p50 = int(stats.get('p50_total_delay_ms', 0))
-            p95 = int(stats.get('p95_total_delay_ms', 0))
+            delay_ms = int(stats.get("avg_total_delay_ms", 0))
+            success_rate = int(stats.get("success_rate", 0) * 100)
+            exec_count = stats.get("total_executions", 0)
+            p50 = int(stats.get("p50_total_delay_ms", 0))
+            p95 = int(stats.get("p95_total_delay_ms", 0))
 
             # Thread-safe GUI update wrapper
             def _update_gui():
@@ -349,7 +320,7 @@ class TimingOverlay:
         """
         try:
             # Check if window still exists before accessing
-            if hasattr(self, 'window') and self.window.winfo_exists():
+            if hasattr(self, "window") and self.window.winfo_exists():
                 self._save_config()
                 self.window.destroy()
                 logger.info("Timing overlay destroyed")

@@ -5,21 +5,20 @@ AUDIT FIX: Enhanced with edge case handling and negative value checks
 """
 
 from decimal import Decimal
-from typing import Tuple, Optional
-from models import GameTick
+
 from config import config
+from models import GameTick
 
 
 class ValidationError(Exception):
     """Raised when validation fails"""
+
     pass
 
 
 def validate_bet_amount(
-    amount: Decimal,
-    balance: Decimal,
-    action: str = "BET"
-) -> Tuple[bool, Optional[str]]:
+    amount: Decimal, balance: Decimal, action: str = "BET"
+) -> tuple[bool, str | None]:
     """
     Validate bet amount is within bounds and affordable
 
@@ -48,15 +47,15 @@ def validate_bet_amount(
         return False, f"{action} amount {amount} below minimum (must be positive)"
 
     # AUDIT FIX: Check for extreme values (prevent overflow)
-    if amount > Decimal('1000000'):
+    if amount > Decimal("1000000"):
         return False, f"{action} amount {amount} is unreasonably large"
 
     # Check minimum
-    if amount < config.FINANCIAL['min_bet']:
+    if amount < config.FINANCIAL["min_bet"]:
         return False, f"{action} amount {amount} below minimum {config.FINANCIAL['min_bet']} SOL"
 
     # Check maximum
-    if amount > config.FINANCIAL['max_bet']:
+    if amount > config.FINANCIAL["max_bet"]:
         return False, f"{action} amount {amount} exceeds maximum {config.FINANCIAL['max_bet']} SOL"
 
     # AUDIT FIX: Check for negative balance
@@ -70,10 +69,7 @@ def validate_bet_amount(
     return True, None
 
 
-def validate_trading_allowed(
-    tick: GameTick,
-    action: str = "TRADE"
-) -> Tuple[bool, Optional[str]]:
+def validate_trading_allowed(tick: GameTick, action: str = "TRADE") -> tuple[bool, str | None]:
     """
     Validate trading is allowed in current game state
 
@@ -100,18 +96,15 @@ def validate_trading_allowed(
         return False, f"{action} not allowed: game has been rugged"
 
     # Check phase
-    if tick.phase in config.GAME_RULES['blocked_phases']:
+    if tick.phase in config.GAME_RULES["blocked_phases"]:
         return False, f"{action} not allowed in {tick.phase} phase"
 
     return True, None
 
 
 def validate_buy(
-    amount: Decimal,
-    balance: Decimal,
-    tick: GameTick,
-    has_position: bool = False
-) -> Tuple[bool, Optional[str]]:
+    amount: Decimal, balance: Decimal, tick: GameTick, has_position: bool = False
+) -> tuple[bool, str | None]:
     """
     Validate BUY action
 
@@ -137,10 +130,7 @@ def validate_buy(
     return True, None
 
 
-def validate_sell(
-    has_position: bool,
-    tick: Optional[GameTick] = None
-) -> Tuple[bool, Optional[str]]:
+def validate_sell(has_position: bool, tick: GameTick | None = None) -> tuple[bool, str | None]:
     """
     Validate SELL action
 
@@ -163,8 +153,8 @@ def validate_sidebet(
     balance: Decimal,
     tick: GameTick,
     has_active_sidebet: bool,
-    last_sidebet_resolved_tick: Optional[int] = None
-) -> Tuple[bool, Optional[str]]:
+    last_sidebet_resolved_tick: int | None = None,
+) -> tuple[bool, str | None]:
     """
     Validate SIDEBET action
 
@@ -195,8 +185,8 @@ def validate_sidebet(
     # Check cooldown
     if last_sidebet_resolved_tick is not None:
         ticks_since_resolution = tick.tick - last_sidebet_resolved_tick
-        if ticks_since_resolution < config.GAME_RULES['sidebet_cooldown_ticks']:
-            remaining = config.GAME_RULES['sidebet_cooldown_ticks'] - ticks_since_resolution
+        if ticks_since_resolution < config.GAME_RULES["sidebet_cooldown_ticks"]:
+            remaining = config.GAME_RULES["sidebet_cooldown_ticks"] - ticks_since_resolution
             return False, f"Sidebet cooldown: {remaining} ticks remaining"
 
     return True, None

@@ -11,18 +11,18 @@ Tests cover:
 - PlayerSession: Complete player session
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
 from models.recording_models import (
     GameStateMeta,
     GameStateRecord,
     PlayerAction,
+    PlayerSession,
     PlayerSessionMeta,
-    PlayerSession
 )
 
 
@@ -32,8 +32,7 @@ class TestGameStateMeta:
     def test_creation_minimal(self):
         """Test creation with minimal required fields"""
         meta = GameStateMeta(
-            game_id="20251207-abc123",
-            start_time=datetime(2025, 12, 7, 14, 30, 22)
+            game_id="20251207-abc123", start_time=datetime(2025, 12, 7, 14, 30, 22)
         )
         assert meta.game_id == "20251207-abc123"
         assert meta.start_time == datetime(2025, 12, 7, 14, 30, 22)
@@ -52,7 +51,7 @@ class TestGameStateMeta:
             duration_ticks=143,
             peak_multiplier=Decimal("45.23"),
             server_seed_hash="abc123hash",
-            server_seed="xyz789seed"
+            server_seed="xyz789seed",
         )
         assert meta.duration_ticks == 143
         assert meta.peak_multiplier == Decimal("45.23")
@@ -65,10 +64,7 @@ class TestGameStateRecord:
 
     def test_creation(self):
         """Test creation with meta"""
-        meta = GameStateMeta(
-            game_id="test-123",
-            start_time=datetime.utcnow()
-        )
+        meta = GameStateMeta(game_id="test-123", start_time=datetime.utcnow())
         record = GameStateRecord(meta=meta)
         assert record.meta == meta
         assert record.prices == []
@@ -136,7 +132,7 @@ class TestGameStateRecord:
             start_time=datetime(2025, 12, 7, 14, 30, 22),
             end_time=datetime(2025, 12, 7, 14, 32, 45),
             duration_ticks=3,
-            peak_multiplier=Decimal("2.5")
+            peak_multiplier=Decimal("2.5"),
         )
         record = GameStateRecord(meta=meta)
         record.add_price(0, Decimal("1.0"))
@@ -166,7 +162,7 @@ class TestPlayerAction:
             balance_after=Decimal("0.999"),
             position_qty_after=Decimal("0.001"),
             entry_price=Decimal("1.234"),
-            pnl=None
+            pnl=None,
         )
         assert action.game_id == "20251207-abc123"
         assert action.tick == 12
@@ -187,7 +183,7 @@ class TestPlayerAction:
             balance_after=Decimal("1.002"),
             position_qty_after=Decimal("0"),
             entry_price=Decimal("1.5"),
-            pnl=Decimal("0.0005")
+            pnl=Decimal("0.0005"),
         )
 
         result = action.to_dict()
@@ -207,7 +203,7 @@ class TestPlayerSessionMeta:
         meta = PlayerSessionMeta(
             player_id="did:privy:cm3xxx",
             username="Dutch",
-            session_start=datetime(2025, 12, 7, 14, 30, 0)
+            session_start=datetime(2025, 12, 7, 14, 30, 0),
         )
         assert meta.player_id == "did:privy:cm3xxx"
         assert meta.username == "Dutch"
@@ -220,9 +216,7 @@ class TestPlayerSession:
     def test_creation(self):
         """Test creation"""
         meta = PlayerSessionMeta(
-            player_id="test-player",
-            username="TestUser",
-            session_start=datetime.utcnow()
+            player_id="test-player", username="TestUser", session_start=datetime.utcnow()
         )
         session = PlayerSession(meta=meta)
         assert session.meta == meta
@@ -231,9 +225,7 @@ class TestPlayerSession:
     def test_add_action(self):
         """Test adding actions"""
         meta = PlayerSessionMeta(
-            player_id="test-player",
-            username="TestUser",
-            session_start=datetime.utcnow()
+            player_id="test-player", username="TestUser", session_start=datetime.utcnow()
         )
         session = PlayerSession(meta=meta)
 
@@ -245,7 +237,7 @@ class TestPlayerSession:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         session.add_action(action)
 
@@ -255,9 +247,7 @@ class TestPlayerSession:
     def test_get_games_played(self):
         """Test getting unique game IDs"""
         meta = PlayerSessionMeta(
-            player_id="test-player",
-            username="TestUser",
-            session_start=datetime.utcnow()
+            player_id="test-player", username="TestUser", session_start=datetime.utcnow()
         )
         session = PlayerSession(meta=meta)
 
@@ -271,7 +261,7 @@ class TestPlayerSession:
                 amount=Decimal("0.001"),
                 price=Decimal("1.0"),
                 balance_after=Decimal("0.999"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             session.add_action(action)
 
@@ -284,7 +274,7 @@ class TestPlayerSession:
             player_id="did:privy:test",
             username="TestUser",
             session_start=datetime(2025, 12, 7, 14, 30, 0),
-            session_end=datetime(2025, 12, 7, 15, 45, 0)
+            session_end=datetime(2025, 12, 7, 15, 45, 0),
         )
         session = PlayerSession(meta=meta)
 
@@ -296,7 +286,7 @@ class TestPlayerSession:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         session.add_action(action)
 

@@ -11,7 +11,6 @@ import os
 import tempfile
 import threading
 import wave
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +37,8 @@ class AudioCuePlayer:
             enabled: Whether audio cues are enabled
         """
         self._enabled = enabled
-        self._backend: Optional[str] = None
-        self._wav_tempdir: Optional[tempfile.TemporaryDirectory[str]] = None
+        self._backend: str | None = None
+        self._wav_tempdir: tempfile.TemporaryDirectory[str] | None = None
         self._wav_paths: dict[str, str] = {}
         self._detect_backend()
 
@@ -118,6 +117,7 @@ class AudioCuePlayer:
         # Try different audio libraries
         try:
             import winsound  # Windows
+
             self._backend = "winsound"
             logger.debug("Audio backend: winsound")
             return
@@ -126,12 +126,9 @@ class AudioCuePlayer:
 
         try:
             import subprocess
+
             # Check for paplay (PulseAudio) on Linux
-            result = subprocess.run(
-                ["which", "paplay"],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["which", "paplay"], capture_output=True, text=True)
             if result.returncode == 0:
                 self._backend = "paplay"
                 logger.debug("Audio backend: paplay")
@@ -141,12 +138,9 @@ class AudioCuePlayer:
 
         try:
             import subprocess
+
             # Check for aplay (ALSA) on Linux
-            result = subprocess.run(
-                ["which", "aplay"],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["which", "aplay"], capture_output=True, text=True)
             if result.returncode == 0:
                 self._backend = "aplay"
                 logger.debug("Audio backend: aplay")
@@ -177,6 +171,7 @@ class AudioCuePlayer:
         """Play tone using winsound (Windows)."""
         try:
             import winsound
+
             winsound.Beep(frequency, duration)
         except Exception as e:
             logger.debug(f"winsound failed: {e}")
@@ -189,6 +184,7 @@ class AudioCuePlayer:
         try:
             if self._backend == "winsound":
                 import winsound
+
                 if sound_type == "game_recorded":
                     winsound.Beep(880, 50)
                 else:
@@ -209,6 +205,7 @@ class AudioCuePlayer:
 
             elif self._backend in ("paplay", "aplay"):
                 import subprocess
+
                 wav_path = self._get_or_create_wav(sound_type)
                 subprocess.run([self._backend, wav_path], capture_output=True, timeout=2)
 

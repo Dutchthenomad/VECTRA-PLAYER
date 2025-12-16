@@ -9,9 +9,9 @@ These classes handle rate limiting for the WebSocket feed without
 containing any Socket.IO-specific code.
 """
 
-import time
 import threading
-from typing import Dict, Any
+import time
+from typing import Any
 
 
 class TokenBucketRateLimiter:
@@ -62,25 +62,26 @@ class TokenBucketRateLimiter:
                 self.total_dropped += 1
                 return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get rate limiter statistics"""
         with self._lock:
             return {
-                'rate': self.rate,
-                'burst': self.burst,
-                'tokens_available': self.tokens,
-                'total_requests': self.total_requests,
-                'total_allowed': self.total_allowed,
-                'total_dropped': self.total_dropped,
-                'drop_rate': (self.total_dropped / self.total_requests * 100)
-                    if self.total_requests > 0 else 0.0
+                "rate": self.rate,
+                "burst": self.burst,
+                "tokens_available": self.tokens,
+                "total_requests": self.total_requests,
+                "total_allowed": self.total_allowed,
+                "total_dropped": self.total_dropped,
+                "drop_rate": (self.total_dropped / self.total_requests * 100)
+                if self.total_requests > 0
+                else 0.0,
             }
 
 
 class PriorityRateLimiter(TokenBucketRateLimiter):
     """Rate limiter with priority bypass for critical signals"""
 
-    CRITICAL_PHASES = {'RUG_EVENT', 'RUG_EVENT_1', 'RUG_EVENT_2'}
+    CRITICAL_PHASES = {"RUG_EVENT", "RUG_EVENT_1", "RUG_EVENT_2"}
 
     def __init__(self, rate: float = 20.0, burst: int = None):
         super().__init__(rate=rate, burst=burst)
@@ -93,6 +94,5 @@ class PriorityRateLimiter(TokenBucketRateLimiter):
 
     def _is_critical(self, signal: Any) -> bool:
         return (
-            getattr(signal, 'rugged', False) or
-            getattr(signal, 'phase', '') in self.CRITICAL_PHASES
+            getattr(signal, "rugged", False) or getattr(signal, "phase", "") in self.CRITICAL_PHASES
         )

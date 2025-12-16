@@ -8,18 +8,19 @@ Tests cover:
 - PlayerSessionRecorder: player action recording and file saving
 """
 
-import pytest
 import json
-import tempfile
 import shutil
-from decimal import Decimal
+import tempfile
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+
+import pytest
+
+from models.recording_models import PlayerAction
 
 # This import will FAIL until we create the module (TDD RED phase)
 from services.recorders import GameStateRecorder, PlayerSessionRecorder
-from models.recording_models import PlayerAction
 
 
 class TestGameStateRecorder:
@@ -58,23 +59,20 @@ class TestGameStateRecorder:
         recorder.record_prices(
             prices=prices,
             peak=Decimal("2.5"),
-            seed_data={'server_seed': 'abc', 'server_seed_hash': 'hash123'}
+            seed_data={"server_seed": "abc", "server_seed_hash": "hash123"},
         )
 
         assert recorder.current_game.prices == prices
         assert recorder.current_game.meta.peak_multiplier == Decimal("2.5")
         assert recorder.current_game.meta.duration_ticks == 3
-        assert recorder.current_game.meta.server_seed == 'abc'
-        assert recorder.current_game.meta.server_seed_hash == 'hash123'
+        assert recorder.current_game.meta.server_seed == "abc"
+        assert recorder.current_game.meta.server_seed_hash == "hash123"
 
     def test_save_creates_file(self, temp_dir):
         """Test save creates game file"""
         recorder = GameStateRecorder(base_path=temp_dir)
         recorder.start_game("game-123")
-        recorder.record_prices(
-            prices=[Decimal("1.0"), Decimal("1.5")],
-            peak=Decimal("1.5")
-        )
+        recorder.record_prices(prices=[Decimal("1.0"), Decimal("1.5")], peak=Decimal("1.5"))
 
         filepath = recorder.save()
 
@@ -94,19 +92,16 @@ class TestGameStateRecorder:
         """Test saved file has correct content"""
         recorder = GameStateRecorder(base_path=temp_dir)
         recorder.start_game("game-test-abc")
-        recorder.record_prices(
-            prices=[Decimal("1.0"), Decimal("2.0")],
-            peak=Decimal("2.0")
-        )
+        recorder.record_prices(prices=[Decimal("1.0"), Decimal("2.0")], peak=Decimal("2.0"))
 
         filepath = recorder.save()
 
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
 
-        assert data['meta']['game_id'] == "game-test-abc"
-        assert data['meta']['duration_ticks'] == 2
-        assert len(data['prices']) == 2
+        assert data["meta"]["game_id"] == "game-test-abc"
+        assert data["meta"]["duration_ticks"] == 2
+        assert len(data["prices"]) == 2
 
     def test_save_clears_current_game(self, temp_dir):
         """Test save clears current game"""
@@ -143,11 +138,11 @@ class TestGameStateRecorder:
         index_path = Path(temp_dir) / date_str / "index.json"
         assert index_path.exists()
 
-        with open(index_path, 'r') as f:
+        with open(index_path) as f:
             index = json.load(f)
 
-        assert len(index['games']) == 1
-        assert index['games'][0]['game_id'] == "game-123"
+        assert len(index["games"]) == 1
+        assert index["games"][0]["game_id"] == "game-123"
 
     def test_multiple_games_update_index(self, temp_dir):
         """Test multiple games are added to index"""
@@ -166,10 +161,10 @@ class TestGameStateRecorder:
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
         index_path = Path(temp_dir) / date_str / "index.json"
 
-        with open(index_path, 'r') as f:
+        with open(index_path) as f:
             index = json.load(f)
 
-        assert len(index['games']) == 2
+        assert len(index["games"]) == 2
 
 
 class TestPlayerSessionRecorder:
@@ -212,7 +207,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
 
@@ -231,7 +226,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
 
@@ -251,7 +246,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
 
@@ -292,19 +287,19 @@ class TestPlayerSessionRecorder:
             price=Decimal("2.0"),
             balance_after=Decimal("1.001"),
             position_qty_after=Decimal("0"),
-            pnl=Decimal("0.0005")
+            pnl=Decimal("0.0005"),
         )
         recorder.record_action(action)
 
         filepath = recorder.save()
 
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
 
-        assert data['meta']['player_id'] == "player-123"
-        assert data['meta']['username'] == "testuser"
-        assert len(data['actions']) == 1
-        assert data['actions'][0]['action'] == "SELL"
+        assert data["meta"]["player_id"] == "player-123"
+        assert data["meta"]["username"] == "testuser"
+        assert len(data["actions"]) == 1
+        assert data["actions"][0]["action"] == "SELL"
 
     def test_creates_directory_structure(self, temp_dir):
         """Test creates date/sessions directory structure"""
@@ -319,7 +314,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
         recorder.save()
@@ -341,7 +336,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
         recorder.save()
@@ -350,12 +345,12 @@ class TestPlayerSessionRecorder:
         index_path = Path(temp_dir) / date_str / "index.json"
         assert index_path.exists()
 
-        with open(index_path, 'r') as f:
+        with open(index_path) as f:
             index = json.load(f)
 
-        assert len(index['sessions']) == 1
-        assert index['sessions'][0]['username'] == "testuser"
-        assert index['sessions'][0]['total_actions'] == 1
+        assert len(index["sessions"]) == 1
+        assert index["sessions"][0]["username"] == "testuser"
+        assert index["sessions"][0]["total_actions"] == 1
 
     def test_multiple_actions_recorded(self, temp_dir):
         """Test multiple actions are recorded"""
@@ -372,7 +367,7 @@ class TestPlayerSessionRecorder:
                 amount=Decimal("0.001"),
                 price=Decimal(f"1.{i}"),
                 balance_after=Decimal("1.0"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             recorder.record_action(action)
 
@@ -391,7 +386,7 @@ class TestPlayerSessionRecorder:
             amount=Decimal("0.001"),
             price=Decimal("1.5"),
             balance_after=Decimal("0.999"),
-            position_qty_after=Decimal("0.001")
+            position_qty_after=Decimal("0.001"),
         )
         recorder.record_action(action)
 
@@ -405,10 +400,10 @@ class TestPlayerSessionRecorder:
         files = list(sessions_dir.glob("*.json"))
         assert len(files) == 1
 
-        with open(files[0], 'r') as f:
+        with open(files[0]) as f:
             data = json.load(f)
 
-        assert data['meta']['session_end'] is not None
+        assert data["meta"]["session_end"] is not None
 
 
 if __name__ == "__main__":

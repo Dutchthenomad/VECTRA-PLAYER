@@ -5,14 +5,14 @@ Compares local GameState to server playerUpdate data.
 Logs drift when calculations don't match server truth.
 """
 
-from decimal import Decimal
-from typing import Optional, Dict, Any
 import logging
+from decimal import Decimal
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-BALANCE_TOLERANCE = Decimal('0.000001')
-POSITION_TOLERANCE = Decimal('0.000001')
+BALANCE_TOLERANCE = Decimal("0.000001")
+POSITION_TOLERANCE = Decimal("0.000001")
 
 
 class StateVerifier:
@@ -28,9 +28,9 @@ class StateVerifier:
         self.game_state = game_state
         self.drift_count = 0
         self.total_verifications = 0
-        self.last_verification: Optional[Dict[str, Any]] = None
+        self.last_verification: dict[str, Any] | None = None
 
-    def verify(self, server_state: Dict[str, Any]) -> Dict[str, Any]:
+    def verify(self, server_state: dict[str, Any]) -> dict[str, Any]:
         """
         Compare local state to server state.
 
@@ -45,18 +45,18 @@ class StateVerifier:
         # Get local values
         local_balance = self.game_state.balance
         local_position = self.game_state.position
-        local_position_qty = local_position.amount if local_position else Decimal('0')
-        local_entry = local_position.entry_price if local_position else Decimal('0')
+        local_position_qty = local_position.amount if local_position else Decimal("0")
+        local_entry = local_position.entry_price if local_position else Decimal("0")
 
         # Get server values
-        server_balance = server_state.get('cash', Decimal('0'))
-        server_position_qty = server_state.get('position_qty', Decimal('0'))
-        server_avg_cost = server_state.get('avg_cost', Decimal('0'))
+        server_balance = server_state.get("cash", Decimal("0"))
+        server_position_qty = server_state.get("position_qty", Decimal("0"))
+        server_avg_cost = server_state.get("avg_cost", Decimal("0"))
 
         # Compare
         balance_diff = abs(local_balance - server_balance)
         position_diff = abs(local_position_qty - server_position_qty)
-        entry_diff = abs(local_entry - server_avg_cost) if server_position_qty > 0 else Decimal('0')
+        entry_diff = abs(local_entry - server_avg_cost) if server_position_qty > 0 else Decimal("0")
 
         balance_ok = balance_diff <= BALANCE_TOLERANCE
         position_ok = position_diff <= POSITION_TOLERANCE
@@ -73,12 +73,16 @@ class StateVerifier:
             )
 
         result = {
-            'verified': all_ok,
-            'balance': {'local': local_balance, 'server': server_balance, 'ok': balance_ok},
-            'position': {'local': local_position_qty, 'server': server_position_qty, 'ok': position_ok},
-            'entry_price': {'local': local_entry, 'server': server_avg_cost, 'ok': entry_ok},
-            'drift_count': self.drift_count,
-            'total_verifications': self.total_verifications
+            "verified": all_ok,
+            "balance": {"local": local_balance, "server": server_balance, "ok": balance_ok},
+            "position": {
+                "local": local_position_qty,
+                "server": server_position_qty,
+                "ok": position_ok,
+            },
+            "entry_price": {"local": local_entry, "server": server_avg_cost, "ok": entry_ok},
+            "drift_count": self.drift_count,
+            "total_verifications": self.total_verifications,
         }
 
         self.last_verification = result

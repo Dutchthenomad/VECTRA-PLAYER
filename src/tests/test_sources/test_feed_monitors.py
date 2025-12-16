@@ -9,16 +9,12 @@ Tests cover:
 - ConnectionHealthMonitor: health checks, signal tracking
 """
 
-import pytest
 import time
-from unittest.mock import MagicMock
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
-from sources.feed_monitors import (
-    LatencySpikeDetector,
-    ConnectionHealth,
-    ConnectionHealthMonitor
-)
+from sources.feed_monitors import ConnectionHealth, ConnectionHealthMonitor, LatencySpikeDetector
 
 
 class TestLatencySpikeDetector:
@@ -36,9 +32,7 @@ class TestLatencySpikeDetector:
     def test_initialization_custom(self):
         """Test custom initialization"""
         detector = LatencySpikeDetector(
-            window_size=50,
-            spike_threshold_std=5.0,
-            absolute_threshold_ms=5000.0
+            window_size=50, spike_threshold_std=5.0, absolute_threshold_ms=5000.0
         )
         assert detector.window_size == 50
         assert detector.spike_threshold_std == 5.0
@@ -80,34 +74,37 @@ class TestLatencySpikeDetector:
 
         stats = detector.get_stats()
 
-        assert 'total_samples' in stats
-        assert 'total_spikes' in stats
-        assert 'spike_rate' in stats
-        assert 'mean_latency_ms' in stats
-        assert 'max_latency_ms' in stats
-        assert 'min_latency_ms' in stats
-        assert stats['total_samples'] == 3
+        assert "total_samples" in stats
+        assert "total_spikes" in stats
+        assert "spike_rate" in stats
+        assert "mean_latency_ms" in stats
+        assert "max_latency_ms" in stats
+        assert "min_latency_ms" in stats
+        assert stats["total_samples"] == 3
 
     def test_latency_tiered_thresholds(self):
         """Test tiered threshold evaluation"""
         detector = LatencySpikeDetector()
 
-        assert detector.check_latency(500.0) == 'OK'  # Normal
-        assert detector.check_latency(2500.0) == 'WARNING'  # >= 2000ms
-        assert detector.check_latency(6000.0) == 'ERROR'  # >= 5000ms
-        assert detector.check_latency(15000.0) == 'CRITICAL'  # >= 10000ms
+        assert detector.check_latency(500.0) == "OK"  # Normal
+        assert detector.check_latency(2500.0) == "WARNING"  # >= 2000ms
+        assert detector.check_latency(6000.0) == "ERROR"  # >= 5000ms
+        assert detector.check_latency(15000.0) == "CRITICAL"  # >= 10000ms
 
 
 class TestConnectionHealth:
     """Tests for ConnectionHealth enum-like class"""
 
-    @pytest.mark.parametrize("state,expected", [
-        (ConnectionHealth.HEALTHY, "HEALTHY"),
-        (ConnectionHealth.DEGRADED, "DEGRADED"),
-        (ConnectionHealth.STALE, "STALE"),
-        (ConnectionHealth.DISCONNECTED, "DISCONNECTED"),
-        (ConnectionHealth.UNKNOWN, "UNKNOWN"),
-    ])
+    @pytest.mark.parametrize(
+        "state,expected",
+        [
+            (ConnectionHealth.HEALTHY, "HEALTHY"),
+            (ConnectionHealth.DEGRADED, "DEGRADED"),
+            (ConnectionHealth.STALE, "STALE"),
+            (ConnectionHealth.DISCONNECTED, "DISCONNECTED"),
+            (ConnectionHealth.UNKNOWN, "UNKNOWN"),
+        ],
+    )
     def test_health_state_values(self, state, expected):
         """Test all health state values are correct strings"""
         assert state == expected
@@ -169,8 +166,8 @@ class TestConnectionHealthMonitor:
 
         health = monitor.check_health()
 
-        assert health['status'] == ConnectionHealth.DISCONNECTED
-        assert 'Not connected' in health['issues'][0]
+        assert health["status"] == ConnectionHealth.DISCONNECTED
+        assert "Not connected" in health["issues"][0]
 
     def test_check_health_healthy(self):
         """Test health check returns HEALTHY when all good"""
@@ -180,8 +177,8 @@ class TestConnectionHealthMonitor:
 
         health = monitor.check_health(avg_latency_ms=100.0, error_rate=0.0)
 
-        assert health['status'] == ConnectionHealth.HEALTHY
-        assert len(health['issues']) == 0
+        assert health["status"] == ConnectionHealth.HEALTHY
+        assert len(health["issues"]) == 0
 
     def test_check_health_stale(self):
         """Test health check returns STALE after threshold"""
@@ -193,8 +190,8 @@ class TestConnectionHealthMonitor:
 
         health = monitor.check_health()
 
-        assert health['status'] == ConnectionHealth.STALE
-        assert any('No signals' in issue for issue in health['issues'])
+        assert health["status"] == ConnectionHealth.STALE
+        assert any("No signals" in issue for issue in health["issues"])
 
     def test_check_health_degraded_latency(self):
         """Test health check returns DEGRADED on high latency"""
@@ -204,8 +201,8 @@ class TestConnectionHealthMonitor:
 
         health = monitor.check_health(avg_latency_ms=200.0)
 
-        assert health['status'] == ConnectionHealth.DEGRADED
-        assert any('High latency' in issue for issue in health['issues'])
+        assert health["status"] == ConnectionHealth.DEGRADED
+        assert any("High latency" in issue for issue in health["issues"])
 
     def test_check_health_degraded_errors(self):
         """Test health check returns DEGRADED on high error rate"""
@@ -215,9 +212,9 @@ class TestConnectionHealthMonitor:
 
         health = monitor.check_health(error_rate=10.0)
 
-        assert health['status'] == ConnectionHealth.DEGRADED
-        assert any('High error rate' in issue for issue in health['issues'])
+        assert health["status"] == ConnectionHealth.DEGRADED
+        assert any("High error rate" in issue for issue in health["issues"])
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

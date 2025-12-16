@@ -3,16 +3,16 @@ RecorderSink - Production-ready recorder for live game ticks
 Writes incoming ticks to JSONL files with proper error handling and resource management
 """
 
+import atexit
 import json
 import logging
-import threading
-import atexit
 import os
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, Dict, Any
-from decimal import Decimal
+import threading
 from contextlib import contextmanager
+from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 from models import GameTick
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class RecordingError(Exception):
     """Custom exception for recording-related errors"""
+
     pass
 
 
@@ -53,7 +54,7 @@ class RecorderSink:
         self.recordings_dir = Path(recordings_dir)
         self.buffer_size = max(1, buffer_size)  # Ensure positive buffer size
         self.max_buffer_size = max(buffer_size, max_buffer_size)  # AUDIT FIX: Backpressure limit
-        
+
         # Validate and create directory
         try:
             self.recordings_dir.mkdir(parents=True, exist_ok=True)
@@ -61,14 +62,14 @@ class RecorderSink:
             raise RecordingError(f"Cannot access recordings directory: {e}")
 
         # Recording state
-        self.current_file: Optional[Path] = None
+        self.current_file: Path | None = None
         self.file_handle = None
         self.buffer = []
         self.tick_count = 0
         self.error_count = 0
         self.max_errors = 5  # Stop recording after this many errors
         self._flushing = False
-        
+
         # Performance metrics
         self.total_bytes_written = 0
         self.last_flush_time = datetime.now()
@@ -76,10 +77,10 @@ class RecorderSink:
         # Thread safety
         self._lock = threading.RLock()
         self._closed = False
-        
+
         # Register instance for cleanup
         self._register_instance()
-        
+
         logger.info(f"RecorderSink initialized: {self.recordings_dir} (buffer_size={buffer_size})")
 
     def _register_instance(self):
@@ -110,7 +111,7 @@ class RecorderSink:
         """Context manager for safe file operations with error handling"""
         try:
             yield
-        except IOError as e:
+        except OSError as e:
             self.error_count += 1
             logger.error(f"IO error during file operation: {e}")
             if self.error_count >= self.max_errors:
@@ -125,10 +126,10 @@ class RecorderSink:
     def _check_disk_space(self, min_free_mb: int = 100) -> bool:
         """
         Check if sufficient disk space is available
-        
+
         Args:
             min_free_mb: Minimum free space required in MB
-            
+
         Returns:
             True if sufficient space available
         """
@@ -143,54 +144,54 @@ class RecorderSink:
             # AttributeError for Windows (statvfs not available)
             # Fallback: try to write a test file
             try:
-                test_data = b'x' * (min_free_mb * 1024)  # Test with smaller amount
-                test_file = self.recordings_dir / '.space_test'
+                test_data = b"x" * (min_free_mb * 1024)  # Test with smaller amount
+                test_file = self.recordings_dir / ".space_test"
                 test_file.write_bytes(test_data)
                 test_file.unlink()
                 return True
-            except (OSError, IOError, PermissionError):
+            except (OSError, PermissionError):
                 # AUDIT FIX: Catch specific filesystem exceptions
                 return False
 
-    def start_recording(self, game_id: Optional[str] = None) -> Path:
+    def start_recording(self, game_id: str | None = None) -> Path:
         """
         Start recording a new game with production safeguards
-        
+
         Args:
             game_id: Optional game identifier
-            
+
         Returns:
             Path to recording file
-            
+
         Raises:
             RecordingError: If recording cannot be started
         """
         with self._lock:
             if self._closed:
                 raise RecordingError("RecorderSink is closed")
-                
+
             # Check disk space
             if not self._check_disk_space():
                 raise RecordingError("Insufficient disk space")
-                
+
             # Close previous recording if open
             if self.file_handle:
                 self.stop_recording()
 
             # Generate timestamp-based filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
+
             # Add microseconds if needed to ensure uniqueness
             filename = f"game_{timestamp}.jsonl"
             self.current_file = self.recordings_dir / filename
-            
+
             # Handle potential filename collision
             counter = 0
             while self.current_file.exists() and counter < 100:
                 counter += 1
                 filename = f"game_{timestamp}_{counter}.jsonl"
                 self.current_file = self.recordings_dir / filename
-                
+
             if self.current_file.exists():
                 raise RecordingError("Cannot create unique filename")
 
@@ -198,17 +199,17 @@ class RecorderSink:
             # Open file for writing with proper encoding
             temp_handle = None
             try:
-                temp_handle = open(self.current_file, 'w', encoding='utf-8', buffering=8192)
+                temp_handle = open(self.current_file, "w", encoding="utf-8", buffering=8192)
 
                 # Write metadata header
                 metadata = {
-                    '_metadata': {
-                        'game_id': game_id,
-                        'start_time': datetime.now().isoformat(),
-                        'version': '1.0'
+                    "_metadata": {
+                        "game_id": game_id,
+                        "start_time": datetime.now().isoformat(),
+                        "version": "1.0",
                     }
                 }
-                temp_handle.write(json.dumps(metadata) + '\n')
+                temp_handle.write(json.dumps(metadata) + "\n")
                 temp_handle.flush()
 
                 # AUDIT FIX: Only assign to self after success
@@ -226,7 +227,7 @@ class RecorderSink:
                 if temp_handle:
                     try:
                         temp_handle.close()
-                    except (OSError, IOError):
+                    except OSError:
                         # AUDIT FIX: Catch specific I/O exceptions
                         pass
                 raise RecordingError(f"Failed to start recording: {e}")
@@ -251,14 +252,16 @@ class RecorderSink:
             if not self.file_handle:
                 logger.warning("No recording in progress, auto-starting")
                 try:
-                    self.start_recording(getattr(tick, 'game_id', None))
+                    self.start_recording(getattr(tick, "game_id", None))
                 except RecordingError as e:
                     logger.error(f"Failed to auto-start recording: {e}")
                     return False
 
             # AUDIT FIX: Check for buffer overflow (backpressure)
             if len(self.buffer) >= self.max_buffer_size:
-                logger.error(f"Buffer overflow detected ({len(self.buffer)}/{self.max_buffer_size}), forcing emergency flush")
+                logger.error(
+                    f"Buffer overflow detected ({len(self.buffer)}/{self.max_buffer_size}), forcing emergency flush"
+                )
                 try:
                     self._emergency_flush()
                 except Exception as e:
@@ -294,23 +297,23 @@ class RecorderSink:
                     self.stop_recording()
                 return False
 
-    def _serialize_tick(self, tick: GameTick) -> Dict[str, Any]:
+    def _serialize_tick(self, tick: GameTick) -> dict[str, Any]:
         """
         Serialize tick to JSON-compatible dict with Decimal handling
-        
+
         Args:
             tick: GameTick to serialize
-            
+
         Returns:
             JSON-compatible dictionary
         """
-        tick_dict = tick.to_dict() if hasattr(tick, 'to_dict') else tick.__dict__.copy()
-        
+        tick_dict = tick.to_dict() if hasattr(tick, "to_dict") else tick.__dict__.copy()
+
         # Convert Decimal to string for JSON compatibility
         for key, value in tick_dict.items():
             if isinstance(value, Decimal):
                 tick_dict[key] = str(value)
-        
+
         return tick_dict
 
     def _should_force_flush(self) -> bool:
@@ -334,7 +337,7 @@ class RecorderSink:
             # Try to get file descriptor (will fail if invalid)
             self.file_handle.fileno()
             return True
-        except (ValueError, OSError, IOError):
+        except (ValueError, OSError):
             return False
 
     def _flush(self):
@@ -359,7 +362,7 @@ class RecorderSink:
 
             # Write all buffered ticks
             for tick_json in self.buffer:
-                bytes_written = self.file_handle.write(tick_json + '\n')
+                bytes_written = self.file_handle.write(tick_json + "\n")
                 self.total_bytes_written += bytes_written
 
             self.file_handle.flush()
@@ -374,10 +377,10 @@ class RecorderSink:
             # Don't clear buffer on error - will retry on next flush
             raise
 
-    def stop_recording(self) -> Optional[dict]:
+    def stop_recording(self) -> dict | None:
         """
         Stop recording and close file with proper cleanup
-        
+
         Returns:
             Summary dict with recording statistics
         """
@@ -386,7 +389,7 @@ class RecorderSink:
                 return None
 
             summary = None
-            
+
             try:
                 # Flush remaining buffer
                 if self.buffer:
@@ -397,13 +400,13 @@ class RecorderSink:
                 if self._is_file_handle_valid():
                     # Write end metadata
                     end_metadata = {
-                        '_metadata': {
-                            'end_time': datetime.now().isoformat(),
-                            'tick_count': self.tick_count,
-                            'total_bytes': self.total_bytes_written
+                        "_metadata": {
+                            "end_time": datetime.now().isoformat(),
+                            "tick_count": self.tick_count,
+                            "total_bytes": self.total_bytes_written,
                         }
                     }
-                    self.file_handle.write(json.dumps(end_metadata) + '\n')
+                    self.file_handle.write(json.dumps(end_metadata) + "\n")
                 else:
                     logger.warning("File handle invalid, skipping end metadata write")
 
@@ -411,33 +414,37 @@ class RecorderSink:
                 # AUDIT FIX Phase 2.5: Validate handle before flush
                 if self._is_file_handle_valid():
                     self.file_handle.flush()
-                file_size = self.current_file.stat().st_size if self.current_file and self.current_file.exists() else 0
-                
+                file_size = (
+                    self.current_file.stat().st_size
+                    if self.current_file and self.current_file.exists()
+                    else 0
+                )
+
                 summary = {
-                    'filepath': str(self.current_file),
-                    'tick_count': self.tick_count,
-                    'file_size': file_size,
-                    'total_bytes_written': self.total_bytes_written,
-                    'error_count': self.error_count
+                    "filepath": str(self.current_file),
+                    "tick_count": self.tick_count,
+                    "file_size": file_size,
+                    "total_bytes_written": self.total_bytes_written,
+                    "error_count": self.error_count,
                 }
-                
+
                 logger.info(
                     f"Stopped recording: {self.current_file.name} "
                     f"({self.tick_count} ticks, {file_size} bytes)"
                 )
-                
+
             except Exception as e:
                 logger.error(f"Error stopping recording: {e}")
-                
+
             finally:
                 # Always close file handle
                 try:
                     if self.file_handle:
                         self.file_handle.close()
-                except (OSError, IOError):
+                except OSError:
                     # AUDIT FIX: Catch specific I/O exceptions
                     pass
-                    
+
                 # Reset state
                 self.file_handle = None
                 self.current_file = None
@@ -468,7 +475,7 @@ class RecorderSink:
         with self._lock:
             return self.file_handle is not None and not self._closed
 
-    def get_current_file(self) -> Optional[Path]:
+    def get_current_file(self) -> Path | None:
         """Get path to current recording file"""
         with self._lock:
             return self.current_file
@@ -482,13 +489,13 @@ class RecorderSink:
         """Get detailed recorder status"""
         with self._lock:
             return {
-                'recording': self.is_recording(),
-                'current_file': str(self.current_file) if self.current_file else None,
-                'tick_count': self.tick_count,
-                'buffer_size': len(self.buffer),
-                'error_count': self.error_count,
-                'total_bytes_written': self.total_bytes_written,
-                'closed': self._closed
+                "recording": self.is_recording(),
+                "current_file": str(self.current_file) if self.current_file else None,
+                "tick_count": self.tick_count,
+                "buffer_size": len(self.buffer),
+                "error_count": self.error_count,
+                "total_bytes_written": self.total_bytes_written,
+                "closed": self._closed,
             }
 
     def close(self):
@@ -496,7 +503,7 @@ class RecorderSink:
         with self._lock:
             if self._closed:
                 return
-                
+
             # Stop any active recording
             if self.file_handle:
                 if self.__class__._shutting_down:
@@ -509,14 +516,14 @@ class RecorderSink:
                     self.buffer = []
                 else:
                     self.stop_recording()
-            
+
             self._closed = True
-            
+
             # Remove from active instances
             with self._instances_lock:
                 if self in self._active_instances:
                     self._active_instances.remove(self)
-            
+
             if not self.__class__._shutting_down:
                 logger.info("RecorderSink closed")
 

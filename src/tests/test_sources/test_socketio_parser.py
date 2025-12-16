@@ -1,6 +1,6 @@
 """Tests for Socket.IO frame parsing."""
-import pytest
-from sources.socketio_parser import parse_socketio_frame, SocketIOFrame
+
+from sources.socketio_parser import parse_socketio_frame
 
 
 class TestParseSocketIOFrame:
@@ -14,6 +14,7 @@ class TestParseSocketIOFrame:
         assert frame.type == "event"
         assert frame.event_name == "gameStateUpdate"
         assert frame.data == {"gameId": "123", "price": 1.5}
+
     def test_parse_event_frame_with_ack_id(self):
         """Parse event frame that includes an ACK id."""
         raw = '42123["gameStateUpdate",{"gameId":"123","price":1.5}]'
@@ -41,7 +42,6 @@ class TestParseSocketIOFrame:
         assert frame.event_name == "usernameStatus"
         assert frame.data["username"] == "Dutch"
 
-
     def test_parse_connect_frame(self):
         """Parse connection frame."""
         raw = '0{"sid":"abc123"}'
@@ -52,7 +52,7 @@ class TestParseSocketIOFrame:
 
     def test_parse_ping_frame(self):
         """Parse ping frame."""
-        raw = '2'
+        raw = "2"
         frame = parse_socketio_frame(raw)
 
         assert frame.type == "ping"
@@ -60,7 +60,7 @@ class TestParseSocketIOFrame:
 
     def test_parse_pong_frame(self):
         """Parse pong frame."""
-        raw = '3'
+        raw = "3"
         frame = parse_socketio_frame(raw)
 
         assert frame.type == "pong"

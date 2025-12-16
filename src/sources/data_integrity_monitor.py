@@ -17,8 +17,9 @@ Recovery:
 """
 
 import logging
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, Optional, Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ from models.recording_config import MonitorThresholdType as ThresholdType
 
 class IntegrityIssue(Enum):
     """Type of data integrity issue detected."""
+
     TICK_GAP = "tick_gap"
     CONNECTION_LOST = "connection_lost"
     ABNORMAL_GAME_END = "abnormal_game_end"
@@ -54,9 +56,7 @@ class DataIntegrityMonitor:
     """
 
     def __init__(
-        self,
-        threshold_type: ThresholdType = ThresholdType.TICKS,
-        threshold_value: int = 20
+        self, threshold_type: ThresholdType = ThresholdType.TICKS, threshold_value: int = 20
     ):
         """
         Initialize the data integrity monitor.
@@ -72,12 +72,12 @@ class DataIntegrityMonitor:
         self._is_triggered = False
         self._consecutive_tick_gaps = 0
         self._consecutive_bad_games = 0
-        self._last_tick: Optional[int] = None
-        self._current_game_id: Optional[str] = None
+        self._last_tick: int | None = None
+        self._current_game_id: str | None = None
 
         # Callbacks
-        self.on_threshold_exceeded: Optional[Callable[[IntegrityIssue, Dict[str, Any]], None]] = None
-        self.on_recovery: Optional[Callable[[], None]] = None
+        self.on_threshold_exceeded: Callable[[IntegrityIssue, dict[str, Any]], None] | None = None
+        self.on_recovery: Callable[[], None] | None = None
 
     @property
     def threshold_type(self) -> ThresholdType:
@@ -105,12 +105,12 @@ class DataIntegrityMonitor:
         return self._consecutive_bad_games
 
     @property
-    def last_tick(self) -> Optional[int]:
+    def last_tick(self) -> int | None:
         """Last tick number seen."""
         return self._last_tick
 
     @property
-    def current_game_id(self) -> Optional[str]:
+    def current_game_id(self) -> str | None:
         """Current game ID being monitored."""
         return self._current_game_id
 
@@ -127,7 +127,9 @@ class DataIntegrityMonitor:
                 # Gap detected
                 gap_size = tick - expected_tick
                 self._consecutive_tick_gaps += gap_size
-                logger.debug(f"Tick gap detected: expected {expected_tick}, got {tick} (gap={gap_size})")
+                logger.debug(
+                    f"Tick gap detected: expected {expected_tick}, got {tick} (gap={gap_size})"
+                )
 
                 # Check threshold (only for TICKS type)
                 if self._threshold_type == ThresholdType.TICKS:
@@ -165,15 +167,17 @@ class DataIntegrityMonitor:
         else:
             # Abnormal end
             self._consecutive_bad_games += 1
-            logger.warning(f"Abnormal game end: {game_id} (consecutive: {self._consecutive_bad_games})")
+            logger.warning(
+                f"Abnormal game end: {game_id} (consecutive: {self._consecutive_bad_games})"
+            )
 
             # Check threshold (only for GAMES type)
             if self._threshold_type == ThresholdType.GAMES:
                 if self._consecutive_bad_games >= self._threshold_value:
-                    self._trigger(IntegrityIssue.ABNORMAL_GAME_END, {
-                        "game_id": game_id,
-                        "consecutive_bad_games": self._consecutive_bad_games
-                    })
+                    self._trigger(
+                        IntegrityIssue.ABNORMAL_GAME_END,
+                        {"game_id": game_id, "consecutive_bad_games": self._consecutive_bad_games},
+                    )
 
         self._current_game_id = None
         self._last_tick = None
@@ -211,7 +215,7 @@ class DataIntegrityMonitor:
         self._current_game_id = None
         logger.debug("Data integrity monitor reset")
 
-    def _trigger(self, issue: IntegrityIssue, details: Dict[str, Any]) -> None:
+    def _trigger(self, issue: IntegrityIssue, details: dict[str, Any]) -> None:
         """Trigger monitor mode."""
         if self._is_triggered:
             # Already triggered, don't call callback again
@@ -227,7 +231,7 @@ class DataIntegrityMonitor:
         """Check if data feed is healthy (not triggered)."""
         return not self._is_triggered
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current status as dictionary."""
         return {
             "is_triggered": self._is_triggered,

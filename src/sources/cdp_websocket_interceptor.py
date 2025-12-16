@@ -4,11 +4,13 @@ CDP WebSocket Interceptor
 Intercepts WebSocket frames from Chrome via CDP Network domain.
 Captures ALL events the browser receives, including authenticated events.
 """
+
 import logging
 import threading
 import time
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from sources.socketio_parser import parse_socketio_frame
 
@@ -24,7 +26,7 @@ class CDPWebSocketInterceptor:
     usernameStatus and playerUpdate.
     """
 
-    RUGS_BACKEND_HOST = 'backend.rugs.fun'
+    RUGS_BACKEND_HOST = "backend.rugs.fun"
 
     def __init__(self):
         """Initialize interceptor."""
@@ -32,18 +34,18 @@ class CDPWebSocketInterceptor:
 
         # Connection state
         self.is_connected: bool = False
-        self.rugs_websocket_id: Optional[str] = None
+        self.rugs_websocket_id: str | None = None
 
         # CDP client (set by connect())
         self._cdp_client = None
 
         # Event callback
-        self.on_event: Optional[Callable[[Dict[str, Any]], None]] = None
+        self.on_event: Callable[[dict[str, Any]], None] | None = None
 
         # CDP timestamps are monotonic (not UNIX epoch). Capture a base mapping
         # so we can emit reasonable wall-clock timestamps for downstream consumers.
-        self._cdp_timestamp_base: Optional[float] = None
-        self._wall_epoch_base: Optional[float] = None
+        self._cdp_timestamp_base: float | None = None
+        self._wall_epoch_base: float | None = None
 
         # Statistics
         self.events_received: int = 0
@@ -53,61 +55,57 @@ class CDPWebSocketInterceptor:
 
     def _is_rugs_websocket(self, url: str) -> bool:
         """Check if URL is rugs.fun WebSocket."""
-        return (
-            self.RUGS_BACKEND_HOST in url and
-            'socket.io' in url and
-            url.startswith('wss://')
-        )
+        return self.RUGS_BACKEND_HOST in url and "socket.io" in url and url.startswith("wss://")
 
-    def _handle_websocket_created(self, params: Dict[str, Any]):
+    def _handle_websocket_created(self, params: dict[str, Any]):
         """
         Handle Network.webSocketCreated event.
 
         Captures the request ID for rugs.fun WebSocket connections.
         """
-        url = params.get('url', '')
-        request_id = params.get('requestId')
+        url = params.get("url", "")
+        request_id = params.get("requestId")
 
         if self._is_rugs_websocket(url):
             with self._lock:
                 self.rugs_websocket_id = request_id
             logger.info(f"Captured rugs.fun WebSocket: {request_id}")
 
-    def _handle_frame_received(self, params: Dict[str, Any]):
+    def _handle_frame_received(self, params: dict[str, Any]):
         """
         Handle Network.webSocketFrameReceived event.
 
         Parses incoming frames and emits structured events.
         """
-        request_id = params.get('requestId')
+        request_id = params.get("requestId")
 
         with self._lock:
             if request_id != self.rugs_websocket_id:
                 return
 
-        response = params.get('response', {})
-        payload = response.get('payloadData', '')
-        timestamp = params.get('timestamp', 0)
+        response = params.get("response", {})
+        payload = response.get("payloadData", "")
+        timestamp = params.get("timestamp", 0)
 
-        self._process_frame(payload, timestamp, 'received')
+        self._process_frame(payload, timestamp, "received")
 
-    def _handle_frame_sent(self, params: Dict[str, Any]):
+    def _handle_frame_sent(self, params: dict[str, Any]):
         """
         Handle Network.webSocketFrameSent event.
 
         Parses outgoing frames and emits structured events.
         """
-        request_id = params.get('requestId')
+        request_id = params.get("requestId")
 
         with self._lock:
             if request_id != self.rugs_websocket_id:
                 return
 
-        response = params.get('response', {})
-        payload = response.get('payloadData', '')
-        timestamp = params.get('timestamp', 0)
+        response = params.get("response", {})
+        payload = response.get("payloadData", "")
+        timestamp = params.get("timestamp", 0)
 
-        self._process_frame(payload, timestamp, 'sent')
+        self._process_frame(payload, timestamp, "sent")
 
     def _process_frame(self, payload: str, timestamp: float, direction: str):
         """Process a WebSocket frame and emit event."""
@@ -117,23 +115,23 @@ class CDPWebSocketInterceptor:
             return
 
         # Only emit actual events (not ping/pong)
-        if frame.type != 'event' or not frame.event_name:
+        if frame.type != "event" or not frame.event_name:
             return
 
         event_epoch = self._to_epoch_seconds(timestamp)
 
         # Build event dict
         event = {
-            'event': frame.event_name,
-            'data': frame.data,
-            'timestamp': datetime.fromtimestamp(event_epoch, tz=timezone.utc).isoformat(),
-            'direction': direction,
-            'raw': frame.raw
+            "event": frame.event_name,
+            "data": frame.data,
+            "timestamp": datetime.fromtimestamp(event_epoch, tz=UTC).isoformat(),
+            "direction": direction,
+            "raw": frame.raw,
         }
 
         # Update stats
         with self._lock:
-            if direction == 'received':
+            if direction == "received":
                 self.events_received += 1
             else:
                 self.events_sent += 1
@@ -167,13 +165,13 @@ class CDPWebSocketInterceptor:
 
             return self._wall_epoch_base + (float(cdp_timestamp) - self._cdp_timestamp_base)
 
-    def _handle_websocket_closed(self, params: Dict[str, Any]):
+    def _handle_websocket_closed(self, params: dict[str, Any]):
         """
         Handle Network.webSocketClosed event.
 
         Clears the tracked WebSocket ID.
         """
-        request_id = params.get('requestId')
+        request_id = params.get("requestId")
 
         with self._lock:
             if request_id == self.rugs_websocket_id:
@@ -194,13 +192,13 @@ class CDPWebSocketInterceptor:
             self._cdp_client = cdp_client
 
             # Enable Network domain (Playwright uses async send())
-            await cdp_client.send('Network.enable')
+            await cdp_client.send("Network.enable")
 
             # Subscribe to WebSocket events
-            cdp_client.on('Network.webSocketCreated', self._handle_websocket_created)
-            cdp_client.on('Network.webSocketFrameReceived', self._handle_frame_received)
-            cdp_client.on('Network.webSocketFrameSent', self._handle_frame_sent)
-            cdp_client.on('Network.webSocketClosed', self._handle_websocket_closed)
+            cdp_client.on("Network.webSocketCreated", self._handle_websocket_created)
+            cdp_client.on("Network.webSocketFrameReceived", self._handle_frame_received)
+            cdp_client.on("Network.webSocketFrameSent", self._handle_frame_sent)
+            cdp_client.on("Network.webSocketClosed", self._handle_websocket_closed)
 
             self.is_connected = True
             logger.info("CDP WebSocket interception started")
@@ -215,7 +213,7 @@ class CDPWebSocketInterceptor:
         if self._cdp_client:
             try:
                 # Disable Network domain to stop receiving events
-                await self._cdp_client.send('Network.disable')
+                await self._cdp_client.send("Network.disable")
             except Exception as e:
                 logger.warning(f"Error disabling Network domain: {e}")
 
@@ -227,12 +225,12 @@ class CDPWebSocketInterceptor:
             self._wall_epoch_base = None
         logger.info("CDP WebSocket interception stopped")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get interception statistics."""
         with self._lock:
             return {
-                'is_connected': self.is_connected,
-                'has_rugs_websocket': self.rugs_websocket_id is not None,
-                'events_received': self.events_received,
-                'events_sent': self.events_sent
+                "is_connected": self.is_connected,
+                "has_rugs_websocket": self.rugs_websocket_id is not None,
+                "events_received": self.events_received,
+                "events_sent": self.events_sent,
             }

@@ -7,6 +7,7 @@ from enum import Enum
 
 class Phase(str, Enum):
     """Game phase states"""
+
     UNKNOWN = "UNKNOWN"
     PRESALE = "PRESALE"
     ACTIVE = "ACTIVE"
@@ -27,12 +28,14 @@ class Phase(str, Enum):
 
 class PositionStatus(str, Enum):
     """Position lifecycle status"""
+
     ACTIVE = "active"
     CLOSED = "closed"
 
 
 class SideBetStatus(str, Enum):
     """Side bet lifecycle status"""
+
     ACTIVE = "active"
     WON = "won"
     LOST = "lost"

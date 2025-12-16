@@ -3,18 +3,21 @@ Event Bus Service - Thread-safe with deadlock prevention
 AUDIT FIX: Added weak references and lock-free callback execution
 """
 
-from typing import Dict, List, Callable, Any, Optional
-from enum import Enum
-import threading
-import queue
 import logging
-import weakref
+import queue
+import threading
 import time
+import weakref
+from collections.abc import Callable
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class Events(Enum):
     """Event constants matching what's used in main.py"""
+
     # UI Events
     UI_READY = "ui.ready"
     UI_UPDATE = "ui.update"
@@ -54,17 +57,18 @@ class Events(Enum):
     REPLAY_RESET = "replay.reset"
     REPLAY_SPEED_CHANGED = "replay.speed_changed"
     REPLAY_STARTED = "replay.started"  # Alias for REPLAY_START
-    REPLAY_PAUSED = "replay.paused"    # Alias for REPLAY_PAUSE
+    REPLAY_PAUSED = "replay.paused"  # Alias for REPLAY_PAUSE
     REPLAY_STOPPED = "replay.stopped"  # Alias for REPLAY_STOP
 
     # Phase 10.7: Player State Events (WebSocket server state)
     PLAYER_IDENTITY = "player.identity"  # Player ID and username from usernameStatus
-    PLAYER_UPDATE = "player.update"      # Server state from playerUpdate
+    PLAYER_UPDATE = "player.update"  # Server state from playerUpdate
 
     # WebSocket interception events (Phase 11)
-    WS_RAW_EVENT = "ws.raw_event"           # Every frame, unfiltered
-    WS_AUTH_EVENT = "ws.auth_event"         # Auth-only events
+    WS_RAW_EVENT = "ws.raw_event"  # Every frame, unfiltered
+    WS_AUTH_EVENT = "ws.auth_event"  # Auth-only events
     WS_SOURCE_CHANGED = "ws.source_changed"  # Source switching ("cdp" or "fallback")
+
 
 class EventBus:
     """
@@ -79,11 +83,11 @@ class EventBus:
 
     def __init__(self, max_queue_size: int = 5000):
         # AUDIT FIX: Use weak references to prevent memory leaks
-        self._subscribers: Dict[Events, List[tuple[int, Any]]] = {}
+        self._subscribers: dict[Events, list[tuple[int, Any]]] = {}
 
         # AUDIT FIX 2: Track original callbacks by id for proper unsubscribe
         # Important: do not store strong refs for weak subscriptions.
-        self._callback_ids: Dict[Events, Dict[int, Any]] = {}
+        self._callback_ids: dict[Events, dict[int, Any]] = {}
 
         # AUDIT FIX: Increased queue size from 1000 to 5000
         self._queue = queue.Queue(maxsize=max_queue_size)
@@ -96,14 +100,14 @@ class EventBus:
 
         # AUDIT FIX: Add statistics tracking
         self._stats = {
-            'events_published': 0,
-            'events_processed': 0,
-            'events_dropped': 0,
-            'errors': 0
+            "events_published": 0,
+            "events_processed": 0,
+            "events_dropped": 0,
+            "errors": 0,
         }
 
         logger.info(f"EventBus initialized with queue size {max_queue_size}")
-        
+
     def start(self):
         """Start event processing thread"""
         if not self._processing:
@@ -111,7 +115,7 @@ class EventBus:
             self._thread = threading.Thread(target=self._process_events, daemon=True)
             self._thread.start()
             logger.info("EventBus started")
-    
+
     def stop(self):
         """
         Stop event processing
@@ -154,7 +158,7 @@ class EventBus:
                 logger.error("EventBus thread did not stop cleanly within timeout")
 
         logger.info("EventBus stopped")
-    
+
     def subscribe(self, event: Events, callback: Callable, weak: bool = True):
         """
         Subscribe to an event
@@ -205,7 +209,7 @@ class EventBus:
             last_ref = self._subscribers[event][-1][1]
             self._callback_ids[event][cb_id] = last_ref
             logger.debug(f"Subscribed to {event.value}")
-    
+
     def unsubscribe(self, event: Events, callback: Callable):
         """
         Unsubscribe from an event
@@ -225,14 +229,13 @@ class EventBus:
 
             # Remove from subscriber list by ID
             self._subscribers[event] = [
-                (cid, ref) for cid, ref in self._subscribers[event]
-                if cid != cb_id
+                (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_id
             ]
             if not self._subscribers[event]:
                 self._subscribers.pop(event, None)
                 self._callback_ids.pop(event, None)
             logger.debug(f"Unsubscribed from {event.value}")
-    
+
     def publish(self, event: Events, data: Any = None):
         """
         Publish an event
@@ -241,20 +244,19 @@ class EventBus:
         """
         try:
             self._queue.put_nowait((event, data))
-            self._stats['events_published'] += 1
+            self._stats["events_published"] += 1
 
             # AUDIT FIX: Warn at 80% capacity
             qsize = self._queue.qsize()
             max_size = self._queue.maxsize
             if max_size > 0 and qsize > max_size * 0.8:
                 logger.warning(
-                    f"EventBus queue at {qsize}/{max_size} "
-                    f"({qsize/max_size*100:.0f}% capacity)"
+                    f"EventBus queue at {qsize}/{max_size} ({qsize / max_size * 100:.0f}% capacity)"
                 )
         except queue.Full:
-            self._stats['events_dropped'] += 1
+            self._stats["events_dropped"] += 1
             logger.warning(f"Event queue full, dropping event: {event.value}")
-    
+
     def _process_events(self):
         """Background thread to process events"""
         while self._processing:
@@ -262,15 +264,15 @@ class EventBus:
                 item = self._queue.get(timeout=0.1)
                 if item is None:  # Sentinel
                     break
-                    
+
                 event, data = item
                 self._dispatch(event, data)
-                
+
             except queue.Empty:
                 continue
             except Exception as e:
                 logger.error(f"Error processing event: {e}", exc_info=True)
-    
+
     def _dispatch(self, event: Events, data: Any):
         """
         Dispatch event to subscribers
@@ -295,10 +297,10 @@ class EventBus:
 
         for callback in callbacks_to_call:
             try:
-                callback({'name': event.value, 'data': data})
-                self._stats['events_processed'] += 1
+                callback({"name": event.value, "data": data})
+                self._stats["events_processed"] += 1
             except Exception as e:
-                self._stats['errors'] += 1
+                self._stats["errors"] += 1
                 logger.error(f"Error in callback for {event.value}: {e}", exc_info=True)
 
     def _resolve_callback(self, ref):
@@ -312,7 +314,7 @@ class EventBus:
             logger.warning(f"Failed to resolve callback: {e}")
         return None
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get event bus statistics
 
@@ -320,10 +322,10 @@ class EventBus:
         """
         with self._sub_lock:
             stats = {
-                'subscriber_count': sum(len(entries) for entries in self._subscribers.values()),
-                'event_types': len(self._subscribers),
-                'queue_size': self._queue.qsize(),
-                'processing': self._processing
+                "subscriber_count": sum(len(entries) for entries in self._subscribers.values()),
+                "event_types": len(self._subscribers),
+                "queue_size": self._queue.qsize(),
+                "processing": self._processing,
             }
             # Add processing stats
             stats.update(self._stats)
@@ -363,6 +365,7 @@ class EventBus:
             self._subscribers.clear()
             self._callback_ids.clear()
             logger.debug("All subscribers cleared")
+
 
 # Global instance
 event_bus = EventBus()

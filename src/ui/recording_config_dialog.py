@@ -5,12 +5,12 @@ Modal dialog for configuring recording sessions.
 Provides controls for capture mode, session limits, data integrity, and preferences.
 """
 
-import tkinter as tk
-from tkinter import ttk
 import logging
-from typing import Callable, Optional
+import tkinter as tk
+from collections.abc import Callable
+from tkinter import ttk
 
-from models.recording_config import RecordingConfig, CaptureMode, MonitorThresholdType
+from models.recording_config import CaptureMode, MonitorThresholdType, RecordingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ class RecordingConfigDialog:
     def __init__(
         self,
         parent: tk.Tk,
-        config: Optional[RecordingConfig] = None,
-        on_start: Optional[Callable[[RecordingConfig], None]] = None,
-        on_cancel: Optional[Callable[[], None]] = None
+        config: RecordingConfig | None = None,
+        on_start: Callable[[RecordingConfig], None] | None = None,
+        on_cancel: Callable[[], None] | None = None,
     ):
         """
         Initialize the config dialog.
@@ -58,21 +58,21 @@ class RecordingConfigDialog:
         self.on_start = on_start
         self.on_cancel = on_cancel
 
-        self.dialog: Optional[tk.Toplevel] = None
-        self.result: Optional[RecordingConfig] = None
+        self.dialog: tk.Toplevel | None = None
+        self.result: RecordingConfig | None = None
 
         # Tkinter variables
-        self._capture_mode_var: Optional[tk.StringVar] = None
-        self._game_count_var: Optional[tk.StringVar] = None
-        self._time_limit_var: Optional[tk.StringVar] = None
-        self._custom_time_var: Optional[tk.StringVar] = None
-        self._threshold_type_var: Optional[tk.StringVar] = None
-        self._tick_threshold_var: Optional[tk.StringVar] = None
-        self._game_threshold_var: Optional[tk.StringVar] = None
-        self._audio_cues_var: Optional[tk.BooleanVar] = None
-        self._auto_start_var: Optional[tk.BooleanVar] = None
+        self._capture_mode_var: tk.StringVar | None = None
+        self._game_count_var: tk.StringVar | None = None
+        self._time_limit_var: tk.StringVar | None = None
+        self._custom_time_var: tk.StringVar | None = None
+        self._threshold_type_var: tk.StringVar | None = None
+        self._tick_threshold_var: tk.StringVar | None = None
+        self._game_threshold_var: tk.StringVar | None = None
+        self._audio_cues_var: tk.BooleanVar | None = None
+        self._auto_start_var: tk.BooleanVar | None = None
 
-    def show(self) -> Optional[RecordingConfig]:
+    def show(self) -> RecordingConfig | None:
         """
         Show the dialog and wait for user interaction.
 
@@ -104,7 +104,9 @@ class RecordingConfigDialog:
         # Center on parent
         self.dialog.update_idletasks()
         x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - 260
-        y = max(50, self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (dialog_height // 2))
+        y = max(
+            50, self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (dialog_height // 2)
+        )
         self.dialog.geometry(f"+{x}+{y}")
 
         # Create scrollable container
@@ -120,8 +122,7 @@ class RecordingConfigDialog:
 
         # Configure canvas scrolling
         scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
         canvas_frame = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -129,6 +130,7 @@ class RecordingConfigDialog:
         # Make the frame expand to fill canvas width
         def configure_canvas(event):
             canvas.itemconfig(canvas_frame, width=event.width)
+
         canvas.bind("<Configure>", configure_canvas)
 
         canvas.configure(yscrollcommand=scrollbar.set)
@@ -186,14 +188,14 @@ class RecordingConfigDialog:
             frame,
             text="Game State Only (prices, seeds, peak)",
             variable=self._capture_mode_var,
-            value=CaptureMode.GAME_STATE_ONLY.value
+            value=CaptureMode.GAME_STATE_ONLY.value,
         ).pack(anchor=tk.W, pady=2)
 
         ttk.Radiobutton(
             frame,
             text="Game State + Player State (includes trades, timing, latency)",
             variable=self._capture_mode_var,
-            value=CaptureMode.GAME_AND_PLAYER.value
+            value=CaptureMode.GAME_AND_PLAYER.value,
         ).pack(anchor=tk.W, pady=2)
 
     def _create_session_limits_section(self, parent: ttk.Frame) -> None:
@@ -218,7 +220,7 @@ class RecordingConfigDialog:
                 game_row,
                 text=text,
                 variable=self._game_count_var,
-                value=str(value) if value is not None else "infinite"
+                value=str(value) if value is not None else "infinite",
             ).pack(side=tk.LEFT, padx=5)
 
         # Time Limit
@@ -247,7 +249,7 @@ class RecordingConfigDialog:
                 time_row,
                 text=text,
                 variable=self._time_limit_var,
-                value=str(value) if value is not None else "off"
+                value=str(value) if value is not None else "off",
             ).pack(side=tk.LEFT, padx=5)
 
         # Custom time option
@@ -255,16 +257,11 @@ class RecordingConfigDialog:
         custom_frame.pack(fill=tk.X, pady=5)
 
         ttk.Radiobutton(
-            custom_frame,
-            text="Custom:",
-            variable=self._time_limit_var,
-            value="custom"
+            custom_frame, text="Custom:", variable=self._time_limit_var, value="custom"
         ).pack(side=tk.LEFT)
 
         self._custom_time_entry = ttk.Entry(
-            custom_frame,
-            textvariable=self._custom_time_var,
-            width=6
+            custom_frame, textvariable=self._custom_time_var, width=6
         )
         self._custom_time_entry.pack(side=tk.LEFT, padx=5)
 
@@ -276,9 +273,7 @@ class RecordingConfigDialog:
         frame.pack(fill=tk.X)
 
         ttk.Label(
-            frame,
-            text="Monitor Mode Threshold (mutually exclusive):",
-            foreground="gray"
+            frame, text="Monitor Mode Threshold (mutually exclusive):", foreground="gray"
         ).pack(anchor=tk.W)
 
         self._threshold_type_var = tk.StringVar()
@@ -293,7 +288,7 @@ class RecordingConfigDialog:
             tick_frame,
             text="By Ticks:",
             variable=self._threshold_type_var,
-            value=MonitorThresholdType.TICKS.value
+            value=MonitorThresholdType.TICKS.value,
         ).pack(side=tk.LEFT)
 
         tick_values_frame = ttk.Frame(tick_frame)
@@ -304,7 +299,7 @@ class RecordingConfigDialog:
                 tick_values_frame,
                 text=str(value),
                 variable=self._tick_threshold_var,
-                value=str(value)
+                value=str(value),
             ).pack(side=tk.LEFT, padx=3)
 
         # By Games
@@ -315,7 +310,7 @@ class RecordingConfigDialog:
             game_frame,
             text="By Games:",
             variable=self._threshold_type_var,
-            value=MonitorThresholdType.GAMES.value
+            value=MonitorThresholdType.GAMES.value,
         ).pack(side=tk.LEFT)
 
         game_values_frame = ttk.Frame(game_frame)
@@ -326,7 +321,7 @@ class RecordingConfigDialog:
                 game_values_frame,
                 text=str(value),
                 variable=self._game_threshold_var,
-                value=str(value)
+                value=str(value),
             ).pack(side=tk.LEFT, padx=3)
 
     def _create_preferences_section(self, parent: ttk.Frame) -> None:
@@ -340,38 +335,25 @@ class RecordingConfigDialog:
         ttk.Checkbutton(
             frame,
             text="Audio Cues (play sounds on recording events)",
-            variable=self._audio_cues_var
+            variable=self._audio_cues_var,
         ).pack(anchor=tk.W, pady=2)
 
-        ttk.Checkbutton(
-            frame,
-            text="Auto-start on Launch",
-            variable=self._auto_start_var
-        ).pack(anchor=tk.W, pady=2)
+        ttk.Checkbutton(frame, text="Auto-start on Launch", variable=self._auto_start_var).pack(
+            anchor=tk.W, pady=2
+        )
 
     def _create_buttons(self, parent: ttk.Frame) -> None:
         """Create action buttons."""
         frame = ttk.Frame(parent)
         frame.pack(fill=tk.X, pady=(10, 0))
 
-        ttk.Button(
-            frame,
-            text="Save Settings",
-            command=self._on_save
-        ).pack(side=tk.LEFT)
+        ttk.Button(frame, text="Save Settings", command=self._on_save).pack(side=tk.LEFT)
 
-        ttk.Button(
-            frame,
-            text="Start",
-            command=self._on_start,
-            style="Accent.TButton"
-        ).pack(side=tk.RIGHT)
+        ttk.Button(frame, text="Start", command=self._on_start, style="Accent.TButton").pack(
+            side=tk.RIGHT
+        )
 
-        ttk.Button(
-            frame,
-            text="Cancel",
-            command=self._on_cancel
-        ).pack(side=tk.RIGHT, padx=10)
+        ttk.Button(frame, text="Cancel", command=self._on_cancel).pack(side=tk.RIGHT, padx=10)
 
     def _populate_from_config(self) -> None:
         """Populate widgets from current config."""
@@ -441,7 +423,7 @@ class RecordingConfigDialog:
             monitor_threshold_type=threshold_type,
             monitor_threshold_value=threshold_value,
             audio_cues=self._audio_cues_var.get(),
-            auto_start_on_launch=self._auto_start_var.get()
+            auto_start_on_launch=self._auto_start_var.get(),
         )
 
     def _on_save(self) -> None:

@@ -16,28 +16,25 @@ Key Features:
 
 import asyncio
 import logging
-import sys
 import time
-from pathlib import Path
-from typing import Optional, Dict, Any
 from decimal import Decimal
+from typing import Any
 
-# Phase 2 Refactoring: Browser module consolidation
-from browser.dom.timing import ExecutionTiming, TimingMetrics
 from browser.dom.selectors import (
+    BET_AMOUNT_INPUT_SELECTORS,
     BUY_BUTTON_SELECTORS,
+    INCREMENT_SELECTOR_MAP,
     SELL_BUTTON_SELECTORS,
     SIDEBET_BUTTON_SELECTORS,
-    BET_AMOUNT_INPUT_SELECTORS,
-    INCREMENT_SELECTOR_MAP,
-    PERCENTAGE_TEXT_MAP,
-    BALANCE_SELECTORS,
-    POSITION_SELECTORS,
 )
+
+# Phase 2 Refactoring: Browser module consolidation
+from browser.dom.timing import TimingMetrics
 
 # Phase 2: Browser consolidation - Use CDP Browser Manager for reliable wallet persistence
 try:
     from browser.manager import CDPBrowserManager, CDPStatus
+
     CDP_MANAGER_AVAILABLE = True
 except ImportError as e:
     logging.warning(f"CDPBrowserManager not available: {e}")
@@ -47,7 +44,8 @@ except ImportError as e:
 
 # Legacy fallback (deprecated - kept for compatibility)
 try:
-    from browser.cdp.launcher import RugsBrowserManager, BrowserStatus
+    from browser.cdp.launcher import BrowserStatus, RugsBrowserManager
+
     LEGACY_MANAGER_AVAILABLE = True
 except ImportError:
     RugsBrowserManager = None
@@ -92,16 +90,15 @@ class BrowserExecutor:
         """
         if not BROWSER_MANAGER_AVAILABLE:
             raise RuntimeError(
-                "No browser manager available. "
-                "Check browser_automation/ directory is present."
+                "No browser manager available. Check browser_automation/ directory is present."
             )
 
         self.profile_name = profile_name
         self.use_cdp = use_cdp and CDP_MANAGER_AVAILABLE
 
         # Phase 9.1: CDP is the default and recommended approach
-        self.cdp_manager: Optional[CDPBrowserManager] = None if self.use_cdp else None
-        self.browser_manager: Optional[RugsBrowserManager] = None  # Legacy fallback
+        self.cdp_manager: CDPBrowserManager | None = None if self.use_cdp else None
+        self.browser_manager: RugsBrowserManager | None = None  # Legacy fallback
 
         # Execution tracking
         self.last_action = None
@@ -179,27 +176,25 @@ class BrowserExecutor:
         # Connect (will launch Chrome if needed)
         try:
             connect_result = await asyncio.wait_for(
-                self.cdp_manager.connect(),
-                timeout=self.browser_start_timeout
+                self.cdp_manager.connect(), timeout=self.browser_start_timeout
             )
             if not connect_result:
                 logger.error("Failed to connect via CDP")
                 return False
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"CDP connection timeout after {self.browser_start_timeout}s")
             return False
 
-        logger.info(f"CDP connected! Current URL: {self.cdp_manager.page.url if self.cdp_manager.page else 'N/A'}")
+        logger.info(
+            f"CDP connected! Current URL: {self.cdp_manager.page.url if self.cdp_manager.page else 'N/A'}"
+        )
 
         # Navigate to rugs.fun if not already there
         try:
-            nav_result = await asyncio.wait_for(
-                self.cdp_manager.navigate_to_game(),
-                timeout=15.0
-            )
+            nav_result = await asyncio.wait_for(self.cdp_manager.navigate_to_game(), timeout=15.0)
             if not nav_result:
                 logger.warning("Navigation unclear - check browser")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Navigation timeout - check browser")
 
         logger.info("Browser ready for live trading via CDP!")
@@ -220,13 +215,12 @@ class BrowserExecutor:
         # AUDIT FIX: Wrap start_browser in timeout to prevent deadlock
         try:
             start_result = await asyncio.wait_for(
-                self.browser_manager.start_browser(),
-                timeout=self.browser_start_timeout
+                self.browser_manager.start_browser(), timeout=self.browser_start_timeout
             )
             if not start_result:
                 logger.error("Failed to start browser")
                 return False
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"Browser start timeout after {self.browser_start_timeout}s")
             return False
 
@@ -238,12 +232,12 @@ class BrowserExecutor:
         try:
             nav_result = await asyncio.wait_for(
                 self.browser_manager.navigate_to_game(),
-                timeout=15.0  # 15 seconds for page load
+                timeout=15.0,  # 15 seconds for page load
             )
             if not nav_result:
                 logger.warning("Navigation to rugs.fun unclear - continuing anyway")
                 # Don't fail here - browser might still work
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Navigation timeout - continuing anyway")
 
         logger.info("Page loaded")
@@ -254,14 +248,14 @@ class BrowserExecutor:
         try:
             wallet_result = await asyncio.wait_for(
                 self.browser_manager.connect_wallet(),
-                timeout=20.0  # 20 seconds for wallet connection (may require user approval)
+                timeout=20.0,  # 20 seconds for wallet connection (may require user approval)
             )
             if not wallet_result:
                 logger.warning("Wallet connection unclear - please verify in browser")
                 # Don't fail here - user can connect manually
             else:
                 logger.info("Wallet connected successfully!")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Wallet connection timeout - may need manual approval")
 
         logger.info("Browser ready for live trading!")
@@ -281,11 +275,10 @@ class BrowserExecutor:
             if self.cdp_manager:
                 try:
                     await asyncio.wait_for(
-                        self.cdp_manager.disconnect(),
-                        timeout=self.browser_stop_timeout
+                        self.cdp_manager.disconnect(), timeout=self.browser_stop_timeout
                     )
                     logger.info("CDP disconnected (Chrome still running for persistence)")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.error(f"CDP disconnect timeout after {self.browser_stop_timeout}s")
                 finally:
                     self.cdp_manager = None
@@ -294,12 +287,13 @@ class BrowserExecutor:
             if self.browser_manager:
                 try:
                     await asyncio.wait_for(
-                        self.browser_manager.stop_browser(),
-                        timeout=self.browser_stop_timeout
+                        self.browser_manager.stop_browser(), timeout=self.browser_stop_timeout
                     )
                     logger.info("Browser stopped")
-                except asyncio.TimeoutError:
-                    logger.error(f"Browser stop timeout after {self.browser_stop_timeout}s - forcing cleanup")
+                except TimeoutError:
+                    logger.error(
+                        f"Browser stop timeout after {self.browser_stop_timeout}s - forcing cleanup"
+                    )
                 finally:
                     self.browser_manager = None
 
@@ -386,7 +380,7 @@ class BrowserExecutor:
             # Calculate delay with exponential backoff
             delay = min(
                 self.reconnect_base_delay * (2 ** (self._reconnect_attempt - 1)),
-                self.reconnect_max_delay
+                self.reconnect_max_delay,
             )
 
             logger.warning(
@@ -404,15 +398,11 @@ class BrowserExecutor:
             success = await self.start_browser()
 
             if success:
-                logger.info(
-                    f"Reconnection successful after {self._reconnect_attempt} attempt(s)"
-                )
+                logger.info(f"Reconnection successful after {self._reconnect_attempt} attempt(s)")
                 self._reconnect_attempt = 0
                 return True
             else:
-                logger.warning(
-                    f"Reconnection attempt {self._reconnect_attempt} failed"
-                )
+                logger.warning(f"Reconnection attempt {self._reconnect_attempt} failed")
                 return False
 
         except Exception as e:
@@ -432,7 +422,7 @@ class BrowserExecutor:
     # BROWSER ACTION METHODS (Phase 8.5)
     # ========================================================================
 
-    async def click_buy(self, amount: Optional[Decimal] = None) -> bool:
+    async def click_buy(self, amount: Decimal | None = None) -> bool:
         """
         Click BUY button in browser
 
@@ -463,9 +453,7 @@ class BrowserExecutor:
             for selector in BUY_BUTTON_SELECTORS:
                 try:
                     button = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if button:
                         await button.click()
@@ -485,7 +473,7 @@ class BrowserExecutor:
             logger.error(f"Error clicking BUY: {e}", exc_info=True)
             return False
 
-    async def click_sell(self, percentage: Optional[float] = None) -> bool:
+    async def click_sell(self, percentage: float | None = None) -> bool:
         """
         Click SELL button in browser
 
@@ -513,13 +501,11 @@ class BrowserExecutor:
             for selector in SELL_BUTTON_SELECTORS:
                 try:
                     button = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if button:
                         await button.click()
-                        pct_str = f"{percentage*100:.0f}%" if percentage else "default"
+                        pct_str = f"{percentage * 100:.0f}%" if percentage else "default"
                         logger.info(f"Clicked SELL button ({pct_str})")
 
                         # Wait for action to process
@@ -536,7 +522,7 @@ class BrowserExecutor:
             logger.error(f"Error clicking SELL: {e}", exc_info=True)
             return False
 
-    async def click_sidebet(self, amount: Optional[Decimal] = None) -> bool:
+    async def click_sidebet(self, amount: Decimal | None = None) -> bool:
         """
         Click SIDEBET button in browser
 
@@ -567,13 +553,13 @@ class BrowserExecutor:
             for selector in SIDEBET_BUTTON_SELECTORS:
                 try:
                     button = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if button:
                         await button.click()
-                        logger.info(f"Clicked SIDEBET button ({amount if amount else 'default'} SOL)")
+                        logger.info(
+                            f"Clicked SIDEBET button ({amount if amount else 'default'} SOL)"
+                        )
 
                         # Wait for action to process
                         await asyncio.sleep(self.validation_delay)
@@ -610,9 +596,7 @@ class BrowserExecutor:
             for selector in BET_AMOUNT_INPUT_SELECTORS:
                 try:
                     input_field = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if input_field:
                         # Clear and set value
@@ -644,12 +628,7 @@ class BrowserExecutor:
             page = self.page  # Use property (CDP or legacy)
 
             # Map percentage to button text
-            percentage_text = {
-                0.1: "10%",
-                0.25: "25%",
-                0.5: "50%",
-                1.0: "100%"
-            }
+            percentage_text = {0.1: "10%", 0.25: "25%", 0.5: "50%", 1.0: "100%"}
 
             text = percentage_text.get(percentage)
             if not text:
@@ -666,9 +645,7 @@ class BrowserExecutor:
             for selector in selectors:
                 try:
                     button = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if button:
                         await button.click()
@@ -678,7 +655,9 @@ class BrowserExecutor:
                 except Exception:
                     continue
 
-            logger.warning(f"Could not find {text} percentage button - may need to update selectors")
+            logger.warning(
+                f"Could not find {text} percentage button - may need to update selectors"
+            )
             # Return True anyway (percentage buttons might not exist yet in UI)
             return True
 
@@ -722,9 +701,7 @@ class BrowserExecutor:
             for selector in selectors:
                 try:
                     button = await page.wait_for_selector(
-                        selector,
-                        timeout=self.action_timeout * 1000,
-                        state='visible'
+                        selector, timeout=self.action_timeout * 1000, state="visible"
                     )
                     if button:
                         break
@@ -742,6 +719,7 @@ class BrowserExecutor:
                 # Human delay between clicks (10-50ms)
                 if i < times - 1:
                     import random
+
                     delay = random.uniform(0.010, 0.050)  # 10-50ms
                     await asyncio.sleep(delay)
 
@@ -778,12 +756,13 @@ class BrowserExecutor:
         """
         try:
             # Clear to 0.0 first
-            if not await self._click_increment_button_in_browser('X'):
+            if not await self._click_increment_button_in_browser("X"):
                 logger.error("Failed to clear bet amount in browser")
                 return False
 
             # Human delay after clear
             import random
+
             await asyncio.sleep(random.uniform(0.010, 0.050))
 
             # Calculate button sequence (greedy algorithm, largest first)
@@ -791,10 +770,10 @@ class BrowserExecutor:
             sequence = []
 
             increments = [
-                (1.0, '+1'),
-                (0.1, '+0.1'),
-                (0.01, '+0.01'),
-                (0.001, '+0.001'),
+                (1.0, "+1"),
+                (0.1, "+0.1"),
+                (0.01, "+0.01"),
+                (0.001, "+0.001"),
             ]
 
             for increment_value, button_type in increments:
@@ -824,7 +803,7 @@ class BrowserExecutor:
     # STATE READING METHODS (Phase 8.6 - Placeholder)
     # ========================================================================
 
-    async def read_balance_from_browser(self) -> Optional[Decimal]:
+    async def read_balance_from_browser(self) -> Decimal | None:
         """
         Read balance from browser DOM
 
@@ -840,28 +819,28 @@ class BrowserExecutor:
         try:
             # Try multiple selectors for balance display
             balance_selectors = [
-                'text=/Balance.*([0-9.]+)\\s*SOL/i',
-                '[data-balance]',
-                '.balance',
+                "text=/Balance.*([0-9.]+)\\s*SOL/i",
+                "[data-balance]",
+                ".balance",
                 'span:has-text("SOL")',
             ]
 
             for selector in balance_selectors:
                 try:
                     element = await asyncio.wait_for(
-                        self.page.query_selector(selector),
-                        timeout=2.0
+                        self.page.query_selector(selector), timeout=2.0
                     )
                     if element:
                         text = await element.text_content()
                         # Extract number from text like "Balance: 1.234 SOL"
                         import re
-                        match = re.search(r'([0-9]+\.[0-9]+)', text)
+
+                        match = re.search(r"([0-9]+\.[0-9]+)", text)
                         if match:
                             balance = Decimal(match.group(1))
                             logger.debug(f"Read balance from browser: {balance} SOL")
                             return balance
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except Exception as e:
                     logger.debug(f"Selector {selector} failed: {e}")
@@ -874,7 +853,7 @@ class BrowserExecutor:
             logger.error(f"Failed to read balance from browser: {e}")
             return None
 
-    async def read_position_from_browser(self) -> Optional[Dict[str, Any]]:
+    async def read_position_from_browser(self) -> dict[str, Any] | None:
         """
         Read position from browser DOM
 
@@ -890,37 +869,41 @@ class BrowserExecutor:
         try:
             # Try multiple selectors for position display
             position_selectors = [
-                '[data-position]',
-                '.position',
-                'text=/Position.*([0-9.]+)x/i',
+                "[data-position]",
+                ".position",
+                "text=/Position.*([0-9.]+)x/i",
             ]
 
             for selector in position_selectors:
                 try:
                     element = await asyncio.wait_for(
-                        self.page.query_selector(selector),
-                        timeout=2.0
+                        self.page.query_selector(selector), timeout=2.0
                     )
                     if element:
                         text = await element.text_content()
                         # Extract position info like "Position: 1.5x, 0.01 SOL"
                         import re
-                        price_match = re.search(r'([0-9]+\.[0-9]+)x', text)
-                        amount_match = re.search(r'([0-9]+\.[0-9]+)\\s*SOL', text)
+
+                        price_match = re.search(r"([0-9]+\.[0-9]+)x", text)
+                        amount_match = re.search(r"([0-9]+\.[0-9]+)\\s*SOL", text)
 
                         if price_match:
                             entry_price = Decimal(price_match.group(1))
-                            amount = Decimal(amount_match.group(1)) if amount_match else Decimal('0.001')
+                            amount = (
+                                Decimal(amount_match.group(1)) if amount_match else Decimal("0.001")
+                            )
 
                             position = {
-                                'entry_price': entry_price,
-                                'amount': amount,
-                                'status': 'active',
-                                'entry_tick': 0,  # Unknown from DOM
+                                "entry_price": entry_price,
+                                "amount": amount,
+                                "status": "active",
+                                "entry_tick": 0,  # Unknown from DOM
                             }
-                            logger.debug(f"Read position from browser: {entry_price}x, {amount} SOL")
+                            logger.debug(
+                                f"Read position from browser: {entry_price}x, {amount} SOL"
+                            )
                             return position
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except Exception as e:
                     logger.debug(f"Selector {selector} failed: {e}")
@@ -934,7 +917,7 @@ class BrowserExecutor:
             logger.error(f"Failed to read position from browser: {e}")
             return None
 
-    def get_timing_stats(self) -> Dict[str, Any]:
+    def get_timing_stats(self) -> dict[str, Any]:
         """
         Get timing statistics for UI display
 

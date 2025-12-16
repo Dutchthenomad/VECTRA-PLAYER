@@ -4,25 +4,18 @@ Tests for timing metrics display (Phase 8.6)
 Simple unit tests that verify timing metrics logic without requiring full UI initialization.
 """
 
-import pytest
-from unittest.mock import Mock
-
 
 def test_timing_stats_formatting():
     """
     Phase 8.6: Verify timing stats are formatted correctly for display
     """
     # Mock timing stats (as returned by BrowserExecutor)
-    stats = {
-        'avg_total_delay_ms': 45.8,
-        'success_rate': 0.873,
-        'total_executions': 12
-    }
+    stats = {"avg_total_delay_ms": 45.8, "success_rate": 0.873, "total_executions": 12}
 
     # Format as done in _update_timing_metrics_display
-    delay_ms = int(stats['avg_total_delay_ms'])
-    success_rate = int(stats['success_rate'] * 100)
-    exec_count = stats['total_executions']
+    delay_ms = int(stats["avg_total_delay_ms"])
+    success_rate = int(stats["success_rate"] * 100)
+    exec_count = stats["total_executions"]
 
     # Verify rounding
     assert delay_ms == 45  # 45.8 rounds down to 45
@@ -40,15 +33,11 @@ def test_timing_stats_zero_executions():
     """
     Phase 8.6: Verify timing stats handle zero executions gracefully
     """
-    stats = {
-        'avg_total_delay_ms': 0.0,
-        'success_rate': 0.0,
-        'total_executions': 0
-    }
+    stats = {"avg_total_delay_ms": 0.0, "success_rate": 0.0, "total_executions": 0}
 
-    delay_ms = int(stats['avg_total_delay_ms'])
-    success_rate = int(stats['success_rate'] * 100)
-    exec_count = stats['total_executions']
+    delay_ms = int(stats["avg_total_delay_ms"])
+    success_rate = int(stats["success_rate"] * 100)
+    exec_count = stats["total_executions"]
 
     assert delay_ms == 0
     assert success_rate == 0
@@ -59,15 +48,11 @@ def test_timing_stats_high_values():
     """
     Phase 8.6: Verify timing stats handle high values correctly
     """
-    stats = {
-        'avg_total_delay_ms': 150.7,
-        'success_rate': 0.987,
-        'total_executions': 1234
-    }
+    stats = {"avg_total_delay_ms": 150.7, "success_rate": 0.987, "total_executions": 1234}
 
-    delay_ms = int(stats['avg_total_delay_ms'])
-    success_rate = int(stats['success_rate'] * 100)
-    exec_count = stats['total_executions']
+    delay_ms = int(stats["avg_total_delay_ms"])
+    success_rate = int(stats["success_rate"] * 100)
+    exec_count = stats["total_executions"]
 
     assert delay_ms == 150
     assert success_rate == 98  # 0.987 * 100 = 98.7
@@ -98,26 +83,26 @@ def test_browser_executor_stats_schema():
     """
     # Expected schema from BrowserExecutor.get_timing_stats()
     expected_keys = [
-        'total_executions',
-        'successful_executions',
-        'success_rate',
-        'avg_total_delay_ms',
-        'avg_click_delay_ms',
-        'avg_confirmation_delay_ms',
-        'p50_total_delay_ms',
-        'p95_total_delay_ms',
+        "total_executions",
+        "successful_executions",
+        "success_rate",
+        "avg_total_delay_ms",
+        "avg_click_delay_ms",
+        "avg_confirmation_delay_ms",
+        "p50_total_delay_ms",
+        "p95_total_delay_ms",
     ]
 
     # Mock stats (as returned by browser_executor.get_timing_stats())
     stats = {
-        'total_executions': 150,
-        'successful_executions': 142,
-        'success_rate': 0.9467,
-        'avg_total_delay_ms': 47.8,
-        'avg_click_delay_ms': 12.3,
-        'avg_confirmation_delay_ms': 35.5,
-        'p50_total_delay_ms': 45.0,
-        'p95_total_delay_ms': 78.9,
+        "total_executions": 150,
+        "successful_executions": 142,
+        "success_rate": 0.9467,
+        "avg_total_delay_ms": 47.8,
+        "avg_click_delay_ms": 12.3,
+        "avg_confirmation_delay_ms": 35.5,
+        "p50_total_delay_ms": 45.0,
+        "p95_total_delay_ms": 78.9,
     }
 
     # Verify all expected keys exist
@@ -125,6 +110,6 @@ def test_browser_executor_stats_schema():
         assert key in stats, f"Missing key: {key}"
 
     # Verify value types
-    assert isinstance(stats['total_executions'], int)
-    assert isinstance(stats['success_rate'], float)
-    assert 0.0 <= stats['success_rate'] <= 1.0  # Rate is 0-1, not 0-100
+    assert isinstance(stats["total_executions"], int)
+    assert isinstance(stats["success_rate"], float)
+    assert 0.0 <= stats["success_rate"] <= 1.0  # Rate is 0-1, not 0-100

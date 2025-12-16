@@ -15,33 +15,35 @@ File organization:
 
 import json
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Callable, Dict, Any, List, Optional
+from typing import Any
 
-from models.recording_config import RecordingConfig, CaptureMode
+from models.demo_action import ActionCategory, get_category_for_button, is_trade_action
+from models.recording_config import CaptureMode, RecordingConfig
 from models.recording_models import (
-    GameStateRecord,
     GameStateMeta,
+    GameStateRecord,
+    LocalStateSnapshot,
+    PlayerAction,
     PlayerSession,
     PlayerSessionMeta,
-    PlayerAction,
+    RecordedAction,
     # Phase 10.6: Validation-aware models
     ServerState,
-    LocalStateSnapshot,
-    RecordedAction,
     validate_states,
 )
-from models.demo_action import ActionCategory, get_category_for_button, is_trade_action
 from services.recording_state_machine import RecordingState, RecordingStateMachine
-from sources.data_integrity_monitor import DataIntegrityMonitor, ThresholdType, IntegrityIssue
+from sources.data_integrity_monitor import DataIntegrityMonitor, IntegrityIssue
 
 logger = logging.getLogger(__name__)
 
 
 class DecimalEncoder(json.JSONEncoder):
     """JSON encoder that handles Decimal types."""
+
     def default(self, obj):
         if isinstance(obj, Decimal):
             return str(obj)
@@ -81,9 +83,9 @@ class UnifiedRecorder:
     def __init__(
         self,
         base_path: str,
-        config: Optional[RecordingConfig] = None,
-        player_id: Optional[str] = None,
-        username: Optional[str] = None
+        config: RecordingConfig | None = None,
+        player_id: str | None = None,
+        username: str | None = None,
     ):
         """
         Initialize the unified recorder.
@@ -105,30 +107,30 @@ class UnifiedRecorder:
         # Data integrity monitor
         self._integrity_monitor = DataIntegrityMonitor(
             threshold_type=self._config.monitor_threshold_type,
-            threshold_value=self._config.monitor_threshold_value
+            threshold_value=self._config.monitor_threshold_value,
         )
 
         # Current game state
-        self._current_game: Optional[GameStateRecord] = None
-        self._current_game_start: Optional[datetime] = None
+        self._current_game: GameStateRecord | None = None
+        self._current_game_start: datetime | None = None
         self._current_game_has_player_input = False
-        self._current_game_ticks: List[Decimal] = []
+        self._current_game_ticks: list[Decimal] = []
 
         # Current player session
-        self._player_session: Optional[PlayerSession] = None
-        self._player_session_start: Optional[datetime] = None
-        self._pending_actions: List[PlayerAction] = []
+        self._player_session: PlayerSession | None = None
+        self._player_session_start: datetime | None = None
+        self._pending_actions: list[PlayerAction] = []
 
         # Phase 10.6: Button recording state
-        self._current_game_actions: List[RecordedAction] = []
+        self._current_game_actions: list[RecordedAction] = []
         self._action_file_handle = None
-        self._last_server_state: Optional[ServerState] = None
-        self._pending_trade_actions: Dict[str, RecordedAction] = {}  # action_id -> action
+        self._last_server_state: ServerState | None = None
+        self._pending_trade_actions: dict[str, RecordedAction] = {}  # action_id -> action
 
         # Callbacks
-        self.on_game_recorded: Optional[Callable[[str], None]] = None
-        self.on_session_complete: Optional[Callable[[int], None]] = None
-        self.on_state_change: Optional[Callable[[RecordingState, RecordingState], None]] = None
+        self.on_game_recorded: Callable[[str], None] | None = None
+        self.on_session_complete: Callable[[int], None] | None = None
+        self.on_state_change: Callable[[RecordingState, RecordingState], None] | None = None
 
         # Wire up internal callbacks
         self._state_machine.on_state_change = self._handle_state_change
@@ -175,8 +177,7 @@ class UnifiedRecorder:
             game_in_progress: Whether a game is already in progress
         """
         self._state_machine.start_session(
-            game_in_progress=game_in_progress,
-            game_limit=self._config.game_count
+            game_in_progress=game_in_progress, game_limit=self._config.game_count
         )
 
         # Start player session if in GAME_AND_PLAYER mode
@@ -238,10 +239,10 @@ class UnifiedRecorder:
     def on_game_end(
         self,
         game_id: str,
-        prices: Optional[List[Decimal]] = None,
-        peak: Optional[Decimal] = None,
+        prices: list[Decimal] | None = None,
+        peak: Decimal | None = None,
         clean: bool = True,
-        seed_data: Optional[dict] = None
+        seed_data: dict | None = None,
     ) -> None:
         """
         Handle game end event.
@@ -335,9 +336,9 @@ class UnifiedRecorder:
         self,
         button: str,
         local_state: LocalStateSnapshot,
-        amount: Optional[Decimal] = None,
-        server_state: Optional[ServerState] = None
-    ) -> Optional[RecordedAction]:
+        amount: Decimal | None = None,
+        server_state: ServerState | None = None,
+    ) -> RecordedAction | None:
         """
         Record a button press with dual-state validation.
 
@@ -406,11 +407,7 @@ class UnifiedRecorder:
         logger.debug(f"Recorded button: {button} (drift={drift_detected})")
         return action
 
-    def record_trade_confirmation(
-        self,
-        action_id: str,
-        timestamp_ms: int
-    ) -> Optional[float]:
+    def record_trade_confirmation(self, action_id: str, timestamp_ms: int) -> float | None:
         """
         Record trade confirmation and calculate latency.
 
@@ -428,7 +425,7 @@ class UnifiedRecorder:
             return latency
         return None
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get comprehensive status."""
         return {
             "state": self._state_machine.state.value,
@@ -446,10 +443,7 @@ class UnifiedRecorder:
         """Start recording a new game."""
         self._current_game_start = datetime.utcnow()
         self._current_game = GameStateRecord(
-            meta=GameStateMeta(
-                game_id=game_id,
-                start_time=self._current_game_start
-            )
+            meta=GameStateMeta(game_id=game_id, start_time=self._current_game_start)
         )
         self._current_game_has_player_input = False
         self._current_game_ticks = []
@@ -462,12 +456,12 @@ class UnifiedRecorder:
             player_dir.mkdir(parents=True, exist_ok=True)
 
             time_str = self._current_game_start.strftime("%Y%m%dT%H%M%S")
-            game_id_short = game_id.split('-')[-1][:8] if '-' in game_id else game_id[:8]
+            game_id_short = game_id.split("-")[-1][:8] if "-" in game_id else game_id[:8]
             filename = f"{time_str}_{game_id_short}_player.jsonl"
             filepath = player_dir / filename
 
             try:
-                self._action_file_handle = open(filepath, 'w')
+                self._action_file_handle = open(filepath, "w")
                 logger.debug(f"Opened player action file: {filepath}")
             except Exception as e:
                 logger.error(f"Failed to open player action file: {e}")
@@ -476,10 +470,7 @@ class UnifiedRecorder:
         logger.debug(f"Started game recording: {game_id}")
 
     def _finalize_game(
-        self,
-        prices: List[Decimal],
-        peak: Decimal,
-        seed_data: Optional[dict] = None
+        self, prices: list[Decimal], peak: Decimal, seed_data: dict | None = None
     ) -> None:
         """Finalize game data before saving."""
         if not self._current_game:
@@ -494,10 +485,10 @@ class UnifiedRecorder:
         self._current_game.meta.peak_multiplier = peak
 
         if seed_data:
-            self._current_game.meta.server_seed = seed_data.get('server_seed')
-            self._current_game.meta.server_seed_hash = seed_data.get('server_seed_hash')
+            self._current_game.meta.server_seed = seed_data.get("server_seed")
+            self._current_game.meta.server_seed_hash = seed_data.get("server_seed_hash")
 
-    def _save_game(self) -> Optional[str]:
+    def _save_game(self) -> str | None:
         """Save current game to file."""
         if not self._current_game:
             return None
@@ -517,7 +508,11 @@ class UnifiedRecorder:
 
         # Generate filename
         time_str = self._current_game_start.strftime("%Y%m%dT%H%M%S")
-        game_id_short = self._current_game.meta.game_id.split('-')[-1][:8] if '-' in self._current_game.meta.game_id else self._current_game.meta.game_id[:8]
+        game_id_short = (
+            self._current_game.meta.game_id.split("-")[-1][:8]
+            if "-" in self._current_game.meta.game_id
+            else self._current_game.meta.game_id[:8]
+        )
         filename = f"{time_str}_{game_id_short}.game.json"
         filepath = games_dir / filename
 
@@ -527,7 +522,7 @@ class UnifiedRecorder:
         game_data["meta"]["action_count"] = len(self._current_game_actions)
 
         # Write file
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(game_data, f, indent=2, cls=DecimalEncoder)
 
         logger.info(f"Saved game: {filepath} (actions={len(self._current_game_actions)})")
@@ -572,12 +567,12 @@ class UnifiedRecorder:
             meta=PlayerSessionMeta(
                 player_id=self._player_id or "unknown",
                 username=self._username or "anonymous",
-                session_start=self._player_session_start
+                session_start=self._player_session_start,
             )
         )
         self._pending_actions = []
 
-    def _save_player_session(self) -> Optional[str]:
+    def _save_player_session(self) -> str | None:
         """Save player session to demonstrations directory."""
         if not self._player_session or not self._pending_actions:
             return None
@@ -595,7 +590,7 @@ class UnifiedRecorder:
         filepath = demos_dir / filename
 
         # Write file
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(self._player_session.to_dict(), f, indent=2, cls=DecimalEncoder)
 
         logger.info(f"Saved player session: {filepath}")
@@ -604,11 +599,7 @@ class UnifiedRecorder:
 
     # Internal callback handlers
 
-    def _handle_state_change(
-        self,
-        old_state: RecordingState,
-        new_state: RecordingState
-    ) -> None:
+    def _handle_state_change(self, old_state: RecordingState, new_state: RecordingState) -> None:
         """Handle state machine state change."""
         logger.debug(f"State change: {old_state.value} -> {new_state.value}")
 
@@ -621,7 +612,7 @@ class UnifiedRecorder:
         games_dir = self.base_path / "games"
         if games_dir.exists():
             # Find most recent file matching game_id pattern
-            game_id_short = game_id.split('-')[-1][:8]
+            game_id_short = game_id.split("-")[-1][:8]
             matches = list(games_dir.glob(f"*_{game_id_short}.game.json"))
             if matches and self.on_game_recorded:
                 self.on_game_recorded(str(matches[-1]))
@@ -631,11 +622,7 @@ class UnifiedRecorder:
         if self.on_session_complete:
             self.on_session_complete(games_recorded)
 
-    def _handle_integrity_issue(
-        self,
-        issue: IntegrityIssue,
-        details: Dict[str, Any]
-    ) -> None:
+    def _handle_integrity_issue(self, issue: IntegrityIssue, details: dict[str, Any]) -> None:
         """Handle data integrity issue."""
         logger.warning(f"Data integrity issue: {issue.value} - {details}")
         self._discard_current_game()

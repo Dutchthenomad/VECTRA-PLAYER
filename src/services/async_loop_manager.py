@@ -27,9 +27,9 @@ Usage:
 """
 
 import asyncio
-import threading
 import logging
-from typing import Any, Callable, Coroutine, Optional
+import threading
+from collections.abc import Coroutine
 from concurrent.futures import Future
 
 logger = logging.getLogger(__name__)
@@ -48,8 +48,8 @@ class AsyncLoopManager:
 
     def __init__(self):
         """Initialize manager (does not start loop yet)"""
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
         self._started = False
         self._stopping = False
 
@@ -96,6 +96,7 @@ class AsyncLoopManager:
 
         # Wait briefly for loop to initialize
         import time
+
         timeout = 2.0
         start = time.time()
         while self._loop is None and (time.time() - start) < timeout:

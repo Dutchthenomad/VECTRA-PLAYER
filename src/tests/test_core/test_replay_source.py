@@ -2,12 +2,13 @@
 Tests for ReplaySource interface and FileDirectorySource
 """
 
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
-from decimal import Decimal
-from core.replay_source import ReplaySource, FileDirectorySource
+
+import pytest
+
+from core.replay_source import FileDirectorySource, ReplaySource
 from models import GameTick
 
 
@@ -36,43 +37,43 @@ class TestFileDirectorySource:
 
         ticks = [
             {
-                'game_id': 'test-game',
-                'tick': 0,
-                'timestamp': '2025-11-15T00:00:00',
-                'price': 1.0,
-                'phase': 'ACTIVE',
-                'active': True,
-                'rugged': False,
-                'cooldown_timer': 0,
-                'trade_count': 0
+                "game_id": "test-game",
+                "tick": 0,
+                "timestamp": "2025-11-15T00:00:00",
+                "price": 1.0,
+                "phase": "ACTIVE",
+                "active": True,
+                "rugged": False,
+                "cooldown_timer": 0,
+                "trade_count": 0,
             },
             {
-                'game_id': 'test-game',
-                'tick': 1,
-                'timestamp': '2025-11-15T00:00:01',
-                'price': 1.2,
-                'phase': 'ACTIVE',
-                'active': True,
-                'rugged': False,
-                'cooldown_timer': 0,
-                'trade_count': 1
+                "game_id": "test-game",
+                "tick": 1,
+                "timestamp": "2025-11-15T00:00:01",
+                "price": 1.2,
+                "phase": "ACTIVE",
+                "active": True,
+                "rugged": False,
+                "cooldown_timer": 0,
+                "trade_count": 1,
             },
             {
-                'game_id': 'test-game',
-                'tick': 2,
-                'timestamp': '2025-11-15T00:00:02',
-                'price': 1.5,
-                'phase': 'ACTIVE',
-                'active': True,
-                'rugged': False,
-                'cooldown_timer': 0,
-                'trade_count': 2
-            }
+                "game_id": "test-game",
+                "tick": 2,
+                "timestamp": "2025-11-15T00:00:02",
+                "price": 1.5,
+                "phase": "ACTIVE",
+                "active": True,
+                "rugged": False,
+                "cooldown_timer": 0,
+                "trade_count": 2,
+            },
         ]
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             for tick in ticks:
-                f.write(json.dumps(tick) + '\n')
+                f.write(json.dumps(tick) + "\n")
 
         return filepath
 
@@ -92,7 +93,7 @@ class TestFileDirectorySource:
         ticks, game_id = source.load(sample_game_file.name)
 
         assert len(ticks) == 3
-        assert game_id == 'test-game'
+        assert game_id == "test-game"
         assert all(isinstance(tick, GameTick) for tick in ticks)
         assert ticks[0].tick == 0
         assert ticks[1].tick == 1
@@ -104,7 +105,7 @@ class TestFileDirectorySource:
         ticks, game_id = source.load(str(sample_game_file))
 
         assert len(ticks) == 3
-        assert game_id == 'test-game'
+        assert game_id == "test-game"
 
     def test_load_nonexistent_file(self, temp_dir):
         """Test loading non-existent file raises error"""
@@ -126,7 +127,7 @@ class TestFileDirectorySource:
     def test_load_invalid_json(self, temp_dir):
         """Test loading file with invalid JSON raises error"""
         bad_file = temp_dir / "bad.jsonl"
-        with open(bad_file, 'w') as f:
+        with open(bad_file, "w") as f:
             f.write("not valid json\n")
 
         source = FileDirectorySource(temp_dir)
@@ -165,11 +166,11 @@ class TestFileDirectorySource:
         source = FileDirectorySource(temp_dir)
         metadata = source.get_metadata(sample_game_file.name)
 
-        assert 'filepath' in metadata
-        assert 'tick_count' in metadata
-        assert 'file_size' in metadata
-        assert 'modified' in metadata
-        assert metadata['tick_count'] == 3
+        assert "filepath" in metadata
+        assert "tick_count" in metadata
+        assert "file_size" in metadata
+        assert "modified" in metadata
+        assert metadata["tick_count"] == 3
 
     def test_get_metadata_nonexistent_file(self, temp_dir):
         """Test getting metadata for non-existent file returns empty dict"""

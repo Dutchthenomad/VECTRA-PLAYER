@@ -2,10 +2,10 @@
 Game Tick data model
 """
 
-from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
-from typing import Dict, Any
 import logging
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ class GameTick:
         cooldown_timer: Milliseconds until next game (if in cooldown)
         trade_count: Number of trades executed
     """
+
     game_id: str
     tick: int
     timestamp: str
@@ -43,10 +44,10 @@ class GameTick:
                 self.price = Decimal(str(round(float(self.price), 8)))
             except (InvalidOperation, ValueError, TypeError) as e:
                 logger.error(f"Invalid price value: {self.price} ({e}), defaulting to 1.0")
-                self.price = Decimal('1.0')
+                self.price = Decimal("1.0")
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'GameTick':
+    def from_dict(cls, data: dict[str, Any]) -> "GameTick":
         """
         Create GameTick from JSON data
 
@@ -61,19 +62,19 @@ class GameTick:
         """
         try:
             # Convert price to Decimal for precision
-            price_value = data.get('price', 1.0)
+            price_value = data.get("price", 1.0)
             price = Decimal(str(price_value))
 
             return cls(
-                game_id=str(data.get('game_id', 'unknown')),
-                tick=int(data.get('tick', 0)),
-                timestamp=str(data.get('timestamp', '')),
+                game_id=str(data.get("game_id", "unknown")),
+                tick=int(data.get("tick", 0)),
+                timestamp=str(data.get("timestamp", "")),
                 price=price,
-                phase=str(data.get('phase', 'UNKNOWN')),
-                active=bool(data.get('active', False)),
-                rugged=bool(data.get('rugged', False)),
-                cooldown_timer=int(data.get('cooldown_timer', 0)),
-                trade_count=int(data.get('trade_count', 0))
+                phase=str(data.get("phase", "UNKNOWN")),
+                active=bool(data.get("active", False)),
+                rugged=bool(data.get("rugged", False)),
+                cooldown_timer=int(data.get("cooldown_timer", 0)),
+                trade_count=int(data.get("trade_count", 0)),
             )
         except (ValueError, InvalidOperation, KeyError) as e:
             logger.error(f"Failed to parse GameTick: {e}, data: {data}")
@@ -93,30 +94,31 @@ class GameTick:
 
         # Normal active gameplay
         return (
-            self.active and
-            not self.rugged and
-            self.phase not in ["COOLDOWN", "RUG_EVENT", "RUG_EVENT_1", "RUG_EVENT_2", "UNKNOWN"]
+            self.active
+            and not self.rugged
+            and self.phase not in ["COOLDOWN", "RUG_EVENT", "RUG_EVENT_1", "RUG_EVENT_2", "UNKNOWN"]
         )
 
-    def to_dict(self, preserve_precision: bool = False) -> Dict[str, Any]:
+    def to_dict(self, preserve_precision: bool = False) -> dict[str, Any]:
         """Convert to dictionary
 
         Args:
             preserve_precision: If True, keep Decimals as strings
         """
+
         def convert(val):
             if isinstance(val, Decimal):
                 return str(val) if preserve_precision else float(val)
             return val
 
         return {
-            'game_id': self.game_id,
-            'tick': self.tick,
-            'timestamp': self.timestamp,
-            'price': convert(self.price),
-            'phase': self.phase,
-            'active': self.active,
-            'rugged': self.rugged,
-            'cooldown_timer': self.cooldown_timer,
-            'trade_count': self.trade_count
+            "game_id": self.game_id,
+            "tick": self.tick,
+            "timestamp": self.timestamp,
+            "price": convert(self.price),
+            "phase": self.phase,
+            "active": self.active,
+            "rugged": self.rugged,
+            "cooldown_timer": self.cooldown_timer,
+            "trade_count": self.trade_count,
         }

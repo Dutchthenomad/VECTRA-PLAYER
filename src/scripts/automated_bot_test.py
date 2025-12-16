@@ -19,13 +19,12 @@ Output:
     - Recommendations for fixes
 """
 
-import sys
-import logging
-from pathlib import Path
-from datetime import datetime
-from decimal import Decimal
 import json
-from typing import List, Dict, Any
+import logging
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Add parent directory to Python path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -37,11 +36,11 @@ test_dir.mkdir(exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(test_dir / "test_results.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -51,14 +50,9 @@ class BotTestValidator:
 
     def __init__(self):
         self.results = {
-            'timestamp': timestamp,
-            'tests': [],
-            'summary': {
-                'total': 0,
-                'passed': 0,
-                'failed': 0,
-                'warnings': 0
-            }
+            "timestamp": timestamp,
+            "tests": [],
+            "summary": {"total": 0, "passed": 0, "failed": 0, "warnings": 0},
         }
 
     def test(self, name: str, condition: bool, details: str = "", severity: str = "error"):
@@ -72,31 +66,31 @@ class BotTestValidator:
             severity: 'error' or 'warning'
         """
         result = {
-            'name': name,
-            'passed': condition,
-            'details': details,
-            'severity': severity,
-            'timestamp': datetime.now().isoformat()
+            "name": name,
+            "passed": condition,
+            "details": details,
+            "severity": severity,
+            "timestamp": datetime.now().isoformat(),
         }
 
-        self.results['tests'].append(result)
-        self.results['summary']['total'] += 1
+        self.results["tests"].append(result)
+        self.results["summary"]["total"] += 1
 
         if condition:
-            self.results['summary']['passed'] += 1
+            self.results["summary"]["passed"] += 1
             logger.info(f"✅ PASS: {name}")
         else:
-            if severity == 'error':
-                self.results['summary']['failed'] += 1
+            if severity == "error":
+                self.results["summary"]["failed"] += 1
                 logger.error(f"❌ FAIL: {name} - {details}")
             else:
-                self.results['summary']['warnings'] += 1
+                self.results["summary"]["warnings"] += 1
                 logger.warning(f"⚠️ WARNING: {name} - {details}")
 
     def save_report(self):
         """Save test report to JSON"""
         report_file = test_dir / "test_report.json"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(self.results, f, indent=2)
 
         logger.info("=" * 80)
@@ -120,45 +114,42 @@ class BotBehaviorMonitor:
 
     def record_button_click(self, button_name: str, timestamp: datetime):
         """Record button click event"""
-        self.button_clicks.append({
-            'button': button_name,
-            'timestamp': timestamp.isoformat()
-        })
+        self.button_clicks.append({"button": button_name, "timestamp": timestamp.isoformat()})
 
-    def record_decision(self, decision: str, reasoning: str, state: Dict[str, Any]):
+    def record_decision(self, decision: str, reasoning: str, state: dict[str, Any]):
         """Record bot decision"""
-        self.decisions.append({
-            'decision': decision,
-            'reasoning': reasoning,
-            'state': state,
-            'timestamp': datetime.now().isoformat()
-        })
+        self.decisions.append(
+            {
+                "decision": decision,
+                "reasoning": reasoning,
+                "state": state,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
     def record_trade(self, trade_type: str, success: bool, error: str = None):
         """Record trade execution"""
-        self.trades.append({
-            'type': trade_type,
-            'success': success,
-            'error': error,
-            'timestamp': datetime.now().isoformat()
-        })
+        self.trades.append(
+            {
+                "type": trade_type,
+                "success": success,
+                "error": error,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-    def record_error(self, error: str, context: Dict[str, Any] = None):
+    def record_error(self, error: str, context: dict[str, Any] = None):
         """Record error"""
-        self.errors.append({
-            'error': error,
-            'context': context or {},
-            'timestamp': datetime.now().isoformat()
-        })
+        self.errors.append(
+            {"error": error, "context": context or {}, "timestamp": datetime.now().isoformat()}
+        )
 
     def validate(self, validator: BotTestValidator):
         """Run validation checks on collected data"""
 
         # Test 1: Bot made decisions
         validator.test(
-            "Bot made decisions",
-            len(self.decisions) > 0,
-            f"Decisions: {len(self.decisions)}"
+            "Bot made decisions", len(self.decisions) > 0, f"Decisions: {len(self.decisions)}"
         )
 
         # Test 2: Buttons were clicked (for UI_LAYER mode)
@@ -166,43 +157,34 @@ class BotBehaviorMonitor:
             "Buttons clicked in UI_LAYER mode",
             len(self.button_clicks) > 0,
             f"Button clicks: {len(self.button_clicks)}",
-            severity="warning"  # Warning if not in UI mode
+            severity="warning",  # Warning if not in UI mode
         )
 
         # Test 3: No trade execution errors
-        failed_trades = [t for t in self.trades if not t['success']]
+        failed_trades = [t for t in self.trades if not t["success"]]
         validator.test(
             "No trade execution errors",
             len(failed_trades) == 0,
-            f"Failed trades: {len(failed_trades)}"
+            f"Failed trades: {len(failed_trades)}",
         )
 
         # Test 4: No unhandled errors
-        validator.test(
-            "No unhandled errors",
-            len(self.errors) == 0,
-            f"Errors: {len(self.errors)}"
-        )
+        validator.test("No unhandled errors", len(self.errors) == 0, f"Errors: {len(self.errors)}")
 
         # Test 5: Decisions have reasoning
-        decisions_without_reasoning = [
-            d for d in self.decisions if not d.get('reasoning')
-        ]
+        decisions_without_reasoning = [d for d in self.decisions if not d.get("reasoning")]
         validator.test(
             "All decisions have reasoning",
             len(decisions_without_reasoning) == 0,
-            f"Decisions without reasoning: {len(decisions_without_reasoning)}"
+            f"Decisions without reasoning: {len(decisions_without_reasoning)}",
         )
 
         # Test 6: Button clicks follow timing config
         if len(self.button_clicks) >= 2:
             # Check time between clicks
-            click_times = [
-                datetime.fromisoformat(c['timestamp'])
-                for c in self.button_clicks
-            ]
+            click_times = [datetime.fromisoformat(c["timestamp"]) for c in self.button_clicks]
             delays = [
-                (click_times[i+1] - click_times[i]).total_seconds() * 1000
+                (click_times[i + 1] - click_times[i]).total_seconds() * 1000
                 for i in range(len(click_times) - 1)
             ]
             avg_delay = sum(delays) / len(delays) if delays else 0
@@ -216,19 +198,16 @@ class BotBehaviorMonitor:
                 "Button click timing reasonable",
                 expected_min <= avg_delay <= expected_max,
                 f"Average delay: {avg_delay:.1f}ms (expected {expected_min}-{expected_max}ms)",
-                severity="warning"
+                severity="warning",
             )
 
         # Test 7: Trade types are valid
-        valid_types = ['BUY', 'SELL', 'SIDEBET']
-        invalid_trades = [
-            t for t in self.trades
-            if t['type'] not in valid_types
-        ]
+        valid_types = ["BUY", "SELL", "SIDEBET"]
+        invalid_trades = [t for t in self.trades if t["type"] not in valid_types]
         validator.test(
             "All trade types are valid",
             len(invalid_trades) == 0,
-            f"Invalid trades: {len(invalid_trades)}"
+            f"Invalid trades: {len(invalid_trades)}",
         )
 
 
@@ -254,11 +233,7 @@ def run_automated_test(num_games: int = 5):
         logger.info("Test framework ready - integrate with REPLAYER in next session")
 
         # Placeholder validations
-        validator.test(
-            "Test framework initialized",
-            True,
-            "Framework ready for integration"
-        )
+        validator.test("Test framework initialized", True, "Framework ready for integration")
 
     except Exception as e:
         logger.error(f"Test error: {e}", exc_info=True)
@@ -271,11 +246,11 @@ def run_automated_test(num_games: int = 5):
         validator.save_report()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Automated bot testing')
-    parser.add_argument('--games', type=int, default=5, help='Number of games to test')
+    parser = argparse.ArgumentParser(description="Automated bot testing")
+    parser.add_argument("--games", type=int, default=5, help="Number of games to test")
 
     args = parser.parse_args()
 

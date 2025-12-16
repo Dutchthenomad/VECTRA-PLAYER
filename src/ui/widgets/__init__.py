@@ -3,4 +3,4 @@
 from .chart import ChartWidget
 from .toast_notification import ToastNotification
 
-__all__ = ['ChartWidget', 'ToastNotification']
+__all__ = ["ChartWidget", "ToastNotification"]

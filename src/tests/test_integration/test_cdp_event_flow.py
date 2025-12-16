@@ -1,12 +1,11 @@
 """Integration tests for CDP event flow."""
-import pytest
-import time
+
 import threading
-from unittest.mock import Mock, MagicMock, patch
+
 from services.event_bus import Events, event_bus
-from sources.cdp_websocket_interceptor import CDPWebSocketInterceptor
-from services.event_source_manager import EventSourceManager, EventSource
+from services.event_source_manager import EventSource, EventSourceManager
 from services.rag_ingester import RAGIngester
+from sources.cdp_websocket_interceptor import CDPWebSocketInterceptor
 
 
 class TestCDPEventFlow:
@@ -34,7 +33,7 @@ class TestCDPEventFlow:
         event_received = threading.Event()
 
         def on_event(event):
-            event_bus.publish(Events.WS_RAW_EVENT, {'data': event})
+            event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
 
         def subscriber(e):
             received.append(e)
@@ -44,12 +43,14 @@ class TestCDPEventFlow:
         event_bus.subscribe(Events.WS_RAW_EVENT, subscriber, weak=False)
 
         # Simulate CDP frame
-        interceptor.rugs_websocket_id = 'ws-123'
-        interceptor._handle_frame_received({
-            'requestId': 'ws-123',
-            'timestamp': 1234567890.0,
-            'response': {'payloadData': '42["usernameStatus",{"username":"Dutch"}]'}
-        })
+        interceptor.rugs_websocket_id = "ws-123"
+        interceptor._handle_frame_received(
+            {
+                "requestId": "ws-123",
+                "timestamp": 1234567890.0,
+                "response": {"payloadData": '42["usernameStatus",{"username":"Dutch"}]'},
+            }
+        )
 
         # Wait for event to be processed (with timeout)
         assert event_received.wait(timeout=1.0), "Event was not received within timeout"
@@ -58,10 +59,10 @@ class TestCDPEventFlow:
         # EventBus wraps events as: {'name': event_name, 'data': payload}
         # Our payload is: {'data': {actual_event_data}}
         # So we need to unwrap twice
-        assert 'data' in received[0]
-        assert 'data' in received[0]['data']
-        event_data = received[0]['data']['data']
-        assert event_data['event'] == 'usernameStatus'
+        assert "data" in received[0]
+        assert "data" in received[0]["data"]
+        event_data = received[0]["data"]["data"]
+        assert event_data["event"] == "usernameStatus"
 
     def test_fallback_on_cdp_unavailable(self):
         """Falls back to public feed when CDP unavailable."""
@@ -79,9 +80,9 @@ class TestCDPEventFlow:
         ingester.start_session()
 
         events = [
-            {'event': 'gameStateUpdate', 'data': {'price': 1.5}},
-            {'event': 'usernameStatus', 'data': {'username': 'Dutch'}},
-            {'event': 'playerUpdate', 'data': {'cash': 5.0}},
+            {"event": "gameStateUpdate", "data": {"price": 1.5}},
+            {"event": "usernameStatus", "data": {"username": "Dutch"}},
+            {"event": "playerUpdate", "data": {"cash": 5.0}},
         ]
 
         for event in events:
@@ -89,6 +90,6 @@ class TestCDPEventFlow:
 
         summary = ingester.stop_session()
 
-        assert summary['total_events'] == 3
-        assert 'gameStateUpdate' in summary['event_counts']
-        assert 'usernameStatus' in summary['event_counts']
+        assert summary["total_events"] == 3
+        assert "gameStateUpdate" in summary["event_counts"]
+        assert "usernameStatus" in summary["event_counts"]
