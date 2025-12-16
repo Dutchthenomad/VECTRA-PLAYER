@@ -2,67 +2,57 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  pytest:
+    name: CI / pytest
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: ${{ matrix.python-version }}
+          cache: pip
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb python3-tk
 
-      - name: Install Python dependencies
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
       - name: Run tests
+        working-directory: src
         run: |
-          cd src && xvfb-run python -m pytest tests/ -v --tb=short --timeout=60
+          xvfb-run python -m pytest tests/ -q --disable-warnings --maxfail=5 \
+            --cov=. --cov-report=xml --cov-report=term-missing \
+            --timeout=60
 
-      - name: Check code formatting
-        run: |
-          pip install black
-          black --check src/ --exclude "deprecated|external"
-
-      - name: Run linting
-        run: |
-          pip install flake8
-          flake8 src/ --max-line-length=88 --extend-ignore=E203,W503 --exclude=deprecated,external
-
-  type-check:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Upload coverage.xml
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install mypy
-
-      - name: Run type checking
-        run: |
-          mypy src/core/ src/bot/ src/services/ --ignore-missing-imports || true
+          name: coverage-${{ matrix.python-version }}
+          path: src/coverage.xml

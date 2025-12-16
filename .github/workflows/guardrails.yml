@@ -1,0 +1,44 @@
+name: Guardrails
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  invariants:
+    name: Guardrails / invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get install -y ripgrep
+
+      - name: Forbidden patterns
+        run: |
+          set -euo pipefail
+          ERRORS=0
+
+          # Ban hardcoded /home paths in source code (not configs/docs)
+          if rg -n "/home/nomad" src/ --type py 2>/dev/null; then
+            echo "::error::Hardcoded /home/nomad path detected. Use config/env/path resolution."
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # Force TODO(#123) so technical debt is always tracked
+          if rg -n "TODO(?!\(#\d+\))|FIXME(?!\(#\d+\))" src/ --type py 2>/dev/null; then
+            echo "::warning::TODO/FIXME should reference an issue like TODO(#123)"
+            # Warning only, not blocking
+          fi
+
+          # Prevent direct filesystem writes outside EventStore (Phase 12 goal)
+          # This will be enabled after migration is complete
+          # if rg -n "open\(.*['\"]w['\"]" src/ --type py -g '!**/event_store/*' 2>/dev/null; then
+          #   echo "::error::Direct file write detected outside EventStore"
+          #   ERRORS=$((ERRORS + 1))
+          # fi
+
+          exit $ERRORS

@@ -1,0 +1,180 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vectra-player"
+version = "0.12.0"
+description = "Unified game replay and live trading platform with DuckDB/Parquet storage and LanceDB vector search"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Dutchthenomad"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "ttkbootstrap>=1.10.0",
+    "python-socketio[client]>=5.10.0",
+    "websocket-client>=1.6.0",
+    "playwright>=1.40.0",
+    "typing_extensions>=4.0.0",
+    "duckdb>=1.0.0",
+    "pyarrow>=14.0.0",
+    "lancedb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-timeout>=2.3.0",
+    "pre-commit>=4.0.0",
+    "types-requests>=2.31.0",
+]
+ml = [
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Dutchthenomad/VECTRA-PLAYER"
+"Bug Tracker" = "https://github.com/Dutchthenomad/VECTRA-PLAYER/issues"
+
+[project.scripts]
+vectra-player = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml"]
+
+# =============================================================================
+# RUFF - Linting & Formatting
+# =============================================================================
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "deprecated",
+    "external",
+    ".worktrees",
+    "sandbox",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "N",      # pep8-naming
+    "RUF",    # ruff-specific rules
+    "PTH",    # flake8-use-pathlib
+    "TCH",    # flake8-type-checking
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (common pattern)
+    "SIM108", # ternary operator (can reduce readability)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/tests/**/*.py" = [
+    "S101",   # assert allowed in tests
+    "ARG",    # unused arguments (fixtures)
+    "PLR2004", # magic values in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "services", "ui", "bot", "models", "sources"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# =============================================================================
+# MYPY - Type Checking
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "deprecated/",
+    "external/",
+    ".worktrees/",
+    "sandbox/",
+    "venv/",
+    ".venv/",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# =============================================================================
+# PYTEST
+# =============================================================================
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "ui: marks tests requiring display",
+    "unit: marks tests as unit tests",
+]
+asyncio_mode = "auto"
+timeout = 30
+addopts = "-q --tb=short"
+
+# =============================================================================
+# COVERAGE
+# =============================================================================
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/tests/*",
+    "src/deprecated/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+]
+fail_under = 60
