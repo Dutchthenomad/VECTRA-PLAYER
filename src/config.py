@@ -101,6 +101,22 @@ class Config:
         'cleanup_interval': 60,
     }
     
+    # ========== Data Architecture Settings (Phase 12) ==========
+    @classmethod
+    def get_data_config(cls) -> dict:
+        """Get unified data architecture configuration"""
+        data_dir = Path(os.getenv('RUGS_DATA_DIR', str(Path.home() / 'rugs_data')))
+        return {
+            'data_dir': data_dir,
+            'events_parquet_dir': data_dir / 'events_parquet',
+            'vectors_dir': data_dir / 'vectors',
+            'exports_dir': data_dir / 'exports',
+            'manifests_dir': data_dir / 'manifests',
+            'embedding_model': os.getenv('RUGS_EMBEDDING_MODEL', 'all-MiniLM-L6-v2'),
+            'legacy_recorders_enabled': os.getenv('RUGS_LEGACY_RECORDERS', 'false').lower() == 'true',
+            'schema_version': '1.0.0',
+        }
+
     # ========== File Settings ==========
     @classmethod
     def get_files_config(cls) -> dict:
