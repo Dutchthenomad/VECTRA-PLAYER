@@ -1,0 +1,97 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features",
+      "labels": ["enhancement", "feature"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["bug", "fix"]
+    },
+    {
+      "title": "## 🔒 Security",
+      "labels": ["security"]
+    },
+    {
+      "title": "## 📝 Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## ⚡ Performance",
+      "labels": ["performance", "optimization"]
+    },
+    {
+      "title": "## ♻️ Refactoring",
+      "labels": ["refactoring", "refactor"]
+    },
+    {
+      "title": "## 🧪 Testing",
+      "labels": ["testing", "test"]
+    },
+    {
+      "title": "## 🔧 Configuration",
+      "labels": ["configuration", "config"]
+    },
+    {
+      "title": "## 📦 Dependencies",
+      "labels": ["dependencies"]
+    },
+    {
+      "title": "## 🔨 CI/CD",
+      "labels": ["ci/cd", "github-actions"]
+    },
+    {
+      "title": "## 💥 Breaking Changes",
+      "labels": ["breaking-change"]
+    },
+    {
+      "title": "## 🏗️ Infrastructure",
+      "labels": ["infrastructure"]
+    },
+    {
+      "title": "## 🎨 Style",
+      "labels": ["style"]
+    },
+    {
+      "title": "## 🧹 Chores",
+      "labels": ["chore"]
+    }
+  ],
+  "ignore_labels": [
+    "ignore",
+    "wontfix",
+    "invalid",
+    "duplicate"
+  ],
+  "sort": "ASC",
+  "template": "#{{CHANGELOG}}\n\n<details>\n<summary>Full Changelog</summary>\n\n#{{UNCATEGORIZED}}\n\n</details>",
+  "pr_template": "- #{{TITLE}} by @#{{AUTHOR}} in ##{{NUMBER}}",
+  "empty_template": "- No changes",
+  "label_extractor": [
+    {
+      "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\(.+\\))?!?: (.+)",
+      "target": "$1"
+    }
+  ],
+  "duplicate_filter": {
+    "pattern": "\\[DUPLICATE\\]",
+    "on_property": "title",
+    "method": "match"
+  },
+  "transformers": [
+    {
+      "pattern": "[\\-\\*] (\\[(...|TEST|CI|SKIP)\\])( )?(.+?)\n(.+?)",
+      "target": "- $4\n  - $5"
+    }
+  ],
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 1000,
+  "max_back_track_time_days": 365,
+  "exclude_merge_branches": [
+    "main",
+    "master"
+  ],
+  "tag_resolver": {
+    "method": "semver"
+  }
+}

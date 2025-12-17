@@ -1,0 +1,30 @@
+# CODEOWNERS file for automatic reviewer assignment
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @Dutchthenomad
+
+# GitHub Actions workflows
+/.github/workflows/ @Dutchthenomad
+
+# Core infrastructure and configuration
+/pyproject.toml @Dutchthenomad
+/.pre-commit-config.yaml @Dutchthenomad
+/.gitignore @Dutchthenomad
+
+# Documentation - can be reviewed by anyone
+/docs/ @Dutchthenomad
+*.md @Dutchthenomad
+
+# Source code - requires careful review
+/src/ @Dutchthenomad
+
+# Tests - must maintain quality
+/src/tests/ @Dutchthenomad
+
+# Critical files that need extra attention
+/src/services/event_store/ @Dutchthenomad
+/src/core/ @Dutchthenomad
+
+# Security-sensitive files
+/.github/workflows/security.yml @Dutchthenomad

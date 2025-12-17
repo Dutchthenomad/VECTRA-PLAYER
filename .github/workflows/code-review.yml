@@ -1,0 +1,296 @@
+name: Automated Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  security-events: write
+
+concurrency:
+  group: code-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-complexity:
+    name: Review / Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install analysis tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install radon lizard
+
+      - name: Analyze code complexity
+        id: complexity
+        continue-on-error: true
+        run: |
+          echo "## Code Complexity Analysis" > complexity_report.md
+          echo "" >> complexity_report.md
+          
+          # Cyclomatic complexity with radon
+          echo "### Cyclomatic Complexity (Radon)" >> complexity_report.md
+          echo "\`\`\`" >> complexity_report.md
+          radon cc src/ -a -s || echo "No complexity issues" >> complexity_report.md
+          echo "\`\`\`" >> complexity_report.md
+          echo "" >> complexity_report.md
+          
+          # Maintainability index
+          echo "### Maintainability Index" >> complexity_report.md
+          echo "\`\`\`" >> complexity_report.md
+          radon mi src/ -s || echo "Good maintainability" >> complexity_report.md
+          echo "\`\`\`" >> complexity_report.md
+
+      - name: Comment complexity report
+        uses: actions/github-script@v7
+        if: always() && steps.complexity.outcome == 'success'
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('complexity_report.md', 'utf8');
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Code Complexity Analysis')
+            );
+            
+            const commentBody = `${report}\n\n---\n*Automated complexity analysis by GitHub Actions*`;
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: commentBody
+              });
+            }
+
+  review-test-coverage:
+    name: Review / Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb python3-tk
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests with coverage
+        working-directory: src
+        run: |
+          xvfb-run python -m pytest tests/ \
+            --cov=. --cov-report=json --cov-report=term \
+            --disable-warnings --maxfail=5 --timeout=60 || true
+
+      - name: Coverage comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERAGE_DATA_BRANCH: coverage-data
+          MINIMUM_GREEN: 70
+          MINIMUM_ORANGE: 50
+
+  review-security:
+    name: Review / Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Bandit security linter
+        continue-on-error: true
+        run: |
+          pip install bandit[toml]
+          bandit -r src/ -f json -o bandit-report.json || true
+
+      - name: Comment security findings
+        uses: actions/github-script@v7
+        if: always()
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '## Security Scan Results\n\n';
+            
+            try {
+              const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
+              const issues = bandit.results || [];
+              
+              if (issues.length > 0) {
+                report += '### Security Issues Found\n\n';
+                issues.slice(0, 10).forEach(issue => {
+                  report += `- **${issue.issue_severity}**: ${issue.issue_text}\n`;
+                  report += `  - File: \`${issue.filename}:${issue.line_number}\`\n\n`;
+                });
+                
+                if (issues.length > 10) {
+                  report += `\n*... and ${issues.length - 10} more issues*\n`;
+                }
+              } else {
+                report += '✅ No security issues found by Bandit\n';
+              }
+            } catch (e) {
+              report += '⚠️ Could not parse security report\n';
+            }
+            
+            report += '\n---\n*Automated security scan by GitHub Actions*';
+            
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: report
+            });
+
+  review-changes:
+    name: Review / Change Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze PR changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            
+            let summary = '## PR Change Summary\n\n';
+            
+            // Count by file type
+            const fileTypes = {};
+            const changedAreas = new Set();
+            let totalAdditions = 0;
+            let totalDeletions = 0;
+            
+            files.forEach(file => {
+              const ext = file.filename.split('.').pop();
+              fileTypes[ext] = (fileTypes[ext] || 0) + 1;
+              totalAdditions += file.additions;
+              totalDeletions += file.deletions;
+              
+              // Determine area
+              if (file.filename.startsWith('src/core/')) changedAreas.add('Core');
+              if (file.filename.startsWith('src/services/')) changedAreas.add('Services');
+              if (file.filename.startsWith('src/ui/')) changedAreas.add('UI');
+              if (file.filename.startsWith('src/tests/')) changedAreas.add('Tests');
+              if (file.filename.startsWith('.github/')) changedAreas.add('CI/CD');
+              if (file.filename.includes('doc') || file.filename.endsWith('.md')) changedAreas.add('Documentation');
+            });
+            
+            summary += `### Statistics\n`;
+            summary += `- **Files changed**: ${files.length}\n`;
+            summary += `- **Additions**: +${totalAdditions} lines\n`;
+            summary += `- **Deletions**: -${totalDeletions} lines\n`;
+            summary += `- **Net change**: ${totalAdditions - totalDeletions} lines\n\n`;
+            
+            summary += `### Areas Affected\n`;
+            changedAreas.forEach(area => summary += `- ${area}\n`);
+            summary += '\n';
+            
+            summary += `### File Types\n`;
+            Object.entries(fileTypes)
+              .sort((a, b) => b[1] - a[1])
+              .forEach(([type, count]) => {
+                summary += `- \`.${type}\`: ${count} file(s)\n`;
+              });
+            
+            // Warnings
+            summary += '\n### Review Checklist\n';
+            
+            if (totalAdditions + totalDeletions > 500) {
+              summary += '- ⚠️ **Large PR**: Consider breaking into smaller PRs\n';
+            }
+            
+            if (files.length > 20) {
+              summary += '- ⚠️ **Many files changed**: Review carefully\n';
+            }
+            
+            const hasTests = files.some(f => f.filename.includes('test'));
+            if (!hasTests && files.some(f => f.filename.endsWith('.py') && !f.filename.includes('test'))) {
+              summary += '- ⚠️ **No test changes detected**: Consider adding tests\n';
+            }
+            
+            const hasSecurityChanges = files.some(f => 
+              f.filename.includes('security') || 
+              f.filename.includes('auth') ||
+              f.filename.includes('event_store')
+            );
+            if (hasSecurityChanges) {
+              summary += '- 🔒 **Security-sensitive changes**: Extra review required\n';
+            }
+            
+            summary += '\n---\n*Automated PR analysis by GitHub Actions*';
+            
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: summary
+            });
