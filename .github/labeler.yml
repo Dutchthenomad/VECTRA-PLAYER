@@ -1,0 +1,81 @@
+# Configuration for PR labeler
+# https://github.com/actions/labeler
+
+# Documentation
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: 
+      - 'docs/**/*'
+      - '*.md'
+      - 'README*'
+      - 'CHANGELOG*'
+      - 'CONTRIBUTING*'
+
+# Source code areas
+'area: core':
+  - changed-files:
+    - any-glob-to-any-file: 'src/core/**/*'
+
+'area: services':
+  - changed-files:
+    - any-glob-to-any-file: 'src/services/**/*'
+
+'area: ui':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ui/**/*'
+
+'area: bot':
+  - changed-files:
+    - any-glob-to-any-file: 'src/bot/**/*'
+
+'area: tests':
+  - changed-files:
+    - any-glob-to-any-file: 'src/tests/**/*'
+
+# Infrastructure
+'area: ci/cd':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/**/*'
+      - '.github/**/*.yml'
+      - '.github/**/*.yaml'
+
+'area: config':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'pyproject.toml'
+      - 'setup.py'
+      - 'setup.cfg'
+      - '.pre-commit-config.yaml'
+      - '*.ini'
+      - '*.cfg'
+      - '*.toml'
+
+# Dependencies
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - 'setup.py'
+      - 'Pipfile*'
+      - 'poetry.lock'
+
+# Critical systems
+'critical: database':
+  - changed-files:
+    - any-glob-to-any-file: 'src/services/event_store/**/*'
+
+'critical: security':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/security.yml'
+      - '**/security*'
+      - '**/auth*'
+
+# Python specific
+python:
+  - changed-files:
+    - any-glob-to-any-file: 
+      - '**/*.py'
+      - 'pyproject.toml'
