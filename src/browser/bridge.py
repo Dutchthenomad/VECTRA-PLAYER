@@ -23,22 +23,22 @@ Usage:
 import asyncio
 import logging
 import threading
-import time
-from typing import Optional, Callable, Dict, Any, List
-from decimal import Decimal
-from enum import Enum
+from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-from sources.cdp_websocket_interceptor import CDPWebSocketInterceptor
-from services.event_source_manager import EventSourceManager, EventSource
-from services.rag_ingester import RAGIngester
 from services.event_bus import Events, event_bus
+from services.event_source_manager import EventSourceManager
+from services.rag_ingester import RAGIngester
+from sources.cdp_websocket_interceptor import CDPWebSocketInterceptor
 
 logger = logging.getLogger(__name__)
 
 
 class BridgeStatus(Enum):
     """Browser bridge connection status"""
+
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -49,6 +49,7 @@ class BridgeStatus(Enum):
 @dataclass
 class ClickResult:
     """Result of a button click attempt"""
+
     success: bool
     method: str = ""  # Which selector strategy worked
     button_text: str = ""  # Actual button text found
@@ -72,28 +73,28 @@ class SelectorStrategy:
     # These handle cases where button text is "BUY+0.030 SOL" but we search for "BUY"
     # UPDATED 2025-12-01: Added new rugs.fun UI text patterns
     BUTTON_TEXT_PATTERNS = {
-        'BUY': ['BUY', 'Buy', 'buy'],
-        'SELL': ['SELL', 'Sell', 'sell'],
-        'SIDEBET': ['SIDEBET', 'SIDE', 'Side', 'sidebet', 'side', 'SIDE BET', 'Side Bet'],
-        'X': ['×', '✕', 'X', 'x', '✖'],  # Clear button variants
-        '+0.001': ['+0.001', '+ 0.001'],
-        '+0.01': ['+0.01', '+ 0.01'],
-        '+0.1': ['+0.1', '+ 0.1'],
-        '+1': ['+1', '+ 1'],
-        '1/2': ['1/2', '½', '0.5x', 'Half'],
-        'X2': ['X2', 'x2', '2x', '2X', 'Double'],
-        'MAX': ['MAX', 'Max', 'max', 'ALL'],
-        '10%': ['10%', '10 %'],
-        '25%': ['25%', '25 %'],
-        '50%': ['50%', '50 %'],
-        '100%': ['100%', '100 %', 'ALL'],
+        "BUY": ["BUY", "Buy", "buy"],
+        "SELL": ["SELL", "Sell", "sell"],
+        "SIDEBET": ["SIDEBET", "SIDE", "Side", "sidebet", "side", "SIDE BET", "Side Bet"],
+        "X": ["×", "✕", "X", "x", "✖"],  # Clear button variants
+        "+0.001": ["+0.001", "+ 0.001"],
+        "+0.01": ["+0.01", "+ 0.01"],
+        "+0.1": ["+0.1", "+ 0.1"],
+        "+1": ["+1", "+ 1"],
+        "1/2": ["1/2", "½", "0.5x", "Half"],
+        "X2": ["X2", "x2", "2x", "2X", "Double"],
+        "MAX": ["MAX", "Max", "max", "ALL"],
+        "10%": ["10%", "10 %"],
+        "25%": ["25%", "25 %"],
+        "50%": ["50%", "50 %"],
+        "100%": ["100%", "100 %", "ALL"],
     }
 
     # CSS Selectors - structural fallback when text matching fails
     # These are more brittle but work when text matching completely fails
     # UPDATED 2025-12-01: New rugs.fun UI specific selectors
     BUTTON_CSS_SELECTORS = {
-        'BUY': [
+        "BUY": [
             # Primary: New rugs.fun specific class (div container)
             'div[class*="_buttonSection_"]:nth-child(1)',
             '[class*="_buttonsRow_"] > div:first-child',
@@ -111,7 +112,7 @@ class SelectorStrategy:
             '[data-action="buy"]',
             '[data-testid="buy-button"]',
         ],
-        'SELL': [
+        "SELL": [
             # Primary: New rugs.fun specific class (div container)
             'div[class*="_buttonSection_"]:nth-child(2)',
             '[class*="_buttonsRow_"] > div:nth-child(2)',
@@ -127,11 +128,11 @@ class SelectorStrategy:
             '[data-action="sell"]',
             '[data-testid="sell-button"]',
         ],
-        'SIDEBET': [
+        "SIDEBET": [
             # Primary: New rugs.fun specific class
-            '.bet-button',
+            ".bet-button",
             '[class*="bet-button"]',
-            'div.bet-button',
+            "div.bet-button",
             '[class*="sidebet-banner"] [class*="bet-button"]',
             '[class*="sidebet-container"] [class*="bet-button"]',
             # Legacy selectors
@@ -145,7 +146,7 @@ class SelectorStrategy:
             '[data-action="side"]',
             '[data-testid="sidebet-button"]',
         ],
-        'X': [
+        "X": [
             # Primary: New rugs.fun specific class (escaped underscore for CSS)
             'button[class*="_clearButton_"]',
             '[class*="_clearButton_"]',
@@ -157,19 +158,19 @@ class SelectorStrategy:
             'input[type="number"] ~ button',
             '[class*="inputGroup"] button:last-child',
         ],
-        '10%': [
+        "10%": [
             'button[class*="_percentageBtn_"]:nth-child(1)',
             '[class*="_sellControlButtonsContainer_"] button:nth-child(1)',
         ],
-        '25%': [
+        "25%": [
             'button[class*="_percentageBtn_"]:nth-child(2)',
             '[class*="_sellControlButtonsContainer_"] button:nth-child(2)',
         ],
-        '50%': [
+        "50%": [
             'button[class*="_percentageBtn_"]:nth-child(3)',
             '[class*="_sellControlButtonsContainer_"] button:nth-child(3)',
         ],
-        '100%': [
+        "100%": [
             'button[class*="_percentageBtn_"]:nth-child(4)',
             '[class*="_sellControlButtonsContainer_"] button:nth-child(4)',
         ],
@@ -178,28 +179,28 @@ class SelectorStrategy:
     # Class name patterns for fallback matching
     # UPDATED 2025-12-01: Added new rugs.fun class patterns
     CLASS_PATTERNS = {
-        'BUY': ['buy', 'purchase', 'long', 'bid', 'buttonSection'],
-        'SELL': ['sell', 'exit', 'short', 'ask', 'buttonSection'],
-        'SIDEBET': ['side', 'sidebet', 'hedge', 'insurance', 'bet-button'],
-        'X': ['clear', 'clearButton'],
-        '10%': ['percentageBtn'],
-        '25%': ['percentageBtn'],
-        '50%': ['percentageBtn'],
-        '100%': ['percentageBtn'],
+        "BUY": ["buy", "purchase", "long", "bid", "buttonSection"],
+        "SELL": ["sell", "exit", "short", "ask", "buttonSection"],
+        "SIDEBET": ["side", "sidebet", "hedge", "insurance", "bet-button"],
+        "X": ["clear", "clearButton"],
+        "10%": ["percentageBtn"],
+        "25%": ["percentageBtn"],
+        "50%": ["percentageBtn"],
+        "100%": ["percentageBtn"],
     }
 
     @classmethod
-    def get_text_patterns(cls, button: str) -> List[str]:
+    def get_text_patterns(cls, button: str) -> list[str]:
         """Get text patterns for a button"""
         return cls.BUTTON_TEXT_PATTERNS.get(button, [button])
 
     @classmethod
-    def get_css_selectors(cls, button: str) -> List[str]:
+    def get_css_selectors(cls, button: str) -> list[str]:
         """Get CSS selectors for a button"""
         return cls.BUTTON_CSS_SELECTORS.get(button, [])
 
     @classmethod
-    def get_class_patterns(cls, button: str) -> List[str]:
+    def get_class_patterns(cls, button: str) -> list[str]:
         """Get class name patterns for a button"""
         return cls.CLASS_PATTERNS.get(button, [button.lower()])
 
@@ -230,17 +231,17 @@ class BrowserBridge:
         self.cdp_manager = None
 
         # Async infrastructure
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
         self._action_queue: asyncio.Queue = None
         self._running = False
         self._loop_ready = threading.Event()  # FIX: Signal when loop is ready
 
         # Callback for status changes
-        self.on_status_change: Optional[Callable[[BridgeStatus], None]] = None
+        self.on_status_change: Callable[[BridgeStatus], None] | None = None
 
         # Click statistics for debugging
-        self._click_stats: Dict[str, Dict[str, int]] = {}
+        self._click_stats: dict[str, dict[str, int]] = {}
 
         # CDP WebSocket interception components (Task 8)
         self._cdp_interceptor = CDPWebSocketInterceptor()
@@ -251,7 +252,7 @@ class BrowserBridge:
         def on_cdp_event(event):
             # Publish to EventBus for all subscribers
             if event_bus.has_subscribers(Events.WS_RAW_EVENT):
-                            event_bus.publish(Events.WS_RAW_EVENT, {'data': event})
+                event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
             # Catalog for RAG
             self._rag_ingester.catalog(event)
 
@@ -281,9 +282,7 @@ class BrowserBridge:
         self._running = True
         self._loop_ready.clear()  # Reset the ready signal
         self._thread = threading.Thread(
-            target=self._run_async_loop,
-            daemon=True,
-            name="BrowserBridge-AsyncLoop"
+            target=self._run_async_loop, daemon=True, name="BrowserBridge-AsyncLoop"
         )
         self._thread.start()
 
@@ -321,35 +320,26 @@ class BrowserBridge:
             try:
                 # Wait for action with timeout
                 try:
-                    action = await asyncio.wait_for(
-                        self._action_queue.get(),
-                        timeout=1.0
-                    )
-                except asyncio.TimeoutError:
+                    action = await asyncio.wait_for(self._action_queue.get(), timeout=1.0)
+                except TimeoutError:
                     continue
 
                 # Execute the action with timeout protection
-                action_type = action.get('type')
+                action_type = action.get("type")
 
                 try:
-                    if action_type == 'connect':
+                    if action_type == "connect":
+                        await asyncio.wait_for(self._do_connect(), timeout=self.CONNECT_TIMEOUT)
+                    elif action_type == "disconnect":
+                        await asyncio.wait_for(self._do_disconnect(), timeout=10.0)
+                    elif action_type == "click":
                         await asyncio.wait_for(
-                            self._do_connect(),
-                            timeout=self.CONNECT_TIMEOUT
+                            self._do_click_with_retry(action.get("button")),
+                            timeout=self.CLICK_TIMEOUT,
                         )
-                    elif action_type == 'disconnect':
-                        await asyncio.wait_for(
-                            self._do_disconnect(),
-                            timeout=10.0
-                        )
-                    elif action_type == 'click':
-                        await asyncio.wait_for(
-                            self._do_click_with_retry(action.get('button')),
-                            timeout=self.CLICK_TIMEOUT
-                        )
-                    elif action_type == 'stop':
+                    elif action_type == "stop":
                         break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.error(f"Action '{action_type}' timed out")
 
             except Exception as e:
@@ -362,10 +352,7 @@ class BrowserBridge:
             return
 
         # Thread-safe queue put
-        asyncio.run_coroutine_threadsafe(
-            self._action_queue.put(action),
-            self._loop
-        )
+        asyncio.run_coroutine_threadsafe(self._action_queue.put(action), self._loop)
 
     # ========================================================================
     # PUBLIC SYNC API (called from UI thread)
@@ -377,7 +364,7 @@ class BrowserBridge:
             self.start_async_loop()
 
         self._set_status(BridgeStatus.CONNECTING)
-        self._queue_action({'type': 'connect'})
+        self._queue_action({"type": "connect"})
 
     def connect_async(self):
         """Backwards-compatible alias for connect()."""
@@ -385,13 +372,13 @@ class BrowserBridge:
 
     def disconnect(self):
         """Disconnect from browser (non-blocking)."""
-        self._queue_action({'type': 'disconnect'})
+        self._queue_action({"type": "disconnect"})
 
     def stop(self):
         """Stop the bridge completely"""
         self._running = False
         if self._loop:
-            self._queue_action({'type': 'stop'})
+            self._queue_action({"type": "stop"})
 
     def is_connected(self) -> bool:
         """Check if browser is connected"""
@@ -405,42 +392,42 @@ class BrowserBridge:
         """Called when increment button clicked in UI."""
         if not self.is_connected():
             return
-        self._queue_action({'type': 'click', 'button': button_type})
+        self._queue_action({"type": "click", "button": button_type})
         logger.debug(f"Bridge: Queued {button_type} click")
 
     def on_clear_clicked(self):
         """Called when clear (X) button clicked in UI"""
-        self.on_increment_clicked('X')
+        self.on_increment_clicked("X")
 
     def on_buy_clicked(self):
         """Called when BUY button clicked in UI"""
         if not self.is_connected():
             return
-        self._queue_action({'type': 'click', 'button': 'BUY'})
+        self._queue_action({"type": "click", "button": "BUY"})
         logger.debug("Bridge: Queued BUY click")
 
     def on_sell_clicked(self):
         """Called when SELL button clicked in UI"""
         if not self.is_connected():
             return
-        self._queue_action({'type': 'click', 'button': 'SELL'})
+        self._queue_action({"type": "click", "button": "SELL"})
         logger.debug("Bridge: Queued SELL click")
 
     def on_sidebet_clicked(self):
         """Called when SIDEBET button clicked in UI"""
         if not self.is_connected():
             return
-        self._queue_action({'type': 'click', 'button': 'SIDEBET'})
+        self._queue_action({"type": "click", "button": "SIDEBET"})
         logger.debug("Bridge: Queued SIDEBET click")
 
     def on_percentage_clicked(self, percentage: float):
         """Called when percentage button clicked in UI."""
         if not self.is_connected():
             return
-        pct_text = {0.1: '10%', 0.25: '25%', 0.5: '50%', 1.0: '100%'}
+        pct_text = {0.1: "10%", 0.25: "25%", 0.5: "50%", 1.0: "100%"}
         button = pct_text.get(percentage)
         if button:
-            self._queue_action({'type': 'click', 'button': button})
+            self._queue_action({"type": "click", "button": button})
             logger.debug(f"Bridge: Queued {button} click")
 
     # ========================================================================
@@ -452,6 +439,7 @@ class BrowserBridge:
         try:
             import sys
             from pathlib import Path
+
             # Add parent directory for browser_automation imports
             parent_dir = str(Path(__file__).parent.parent.parent)
             if parent_dir not in sys.path:
@@ -508,9 +496,7 @@ class BrowserBridge:
                 return
 
             # Create a CDP session from the browser context
-            cdp_session = await self.cdp_manager.context.new_cdp_session(
-                self.cdp_manager.page
-            )
+            cdp_session = await self.cdp_manager.context.new_cdp_session(self.cdp_manager.page)
 
             # Connect the interceptor (async)
             if await self._cdp_interceptor.connect(cdp_session):
@@ -557,7 +543,7 @@ class BrowserBridge:
             result.attempt = attempt
 
             if result.success:
-                self._record_click_stat(button, 'success', result.method)
+                self._record_click_stat(button, "success", result.method)
                 return result
 
             last_result = result
@@ -570,7 +556,7 @@ class BrowserBridge:
                 )
                 await asyncio.sleep(delay)
 
-        self._record_click_stat(button, 'failure', last_result.error)
+        self._record_click_stat(button, "failure", last_result.error)
         logger.error(f"All {self.MAX_RETRIES} click attempts failed for '{button}'")
         return last_result
 
@@ -609,13 +595,12 @@ class BrowserBridge:
             # All strategies failed - collect debug info
             available = await self._get_available_buttons(page)
             logger.warning(
-                f"All click strategies failed for '{button}'. "
-                f"Available buttons: {available[:10]}"
+                f"All click strategies failed for '{button}'. Available buttons: {available[:10]}"
             )
 
             return ClickResult(
                 success=False,
-                error=f"Button not found with any strategy. Available: {available[:5]}"
+                error=f"Button not found with any strategy. Available: {available[:5]}",
             )
 
         except Exception as e:
@@ -715,7 +700,7 @@ class BrowserBridge:
         try:
             result = await page.evaluate(js_code, patterns)
 
-            if result.get('success'):
+            if result.get("success"):
                 logger.debug(
                     f"Text-based click succeeded for '{button}': "
                     f"found '{result.get('text')}' via {result.get('method')}"
@@ -723,7 +708,7 @@ class BrowserBridge:
                 return ClickResult(
                     success=True,
                     method=f"text-{result.get('method')}",
-                    button_text=result.get('text', '')
+                    button_text=result.get("text", ""),
                 )
 
             return ClickResult(success=False, error="No text match found")
@@ -740,7 +725,8 @@ class BrowserBridge:
                 element = await page.query_selector(selector)
                 if element:
                     # Verify element is visible and enabled
-                    is_valid = await page.evaluate("""
+                    is_valid = await page.evaluate(
+                        """
                         (el) => {
                             const style = window.getComputedStyle(el);
                             const rect = el.getBoundingClientRect();
@@ -749,16 +735,16 @@ class BrowserBridge:
                                    style.visibility !== 'hidden' &&
                                    rect.width > 0 && rect.height > 0;
                         }
-                    """, element)
+                    """,
+                        element,
+                    )
 
                     if is_valid:
                         await element.click()
                         text = await element.text_content()
                         logger.debug(f"CSS selector click succeeded: '{selector}' -> '{text}'")
                         return ClickResult(
-                            success=True,
-                            method=f"css:{selector[:30]}",
-                            button_text=text or ""
+                            success=True, method=f"css:{selector[:30]}", button_text=text or ""
                         )
             except Exception:
                 continue
@@ -792,18 +778,16 @@ class BrowserBridge:
 
         try:
             result = await page.evaluate(js_code, patterns)
-            if result.get('success'):
+            if result.get("success"):
                 logger.debug(f"Class pattern click succeeded: {result.get('class')}")
                 return ClickResult(
-                    success=True,
-                    method="class-pattern",
-                    button_text=result.get('text', '')
+                    success=True, method="class-pattern", button_text=result.get("text", "")
                 )
             return ClickResult(success=False, error="No class pattern matched")
         except Exception as e:
             return ClickResult(success=False, error=f"Class pattern error: {e}")
 
-    async def _get_available_buttons(self, page) -> List[str]:
+    async def _get_available_buttons(self, page) -> list[str]:
         """Get list of available button texts for debugging."""
         try:
             return await page.evaluate("""
@@ -820,22 +804,22 @@ class BrowserBridge:
     def _record_click_stat(self, button: str, outcome: str, detail: str):
         """Record click statistics for monitoring."""
         if button not in self._click_stats:
-            self._click_stats[button] = {'success': 0, 'failure': 0, 'methods': {}}
+            self._click_stats[button] = {"success": 0, "failure": 0, "methods": {}}
 
         self._click_stats[button][outcome] = self._click_stats[button].get(outcome, 0) + 1
 
-        if outcome == 'success':
-            methods = self._click_stats[button]['methods']
+        if outcome == "success":
+            methods = self._click_stats[button]["methods"]
             methods[detail] = methods.get(detail, 0) + 1
 
-    def get_click_stats(self) -> Dict[str, Any]:
+    def get_click_stats(self) -> dict[str, Any]:
         """Get click statistics for debugging."""
         return self._click_stats.copy()
 
 
 # Singleton instance for global access
 # PRODUCTION FIX: Thread-safe singleton with proper locking
-_bridge_instance: Optional[BrowserBridge] = None
+_bridge_instance: BrowserBridge | None = None
 _bridge_lock = threading.Lock()
 
 

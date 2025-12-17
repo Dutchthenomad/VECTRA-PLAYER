@@ -4,36 +4,38 @@ Event Store Schema - Canonical event envelope and doc types
 Schema Version: 1.0.0
 """
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Dict, Any
-import json
-import uuid
+from typing import Any
 
 
 class DocType(str, Enum):
     """Document types for partitioning"""
-    WS_EVENT = 'ws_event'           # Raw WebSocket events
-    GAME_TICK = 'game_tick'         # Price/tick stream
-    PLAYER_ACTION = 'player_action' # Human/bot trading actions
-    SERVER_STATE = 'server_state'   # Server-authoritative snapshots
-    SYSTEM_EVENT = 'system_event'   # Connection/disconnect/errors
+
+    WS_EVENT = "ws_event"  # Raw WebSocket events
+    GAME_TICK = "game_tick"  # Price/tick stream
+    PLAYER_ACTION = "player_action"  # Human/bot trading actions
+    SERVER_STATE = "server_state"  # Server-authoritative snapshots
+    SYSTEM_EVENT = "system_event"  # Connection/disconnect/errors
 
 
 class EventSource(str, Enum):
     """Event source identifiers"""
-    CDP = 'cdp'               # Chrome DevTools Protocol interception
-    PUBLIC_WS = 'public_ws'   # Public WebSocket connection
-    REPLAY = 'replay'         # Replayed from recording
-    UI = 'ui'                 # User interface action
+
+    CDP = "cdp"  # Chrome DevTools Protocol interception
+    PUBLIC_WS = "public_ws"  # Public WebSocket connection
+    REPLAY = "replay"  # Replayed from recording
+    UI = "ui"  # User interface action
 
 
 class Direction(str, Enum):
     """Event direction"""
-    RECEIVED = 'received'     # Received from server
-    SENT = 'sent'             # Sent to server
+
+    RECEIVED = "received"  # Received from server
+    SENT = "sent"  # Sent to server
 
 
 @dataclass
@@ -63,30 +65,30 @@ class EventEnvelope:
     raw_json: str
 
     # Optional fields
-    game_id: Optional[str] = None
-    player_id: Optional[str] = None
-    username: Optional[str] = None
+    game_id: str | None = None
+    player_id: str | None = None
+    username: str | None = None
 
     # Type-specific extracted fields (for efficient queries)
-    event_name: Optional[str] = None  # For ws_event
-    price: Optional[Decimal] = None   # For game_tick
-    tick: Optional[int] = None        # For game_tick
-    action_type: Optional[str] = None # For player_action
-    cash: Optional[Decimal] = None    # For server_state
-    position_qty: Optional[Decimal] = None  # For server_state
+    event_name: str | None = None  # For ws_event
+    price: Decimal | None = None  # For game_tick
+    tick: int | None = None  # For game_tick
+    action_type: str | None = None  # For player_action
+    cash: Decimal | None = None  # For server_state
+    position_qty: Decimal | None = None  # For server_state
 
     @classmethod
     def from_ws_event(
         cls,
         event_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: EventSource,
         session_id: str,
         seq: int,
-        game_id: Optional[str] = None,
-        player_id: Optional[str] = None,
-        username: Optional[str] = None,
-    ) -> 'EventEnvelope':
+        game_id: str | None = None,
+        player_id: str | None = None,
+        username: str | None = None,
+    ) -> "EventEnvelope":
         """Create envelope from WebSocket event"""
         return cls(
             ts=datetime.utcnow(),
@@ -95,7 +97,7 @@ class EventEnvelope:
             session_id=session_id,
             seq=seq,
             direction=Direction.RECEIVED,
-            raw_json=json.dumps({'event': event_name, 'data': data}),
+            raw_json=json.dumps({"event": event_name, "data": data}),
             game_id=game_id,
             player_id=player_id,
             username=username,
@@ -107,12 +109,12 @@ class EventEnvelope:
         cls,
         tick: int,
         price: Decimal,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: EventSource,
         session_id: str,
         seq: int,
         game_id: str,
-    ) -> 'EventEnvelope':
+    ) -> "EventEnvelope":
         """Create envelope from game tick"""
         return cls(
             ts=datetime.utcnow(),
@@ -131,14 +133,14 @@ class EventEnvelope:
     def from_player_action(
         cls,
         action_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: EventSource,
         session_id: str,
         seq: int,
-        game_id: Optional[str] = None,
-        player_id: Optional[str] = None,
-        username: Optional[str] = None,
-    ) -> 'EventEnvelope':
+        game_id: str | None = None,
+        player_id: str | None = None,
+        username: str | None = None,
+    ) -> "EventEnvelope":
         """Create envelope from player action"""
         return cls(
             ts=datetime.utcnow(),
@@ -157,16 +159,16 @@ class EventEnvelope:
     @classmethod
     def from_server_state(
         cls,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: EventSource,
         session_id: str,
         seq: int,
         game_id: str,
         player_id: str,
-        username: Optional[str] = None,
-        cash: Optional[Decimal] = None,
-        position_qty: Optional[Decimal] = None,
-    ) -> 'EventEnvelope':
+        username: str | None = None,
+        cash: Decimal | None = None,
+        position_qty: Decimal | None = None,
+    ) -> "EventEnvelope":
         """Create envelope from server state update"""
         return cls(
             ts=datetime.utcnow(),
@@ -187,11 +189,11 @@ class EventEnvelope:
     def from_system_event(
         cls,
         event_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: EventSource,
         session_id: str,
         seq: int,
-    ) -> 'EventEnvelope':
+    ) -> "EventEnvelope":
         """Create envelope from system event"""
         return cls(
             ts=datetime.utcnow(),
@@ -200,31 +202,31 @@ class EventEnvelope:
             session_id=session_id,
             seq=seq,
             direction=Direction.RECEIVED,
-            raw_json=json.dumps({'type': event_type, 'data': data}),
+            raw_json=json.dumps({"type": event_type, "data": data}),
             event_name=event_type,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for Parquet serialization"""
         return {
-            'ts': self.ts.isoformat(),
-            'source': self.source.value,
-            'doc_type': self.doc_type.value,
-            'session_id': self.session_id,
-            'seq': self.seq,
-            'direction': self.direction.value,
-            'raw_json': self.raw_json,
-            'game_id': self.game_id,
-            'player_id': self.player_id,
-            'username': self.username,
-            'event_name': self.event_name,
-            'price': str(self.price) if self.price is not None else None,
-            'tick': self.tick,
-            'action_type': self.action_type,
-            'cash': str(self.cash) if self.cash is not None else None,
-            'position_qty': str(self.position_qty) if self.position_qty is not None else None,
+            "ts": self.ts.isoformat(),
+            "source": self.source.value,
+            "doc_type": self.doc_type.value,
+            "session_id": self.session_id,
+            "seq": self.seq,
+            "direction": self.direction.value,
+            "raw_json": self.raw_json,
+            "game_id": self.game_id,
+            "player_id": self.player_id,
+            "username": self.username,
+            "event_name": self.event_name,
+            "price": str(self.price) if self.price is not None else None,
+            "tick": self.tick,
+            "action_type": self.action_type,
+            "cash": str(self.cash) if self.cash is not None else None,
+            "position_qty": str(self.position_qty) if self.position_qty is not None else None,
         }
 
 
 # Schema version for migrations
-SCHEMA_VERSION = '1.0.0'
+SCHEMA_VERSION = "1.0.0"

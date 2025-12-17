@@ -4,12 +4,13 @@ RAG Ingester - Event Cataloging for rugs-expert Agent
 Catalogs WebSocket events to JSONL format for RAG pipeline indexing.
 Compatible with claude-flow/rag-pipeline/ingestion/event_chunker.py
 """
+
 import json
 import logging
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -17,48 +18,40 @@ logger = logging.getLogger(__name__)
 # Updated: Dec 14, 2025 - Added 16 newly discovered events from CDP capture
 KNOWN_EVENTS = {
     # Core game events
-    'gameStateUpdate',          # Primary tick event (~4/sec)
-    'gameStatePlayerUpdate',    # Rugpool + player trades (46.7% of traffic!)
-    'standard/newTrade',        # Trade broadcast
-
+    "gameStateUpdate",  # Primary tick event (~4/sec)
+    "gameStatePlayerUpdate",  # Rugpool + player trades (46.7% of traffic!)
+    "standard/newTrade",  # Trade broadcast
     # Player state events (auth-gated)
-    'usernameStatus',           # Player identity on connect
-    'playerUpdate',             # Server state sync after trades
-    'playerLeaderboardPosition', # Player rank on connect
-
+    "usernameStatus",  # Player identity on connect
+    "playerUpdate",  # Server state sync after trades
+    "playerLeaderboardPosition",  # Player rank on connect
     # Leaderboard events
-    'getLeaderboard',           # Request leaderboard (client -> server)
-    'leaderboardData',          # Leaderboard response (server -> client)
-    'getPlayerLeaderboardPosition',  # Request player rank
-
+    "getLeaderboard",  # Request leaderboard (client -> server)
+    "leaderboardData",  # Leaderboard response (server -> client)
+    "getPlayerLeaderboardPosition",  # Request player rank
     # Sidebet events
-    'newSideBet',               # New sidebet placed notification
-    'sidebetEventUpdate',       # Sidebet event status
-
+    "newSideBet",  # New sidebet placed notification
+    "sidebetEventUpdate",  # Sidebet event status
     # Authentication events
-    'authenticate',             # Client auth handshake
-    'checkUsername',            # Username validation
-
+    "authenticate",  # Client auth handshake
+    "checkUsername",  # Username validation
     # Social/Chat events
-    'newChatMessage',           # Chat messages
-    'chatHistory',              # Chat history sync
-    'inboxMessages',            # DM inbox
-    'mutedPlayers',             # Muted players list
-
+    "newChatMessage",  # Chat messages
+    "chatHistory",  # Chat history sync
+    "inboxMessages",  # DM inbox
+    "mutedPlayers",  # Muted players list
     # Special events
-    'goldenHourUpdate',         # Golden hour status
-    'goldenHourDrawing',        # Golden hour drawing
-    'battleEventUpdate',        # Battle mode updates
-    'rugRoyaleUpdate',          # Battle royale tournament
-
+    "goldenHourUpdate",  # Golden hour status
+    "goldenHourDrawing",  # Golden hour drawing
+    "battleEventUpdate",  # Battle mode updates
+    "rugRoyaleUpdate",  # Battle royale tournament
     # Profile/Cosmetics
-    'getPlayerCosmetics',       # Request cosmetics
-    'playerCosmetics',          # Cosmetics response
-    'rugpassStatus',            # Rugpass NFT ownership
-
+    "getPlayerCosmetics",  # Request cosmetics
+    "playerCosmetics",  # Cosmetics response
+    "rugpassStatus",  # Rugpass NFT ownership
     # Connection events
-    'connect',
-    'disconnect',
+    "connect",
+    "disconnect",
 }
 
 
@@ -72,7 +65,7 @@ class RAGIngester:
 
     DEFAULT_CAPTURE_DIR = Path.home() / "rugs_recordings" / "raw_captures"
 
-    def __init__(self, capture_dir: Optional[Path] = None):
+    def __init__(self, capture_dir: Path | None = None):
         """
         Initialize RAG ingester.
 
@@ -83,19 +76,19 @@ class RAGIngester:
         self.capture_dir.mkdir(parents=True, exist_ok=True)
 
         # Session state
-        self.current_session: Optional[Path] = None
+        self.current_session: Path | None = None
         self._file_handle = None
         self._lock = threading.Lock()
 
         # Statistics
         self.sequence_number: int = 0
-        self.event_counts: Dict[str, int] = {}
-        self.novel_events: Set[str] = set()
-        self.start_time: Optional[datetime] = None
+        self.event_counts: dict[str, int] = {}
+        self.novel_events: set[str] = set()
+        self.start_time: datetime | None = None
 
         logger.info(f"RAGIngester initialized: {self.capture_dir}")
 
-    def start_session(self) -> Optional[Path]:
+    def start_session(self) -> Path | None:
         """
         Start a new capture session.
 
@@ -108,8 +101,8 @@ class RAGIngester:
                 return self.current_session
 
             # Generate filename
-            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            self.current_session = self.capture_dir / f'{timestamp}_cdp.jsonl'
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.current_session = self.capture_dir / f"{timestamp}_cdp.jsonl"
 
             # Reset state
             self.sequence_number = 0
@@ -118,12 +111,12 @@ class RAGIngester:
             self.start_time = datetime.now()
 
             # Open file
-            self._file_handle = open(self.current_session, 'w', encoding='utf-8')
+            self._file_handle = open(self.current_session, "w", encoding="utf-8")
 
             logger.info(f"RAG capture session started: {self.current_session}")
             return self.current_session
 
-    def catalog(self, event: Dict[str, Any]):
+    def catalog(self, event: dict[str, Any]):
         """
         Catalog an event for RAG indexing.
 
@@ -135,7 +128,7 @@ class RAGIngester:
 
         with self._lock:
             self.sequence_number += 1
-            event_type = event.get('event', 'unknown')
+            event_type = event.get("event", "unknown")
 
             # Track counts
             self.event_counts[event_type] = self.event_counts.get(event_type, 0) + 1
@@ -148,22 +141,22 @@ class RAGIngester:
 
             # Build record (compatible with event_chunker.py)
             record = {
-                'seq': self.sequence_number,
-                'ts': event.get('timestamp', datetime.now().isoformat()),
-                'event': event_type,
-                'data': event.get('data'),
-                'source': 'cdp_intercept',
-                'direction': event.get('direction', 'received')
+                "seq": self.sequence_number,
+                "ts": event.get("timestamp", datetime.now().isoformat()),
+                "event": event_type,
+                "data": event.get("data"),
+                "source": "cdp_intercept",
+                "direction": event.get("direction", "received"),
             }
 
             try:
                 json_line = json.dumps(record, default=str)
-                self._file_handle.write(json_line + '\n')
+                self._file_handle.write(json_line + "\n")
                 self._file_handle.flush()
             except Exception as e:
                 logger.error(f"Failed to write event: {e}")
 
-    def stop_session(self) -> Optional[Dict[str, Any]]:
+    def stop_session(self) -> dict[str, Any] | None:
         """
         Stop the capture session.
 
@@ -181,11 +174,11 @@ class RAGIngester:
 
             # Build summary
             summary = {
-                'capture_file': str(self.current_session),
-                'total_events': self.sequence_number,
-                'event_counts': dict(self.event_counts),
-                'novel_events': list(self.novel_events),
-                'duration_seconds': duration
+                "capture_file": str(self.current_session),
+                "total_events": self.sequence_number,
+                "event_counts": dict(self.event_counts),
+                "novel_events": list(self.novel_events),
+                "duration_seconds": duration,
             }
 
             # Close file
@@ -203,13 +196,13 @@ class RAGIngester:
 
             return summary
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current session status."""
         with self._lock:
             return {
-                'is_active': self._file_handle is not None,
-                'capture_file': str(self.current_session) if self.current_session else None,
-                'event_count': self.sequence_number,
-                'event_types': len(self.event_counts),
-                'novel_events': list(self.novel_events)
+                "is_active": self._file_handle is not None,
+                "capture_file": str(self.current_session) if self.current_session else None,
+                "event_count": self.sequence_number,
+                "event_types": len(self.event_counts),
+                "novel_events": list(self.novel_events),
             }

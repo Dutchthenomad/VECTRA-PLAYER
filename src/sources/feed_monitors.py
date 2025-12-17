@@ -10,11 +10,11 @@ These classes handle health monitoring and latency tracking for the
 WebSocket feed without containing any Socket.IO-specific code.
 """
 
-import time
-import threading
-from typing import Dict, Any, Optional
-from collections import deque
 import logging
+import threading
+import time
+from collections import deque
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +32,15 @@ class LatencySpikeDetector:
     Only truly severe latency (>10 seconds) should trigger alerts.
     """
 
-    WARNING_THRESHOLD_MS = 2000.0   # 2 seconds - warning
-    ERROR_THRESHOLD_MS = 5000.0     # 5 seconds - error
+    WARNING_THRESHOLD_MS = 2000.0  # 2 seconds - warning
+    ERROR_THRESHOLD_MS = 5000.0  # 5 seconds - error
     CRITICAL_THRESHOLD_MS = 10000.0  # 10 seconds - critical
 
     def __init__(
         self,
         window_size: int = 100,
         spike_threshold_std: float = 10.0,
-        absolute_threshold_ms: float = CRITICAL_THRESHOLD_MS
+        absolute_threshold_ms: float = CRITICAL_THRESHOLD_MS,
     ):
         """
         Initialize spike detector.
@@ -60,14 +60,14 @@ class LatencySpikeDetector:
         # Statistics
         self.total_samples = 0
         self.total_spikes = 0
-        self.last_spike_time: Optional[float] = None
-        self.last_spike_value: Optional[float] = None
+        self.last_spike_time: float | None = None
+        self.last_spike_value: float | None = None
 
         # Rate limiting for warnings (prevent spam)
         self._last_warning_time: float = 0
         self._warning_cooldown_sec: float = 30.0  # Only warn once per 30 seconds
 
-    def record(self, latency_ms: float) -> Optional[Dict[str, Any]]:
+    def record(self, latency_ms: float) -> dict[str, Any] | None:
         """
         Record a latency sample and check for spike.
 
@@ -87,10 +87,10 @@ class LatencySpikeDetector:
             if len(self.latencies) >= 10:
                 mean = sum(self.latencies) / len(self.latencies)
                 variance = sum((x - mean) ** 2 for x in self.latencies) / len(self.latencies)
-                std = variance ** 0.5 if variance > 0 else 0
+                std = variance**0.5 if variance > 0 else 0
 
             status = self.check_latency(latency_ms)
-            is_spike = status != 'OK'
+            is_spike = status != "OK"
             spike_reason = None
 
             # Absolute threshold check
@@ -103,13 +103,15 @@ class LatencySpikeDetector:
                 z_score = (latency_ms - mean) / std
                 if z_score > self.spike_threshold_std:
                     is_spike = True
-                    spike_reason = f"Statistical spike: {z_score:.1f} std devs above mean ({mean:.0f}ms)"
+                    spike_reason = (
+                        f"Statistical spike: {z_score:.1f} std devs above mean ({mean:.0f}ms)"
+                    )
 
             if is_spike:
                 self.total_spikes += 1
                 self.last_spike_time = time.time()
                 self.last_spike_value = latency_ms
-                spike_status = status if status != 'OK' else 'WARNING'
+                spike_status = status if status != "OK" else "WARNING"
                 return self._maybe_emit_status(latency_ms, spike_status, spike_reason, mean, std)
 
             return None
@@ -118,25 +120,25 @@ class LatencySpikeDetector:
         """Tiered latency threshold evaluation"""
         if latency_ms >= self.absolute_threshold_ms:
             logger.critical(f"CRITICAL latency: {latency_ms}ms")
-            return 'CRITICAL'
+            return "CRITICAL"
         if latency_ms >= self.ERROR_THRESHOLD_MS:
             logger.error(f"High latency: {latency_ms}ms")
-            return 'ERROR'
+            return "ERROR"
         if latency_ms >= self.WARNING_THRESHOLD_MS:
             logger.warning(f"Elevated latency: {latency_ms}ms")
-            return 'WARNING'
-        return 'OK'
+            return "WARNING"
+        return "OK"
 
     def _maybe_emit_status(
         self,
         latency_ms: float,
         status: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         mean: float = 0.0,
-        std: float = 0.0
-    ) -> Optional[Dict[str, Any]]:
+        std: float = 0.0,
+    ) -> dict[str, Any] | None:
         """Rate-limit status emission"""
-        if status == 'OK':
+        if status == "OK":
             return None
         now = time.time()
         if now - self._last_warning_time < self._warning_cooldown_sec:
@@ -144,16 +146,16 @@ class LatencySpikeDetector:
 
         self._last_warning_time = now
         return {
-            'latency_ms': latency_ms,
-            'mean_ms': mean,
-            'std_ms': std,
-            'reason': reason or status,
-            'spike_count': self.total_spikes,
-            'timestamp': self.last_spike_time or now,
-            'status': status,
+            "latency_ms": latency_ms,
+            "mean_ms": mean,
+            "std_ms": std,
+            "reason": reason or status,
+            "spike_count": self.total_spikes,
+            "timestamp": self.last_spike_time or now,
+            "status": status,
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get spike detector statistics"""
         with self._lock:
             if self.latencies:
@@ -164,15 +166,16 @@ class LatencySpikeDetector:
                 mean = max_lat = min_lat = 0
 
             return {
-                'total_samples': self.total_samples,
-                'total_spikes': self.total_spikes,
-                'spike_rate': (self.total_spikes / self.total_samples * 100)
-                    if self.total_samples > 0 else 0.0,
-                'mean_latency_ms': mean,
-                'max_latency_ms': max_lat,
-                'min_latency_ms': min_lat,
-                'last_spike_time': self.last_spike_time,
-                'last_spike_value_ms': self.last_spike_value
+                "total_samples": self.total_samples,
+                "total_spikes": self.total_spikes,
+                "spike_rate": (self.total_spikes / self.total_samples * 100)
+                if self.total_samples > 0
+                else 0.0,
+                "mean_latency_ms": mean,
+                "max_latency_ms": max_lat,
+                "min_latency_ms": min_lat,
+                "last_spike_time": self.last_spike_time,
+                "last_spike_value_ms": self.last_spike_value,
             }
 
 
@@ -182,11 +185,12 @@ class ConnectionHealth:
 
     PHASE 3.2 AUDIT FIX: Track connection quality.
     """
-    HEALTHY = "HEALTHY"          # Connected, receiving signals
-    DEGRADED = "DEGRADED"        # Connected but high latency/drops
-    STALE = "STALE"              # Connected but no recent signals
+
+    HEALTHY = "HEALTHY"  # Connected, receiving signals
+    DEGRADED = "DEGRADED"  # Connected but high latency/drops
+    STALE = "STALE"  # Connected but no recent signals
     DISCONNECTED = "DISCONNECTED"  # Not connected
-    UNKNOWN = "UNKNOWN"          # Initial state
+    UNKNOWN = "UNKNOWN"  # Initial state
 
 
 class ConnectionHealthMonitor:
@@ -206,7 +210,7 @@ class ConnectionHealthMonitor:
         self,
         stale_threshold_sec: float = 10.0,
         latency_threshold_ms: float = 1000.0,
-        error_rate_threshold: float = 5.0
+        error_rate_threshold: float = 5.0,
     ):
         """
         Initialize health monitor.
@@ -220,7 +224,7 @@ class ConnectionHealthMonitor:
         self.latency_threshold_ms = latency_threshold_ms
         self.error_rate_threshold = error_rate_threshold
 
-        self.last_signal_time: Optional[float] = None
+        self.last_signal_time: float | None = None
         self.is_connected = False
         self._lock = threading.Lock()
 
@@ -236,7 +240,7 @@ class ConnectionHealthMonitor:
             if connected:
                 self.last_signal_time = time.time()
 
-    def get_signal_age(self) -> Optional[float]:
+    def get_signal_age(self) -> float | None:
         """Get seconds since last signal, or None if never received"""
         with self._lock:
             if self.last_signal_time is None:
@@ -244,11 +248,8 @@ class ConnectionHealthMonitor:
             return time.time() - self.last_signal_time
 
     def check_health(
-        self,
-        avg_latency_ms: float = 0.0,
-        error_rate: float = 0.0,
-        drop_rate: float = 0.0
-    ) -> Dict[str, Any]:
+        self, avg_latency_ms: float = 0.0, error_rate: float = 0.0, drop_rate: float = 0.0
+    ) -> dict[str, Any]:
         """
         Check connection health status.
 
@@ -267,12 +268,12 @@ class ConnectionHealthMonitor:
             # Check connection
             if not self.is_connected:
                 return {
-                    'status': ConnectionHealth.DISCONNECTED,
-                    'issues': ['Not connected to server'],
-                    'signal_age_sec': None,
-                    'avg_latency_ms': avg_latency_ms,
-                    'error_rate': error_rate,
-                    'drop_rate': drop_rate
+                    "status": ConnectionHealth.DISCONNECTED,
+                    "issues": ["Not connected to server"],
+                    "signal_age_sec": None,
+                    "avg_latency_ms": avg_latency_ms,
+                    "error_rate": error_rate,
+                    "drop_rate": drop_rate,
                 }
 
             # Check signal freshness
@@ -281,24 +282,24 @@ class ConnectionHealthMonitor:
                 signal_age = time.time() - self.last_signal_time
 
                 if signal_age > self.stale_threshold_sec:
-                    issues.append(f'No signals for {signal_age:.1f}s')
+                    issues.append(f"No signals for {signal_age:.1f}s")
                     status = ConnectionHealth.STALE
 
             # Check latency
             if avg_latency_ms > self.latency_threshold_ms:
-                issues.append(f'High latency: {avg_latency_ms:.0f}ms')
+                issues.append(f"High latency: {avg_latency_ms:.0f}ms")
                 if status != ConnectionHealth.STALE:
                     status = ConnectionHealth.DEGRADED
 
             # Check error rate
             if error_rate > self.error_rate_threshold:
-                issues.append(f'High error rate: {error_rate:.1f}%')
+                issues.append(f"High error rate: {error_rate:.1f}%")
                 if status != ConnectionHealth.STALE:
                     status = ConnectionHealth.DEGRADED
 
             # Check drop rate
             if drop_rate > 10.0:  # More than 10% drops
-                issues.append(f'High drop rate: {drop_rate:.1f}%')
+                issues.append(f"High drop rate: {drop_rate:.1f}%")
                 if status != ConnectionHealth.STALE:
                     status = ConnectionHealth.DEGRADED
 
@@ -307,10 +308,10 @@ class ConnectionHealthMonitor:
                 status = ConnectionHealth.HEALTHY
 
             return {
-                'status': status,
-                'issues': issues,
-                'signal_age_sec': signal_age,
-                'avg_latency_ms': avg_latency_ms,
-                'error_rate': error_rate,
-                'drop_rate': drop_rate
+                "status": status,
+                "issues": issues,
+                "signal_age_sec": signal_age,
+                "avg_latency_ms": avg_latency_ms,
+                "error_rate": error_rate,
+                "drop_rate": drop_rate,
             }

@@ -7,9 +7,10 @@ Tests cover:
 - PriceHistoryHandler: tick processing, gap filling, game completion
 """
 
-import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock
+
+import pytest
 
 # This import will FAIL until we create the module (TDD RED phase)
 from sources.price_history_handler import PriceHistoryHandler
@@ -80,9 +81,7 @@ class TestPriceHistoryHandler:
         handler.handle_tick("game-123", 3, Decimal("1.5"))
 
         # Fill gaps
-        handler.handle_partial_prices({
-            'values': {'1': 1.1, '2': 1.3}
-        })
+        handler.handle_partial_prices({"values": {"1": 1.1, "2": 1.3}})
 
         assert handler.prices[1] == Decimal("1.1")
         assert handler.prices[2] == Decimal("1.3")
@@ -95,9 +94,11 @@ class TestPriceHistoryHandler:
         handler.handle_tick("game-123", 1, Decimal("1.1"))
 
         # Try to overwrite
-        handler.handle_partial_prices({
-            'values': {'1': 9.9}  # Different value
-        })
+        handler.handle_partial_prices(
+            {
+                "values": {"1": 9.9}  # Different value
+            }
+        )
 
         # Should keep original value
         assert handler.prices[1] == Decimal("1.1")
@@ -110,7 +111,7 @@ class TestPriceHistoryHandler:
         def callback(data):
             received.append(data)
 
-        handler.on('game_prices_complete', callback)
+        handler.on("game_prices_complete", callback)
 
         # Start game
         handler.handle_tick("game-123", 0, Decimal("1.0"))
@@ -120,9 +121,9 @@ class TestPriceHistoryHandler:
         handler.handle_game_end("game-123", [])
 
         assert len(received) == 1
-        assert received[0]['game_id'] == "game-123"
-        assert len(received[0]['prices']) == 2
-        assert received[0]['peak_multiplier'] == Decimal("2.0")
+        assert received[0]["game_id"] == "game-123"
+        assert len(received[0]["prices"]) == 2
+        assert received[0]["peak_multiplier"] == Decimal("2.0")
 
     def test_handle_game_end_with_seed_data(self):
         """Test game end extracts seed data from history"""
@@ -132,22 +133,24 @@ class TestPriceHistoryHandler:
         def callback(data):
             received.append(data)
 
-        handler.on('game_prices_complete', callback)
+        handler.on("game_prices_complete", callback)
 
         handler.handle_tick("game-123", 0, Decimal("1.0"))
 
         # End with game history containing seed
-        handler.handle_game_end("game-123", [{
-            'id': 'game-123',
-            'peakMultiplier': 5.0,
-            'provablyFair': {
-                'serverSeed': 'abc123',
-                'serverSeedHash': 'hash456'
-            }
-        }])
+        handler.handle_game_end(
+            "game-123",
+            [
+                {
+                    "id": "game-123",
+                    "peakMultiplier": 5.0,
+                    "provablyFair": {"serverSeed": "abc123", "serverSeedHash": "hash456"},
+                }
+            ],
+        )
 
-        assert received[0]['seed_data']['server_seed'] == 'abc123'
-        assert received[0]['seed_data']['server_seed_hash'] == 'hash456'
+        assert received[0]["seed_data"]["server_seed"] == "abc123"
+        assert received[0]["seed_data"]["server_seed_hash"] == "hash456"
 
     def test_new_game_finalizes_previous(self):
         """Test starting new game finalizes previous one"""
@@ -157,7 +160,7 @@ class TestPriceHistoryHandler:
         def callback(data):
             received.append(data)
 
-        handler.on('game_prices_complete', callback)
+        handler.on("game_prices_complete", callback)
 
         # Start game 1
         handler.handle_tick("game-1", 0, Decimal("1.0"))
@@ -167,7 +170,7 @@ class TestPriceHistoryHandler:
         handler.handle_tick("game-2", 0, Decimal("1.0"))
 
         assert len(received) == 1
-        assert received[0]['game_id'] == "game-1"
+        assert received[0]["game_id"] == "game-1"
 
     def test_has_gaps(self):
         """Test gap detection"""
@@ -197,9 +200,9 @@ class TestPriceHistoryHandler:
         handler = PriceHistoryHandler()
         callback = MagicMock()
 
-        handler.on('game_prices_complete', callback)
+        handler.on("game_prices_complete", callback)
 
-        assert 'game_prices_complete' in handler._event_handlers
+        assert "game_prices_complete" in handler._event_handlers
 
     def test_game_end_wrong_game_ignored(self):
         """Test game end for wrong game is ignored"""
@@ -209,7 +212,7 @@ class TestPriceHistoryHandler:
         def callback(data):
             received.append(data)
 
-        handler.on('game_prices_complete', callback)
+        handler.on("game_prices_complete", callback)
 
         handler.handle_tick("game-1", 0, Decimal("1.0"))
 

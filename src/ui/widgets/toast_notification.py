@@ -3,8 +3,8 @@ Toast Notification Widget
 Displays temporary pop-up messages
 """
 
-import tkinter as tk
 import logging
+import tkinter as tk
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +32,12 @@ class ToastNotification:
 
         # Color scheme based on type
         colors = {
-            'info': ('#3366ff', '#ffffff'),
-            'warning': ('#ffcc00', '#000000'),
-            'error': ('#ff3366', '#ffffff'),
-            'success': ('#00ff88', '#000000')
+            "info": ("#3366ff", "#ffffff"),
+            "warning": ("#ffcc00", "#000000"),
+            "error": ("#ff3366", "#ffffff"),
+            "success": ("#00ff88", "#000000"),
         }
-        bg_color, fg_color = colors.get(msg_type, colors['info'])
+        bg_color, fg_color = colors.get(msg_type, colors["info"])
 
         # Create label
         label = tk.Label(
@@ -45,9 +45,9 @@ class ToastNotification:
             text=message,
             bg=bg_color,
             fg=fg_color,
-            font=('Arial', 10, 'bold'),
+            font=("Arial", 10, "bold"),
             padx=20,
-            pady=10
+            pady=10,
         )
         label.pack()
 
@@ -70,9 +70,9 @@ class ToastNotification:
 
         # Log the message
         log_methods = {
-            'info': logger.info,
-            'warning': logger.warning,
-            'error': logger.error,
-            'success': logger.info
+            "info": logger.info,
+            "warning": logger.warning,
+            "error": logger.error,
+            "success": logger.info,
         }
         log_methods.get(msg_type, logger.info)(f"Toast: {message}")

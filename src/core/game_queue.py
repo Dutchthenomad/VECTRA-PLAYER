@@ -3,10 +3,9 @@ Game Queue Management
 Handles sequential game loading for multi-game sessions
 """
 
-from pathlib import Path
-from typing import List, Optional
-import random
 import logging
+import random
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class GameQueue:
         """
         self.recordings_dir = Path(recordings_dir)
         self.shuffle_enabled = shuffle
-        self.games: List[Path] = []
+        self.games: list[Path] = []
         self.current_index = 0
 
         # Load games
@@ -58,7 +57,7 @@ class GameQueue:
         else:
             logger.info(f"Loaded {len(self.games)} game files from {self.recordings_dir}")
 
-    def next_game(self) -> Optional[Path]:
+    def next_game(self) -> Path | None:
         """
         Get the next game file path.
 
@@ -112,7 +111,7 @@ class GameQueue:
         """
         return len(self.games) - self.current_index
 
-    def peek_next(self) -> Optional[Path]:
+    def peek_next(self) -> Path | None:
         """
         Peek at next game without advancing queue.
 
@@ -129,5 +128,7 @@ class GameQueue:
 
     def __repr__(self) -> str:
         """String representation of queue state."""
-        return (f"GameQueue({self.current_index}/{len(self.games)} games, "
-                f"shuffle={self.shuffle_enabled})")
+        return (
+            f"GameQueue({self.current_index}/{len(self.games)} games, "
+            f"shuffle={self.shuffle_enabled})"
+        )

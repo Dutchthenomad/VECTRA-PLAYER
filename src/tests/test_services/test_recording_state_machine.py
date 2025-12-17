@@ -17,9 +17,10 @@ Tests cover:
 - Data integrity issue handling
 """
 
-import pytest
-from unittest.mock import Mock, call
 from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
 from services.recording_state_machine import (
@@ -31,12 +32,15 @@ from services.recording_state_machine import (
 class TestRecordingState:
     """Tests for RecordingState enum"""
 
-    @pytest.mark.parametrize("state,expected", [
-        (RecordingState.IDLE, "idle"),
-        (RecordingState.MONITORING, "monitoring"),
-        (RecordingState.RECORDING, "recording"),
-        (RecordingState.FINISHING_GAME, "finishing_game"),
-    ])
+    @pytest.mark.parametrize(
+        "state,expected",
+        [
+            (RecordingState.IDLE, "idle"),
+            (RecordingState.MONITORING, "monitoring"),
+            (RecordingState.RECORDING, "recording"),
+            (RecordingState.FINISHING_GAME, "finishing_game"),
+        ],
+    )
     def test_state_values(self, state, expected):
         """Test all state values are correct"""
         assert state.value == expected

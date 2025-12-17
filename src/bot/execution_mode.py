@@ -23,5 +23,6 @@ class ExecutionMode(Enum):
         - Learns actual timing between action and effect
         - Prepares bot for live browser automation (Phase 8.5)
     """
+
     BACKEND = "backend"
     UI_LAYER = "ui_layer"

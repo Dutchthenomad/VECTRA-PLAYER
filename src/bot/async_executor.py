@@ -8,12 +8,12 @@ Author: AI Assistant
 Date: 2025-11-06
 """
 
-import threading
-import queue
-import time
 import logging
-from typing import Optional, Dict, Any
+import queue
+import threading
+import time
 from datetime import datetime
+from typing import Any
 
 from models import GameTick
 
@@ -119,7 +119,7 @@ class AsyncBotExecutor:
         self.worker_thread = threading.Thread(
             target=self._worker_loop,
             name="BotExecutor",
-            daemon=True  # Daemon ensures clean exit
+            daemon=True,  # Daemon ensures clean exit
         )
         self.worker_thread.start()
         logger.info("Bot executor started")
@@ -159,8 +159,10 @@ class AsyncBotExecutor:
             if self.worker_thread.is_alive():
                 logger.warning("Bot executor thread did not stop cleanly")
 
-        logger.info(f"Bot executor stopped. Stats: {self.executions} executions, "
-                   f"{self.failures} failures, {self.queue_drops} drops")
+        logger.info(
+            f"Bot executor stopped. Stats: {self.executions} executions, "
+            f"{self.failures} failures, {self.queue_drops} drops"
+        )
 
     def queue_execution(self, tick: GameTick) -> bool:
         """
@@ -216,18 +218,21 @@ class AsyncBotExecutor:
                             self._executions += 1
 
                         # Put result in result queue for UI updates
-                        self.result_queue.put({
-                            'tick': tick.tick,
-                            'result': result,
-                            'elapsed': elapsed,
-                            'timestamp': datetime.now()
-                        })
+                        self.result_queue.put(
+                            {
+                                "tick": tick.tick,
+                                "result": result,
+                                "elapsed": elapsed,
+                                "timestamp": datetime.now(),
+                            }
+                        )
 
                         # Log non-WAIT actions
-                        action = result.get('action', 'WAIT')
-                        if action != 'WAIT':
-                            logger.debug(f"Bot executed {action} at tick {tick.tick} "
-                                       f"in {elapsed:.3f}s")
+                        action = result.get("action", "WAIT")
+                        if action != "WAIT":
+                            logger.debug(
+                                f"Bot executed {action} at tick {tick.tick} in {elapsed:.3f}s"
+                            )
 
                     except Exception as e:
                         # AUDIT FIX: Thread-safe counter increment
@@ -236,11 +241,9 @@ class AsyncBotExecutor:
                         logger.error(f"Bot execution failed at tick {tick.tick}: {e}")
 
                         # Put error in result queue
-                        self.result_queue.put({
-                            'tick': tick.tick,
-                            'error': str(e),
-                            'timestamp': datetime.now()
-                        })
+                        self.result_queue.put(
+                            {"tick": tick.tick, "error": str(e), "timestamp": datetime.now()}
+                        )
 
                 except queue.Empty:
                     # Timeout - continue loop to check stop event
@@ -255,7 +258,7 @@ class AsyncBotExecutor:
 
         logger.info("Bot executor worker stopped")
 
-    def get_latest_result(self) -> Optional[Dict]:
+    def get_latest_result(self) -> dict | None:
         """
         Get latest bot execution result (non-blocking)
 
@@ -267,7 +270,7 @@ class AsyncBotExecutor:
         except queue.Empty:
             return None
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get executor statistics
 
@@ -275,9 +278,9 @@ class AsyncBotExecutor:
             dict: Statistics including executions, failures, drops, queue size
         """
         return {
-            'enabled': self.enabled,
-            'executions': self.executions,
-            'failures': self.failures,
-            'queue_drops': self.queue_drops,
-            'queue_size': self.execution_queue.qsize()
+            "enabled": self.enabled,
+            "executions": self.executions,
+            "failures": self.failures,
+            "queue_drops": self.queue_drops,
+            "queue_size": self.execution_queue.qsize(),
         }

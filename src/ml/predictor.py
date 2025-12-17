@@ -25,11 +25,12 @@ Usage:
         close_all_positions()
 """
 
-import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional
+
+import numpy as np
+
+from .feature_extractor import FEATURE_NAMES, FeatureExtractor
 from .model import SidebetModel
-from .feature_extractor import FeatureExtractor, FEATURE_NAMES
 
 
 class SidebetPredictor:
@@ -40,11 +41,7 @@ class SidebetPredictor:
     tick-by-tick rug probability predictions with actionable signals.
     """
 
-    def __init__(
-        self,
-        model_path: str,
-        game_stats: Optional[Dict[str, float]] = None
-    ):
+    def __init__(self, model_path: str, game_stats: dict[str, float] | None = None):
         """
         Initialize predictor
 
@@ -61,11 +58,11 @@ class SidebetPredictor:
         # Default Rugs.fun game statistics (from historical data)
         # These are used if no custom stats are provided
         self.default_stats = {
-            'mean': 329.0,     # Mean game duration (ticks)
-            'median': 281.0,   # Median game duration
-            'std': 180.0,      # Standard deviation
-            'q1': 186.0,       # First quartile
-            'q3': 424.0        # Third quartile
+            "mean": 329.0,  # Mean game duration (ticks)
+            "median": 281.0,  # Median game duration
+            "std": 180.0,  # Standard deviation
+            "q1": 186.0,  # First quartile
+            "q3": 424.0,  # Third quartile
         }
 
         self.game_stats = game_stats or self.default_stats
@@ -73,23 +70,25 @@ class SidebetPredictor:
         # Feature importance weights from v3 training
         # Used for confidence calculation
         self.feature_weights = {
-            'z_score': 0.6364,          # Dominant feature
-            'spike_spacing': 0.1343,
-            'spike_frequency': 0.0840,
-            'sequence_feasibility': 0.0409,
-            'tick_percentile': 0.0390,
+            "z_score": 0.6364,  # Dominant feature
+            "spike_spacing": 0.1343,
+            "spike_frequency": 0.0840,
+            "sequence_feasibility": 0.0409,
+            "tick_percentile": 0.0390,
         }
 
-        print(f"SidebetPredictor initialized")
+        print("SidebetPredictor initialized")
         print(f"  Model: {Path(model_path).name}")
         print(f"  Optimal threshold: {self.model.optimal_threshold:.3f}")
-        print(f"  Game stats: mean={self.game_stats['mean']:.0f}, median={self.game_stats['median']:.0f}")
+        print(
+            f"  Game stats: mean={self.game_stats['mean']:.0f}, median={self.game_stats['median']:.0f}"
+        )
 
     def reset_for_new_game(self):
         """Reset state for a new game"""
         self.feature_extractor.reset_for_new_game()
 
-    def update_game_stats(self, stats: Dict[str, float]):
+    def update_game_stats(self, stats: dict[str, float]):
         """
         Update rolling game statistics
 
@@ -98,11 +97,7 @@ class SidebetPredictor:
         """
         self.game_stats = stats
 
-    def predict_rug_probability(
-        self,
-        tick_num: int,
-        prices: List[float]
-    ) -> Dict[str, any]:
+    def predict_rug_probability(self, tick_num: int, prices: list[float]) -> dict[str, any]:
         """
         Predict rug probability for current tick
 
@@ -124,9 +119,7 @@ class SidebetPredictor:
         """
         # Extract features
         features = self.feature_extractor.extract_features(
-            tick_num=tick_num,
-            prices=prices,
-            stats=self.game_stats
+            tick_num=tick_num, prices=prices, stats=self.game_stats
         )
 
         # Get model prediction
@@ -137,17 +130,17 @@ class SidebetPredictor:
 
         # Classify signal strength based on probability thresholds
         if probability >= 0.50:
-            signal_strength = 'critical'
-            recommended_action = 'emergency'
+            signal_strength = "critical"
+            recommended_action = "emergency"
         elif probability >= 0.40:
-            signal_strength = 'high'
-            recommended_action = 'exit'
+            signal_strength = "high"
+            recommended_action = "exit"
         elif probability >= 0.30:
-            signal_strength = 'medium'
-            recommended_action = 'reduce'
+            signal_strength = "medium"
+            recommended_action = "reduce"
         else:
-            signal_strength = 'low'
-            recommended_action = 'hold'
+            signal_strength = "low"
+            recommended_action = "hold"
 
         # Estimate timing (ticks until rug)
         ticks_to_rug_estimate = self._estimate_timing(probability, tick_num)
@@ -156,13 +149,13 @@ class SidebetPredictor:
         feature_dict = dict(zip(FEATURE_NAMES, features))
 
         return {
-            'probability': float(probability),
-            'confidence': float(confidence),
-            'ticks_to_rug_estimate': int(ticks_to_rug_estimate),
-            'signal_strength': signal_strength,
-            'recommended_action': recommended_action,
-            'features': features,
-            'feature_dict': feature_dict
+            "probability": float(probability),
+            "confidence": float(confidence),
+            "ticks_to_rug_estimate": int(ticks_to_rug_estimate),
+            "signal_strength": signal_strength,
+            "recommended_action": recommended_action,
+            "features": features,
+            "feature_dict": feature_dict,
         }
 
     def _calculate_confidence(self, features: np.ndarray) -> float:
@@ -193,19 +186,19 @@ class SidebetPredictor:
 
         # Component 1: z_score strength (dominant feature, 63.64% importance)
         # High z_score (game lasting abnormally long) = high confidence
-        z_score_component = min(1.0, abs(z_score) / 3.0) * self.feature_weights['z_score']
+        z_score_component = min(1.0, abs(z_score) / 3.0) * self.feature_weights["z_score"]
         confidence += z_score_component
 
         # Component 2: Spike pattern signals (13.43% + 8.40% importance)
         spike_component = (
-            spike_spacing * self.feature_weights['spike_spacing'] +
-            spike_frequency * self.feature_weights['spike_frequency']
+            spike_spacing * self.feature_weights["spike_spacing"]
+            + spike_frequency * self.feature_weights["spike_frequency"]
         )
         confidence += spike_component
 
         # Component 3: Game progression (early game = low confidence)
         # Only confident after reaching at least 50% of median duration
-        progression_component = min(1.0, tick_percentile) * self.feature_weights['tick_percentile']
+        progression_component = min(1.0, tick_percentile) * self.feature_weights["tick_percentile"]
         confidence += progression_component
 
         # Component 4: Death spike signal (emergency boost)
@@ -215,12 +208,17 @@ class SidebetPredictor:
 
         # Normalize to [0, 1]
         # Maximum theoretical confidence from weighted sum
-        max_confidence = sum([
-            self.feature_weights['z_score'],
-            self.feature_weights['spike_spacing'],
-            self.feature_weights['spike_frequency'],
-            self.feature_weights['tick_percentile']
-        ]) + 0.1  # Plus emergency boost
+        max_confidence = (
+            sum(
+                [
+                    self.feature_weights["z_score"],
+                    self.feature_weights["spike_spacing"],
+                    self.feature_weights["spike_frequency"],
+                    self.feature_weights["tick_percentile"],
+                ]
+            )
+            + 0.1
+        )  # Plus emergency boost
 
         confidence = min(1.0, confidence / max_confidence)
 
@@ -255,7 +253,7 @@ class SidebetPredictor:
             # Low risk - still within 80-tick window
             return 80
 
-    def get_model_info(self) -> Dict[str, any]:
+    def get_model_info(self) -> dict[str, any]:
         """
         Get model metadata
 
@@ -263,16 +261,16 @@ class SidebetPredictor:
             Dictionary with model information
         """
         return {
-            'model_type': 'GradientBoostingClassifier',
-            'optimal_threshold': self.model.optimal_threshold,
-            'is_trained': self.model.is_trained,
-            'feature_count': 14,
-            'feature_names': FEATURE_NAMES,
-            'game_stats': self.game_stats,
-            'feature_weights': self.feature_weights
+            "model_type": "GradientBoostingClassifier",
+            "optimal_threshold": self.model.optimal_threshold,
+            "is_trained": self.model.is_trained,
+            "feature_count": 14,
+            "feature_names": FEATURE_NAMES,
+            "game_stats": self.game_stats,
+            "feature_weights": self.feature_weights,
         }
 
-    def get_prediction_summary(self, prediction: Dict) -> str:
+    def get_prediction_summary(self, prediction: dict) -> str:
         """
         Get human-readable prediction summary
 
@@ -282,20 +280,15 @@ class SidebetPredictor:
         Returns:
             Formatted string summary
         """
-        prob = prediction['probability']
-        conf = prediction['confidence']
-        strength = prediction['signal_strength']
-        action = prediction['recommended_action']
-        ticks = prediction['ticks_to_rug_estimate']
+        prob = prediction["probability"]
+        conf = prediction["confidence"]
+        strength = prediction["signal_strength"]
+        action = prediction["recommended_action"]
+        ticks = prediction["ticks_to_rug_estimate"]
 
         # Signal emoji
-        emoji_map = {
-            'low': '🟢',
-            'medium': '🟡',
-            'high': '🟠',
-            'critical': '🔴'
-        }
-        emoji = emoji_map.get(strength, '⚪')
+        emoji_map = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}
+        emoji = emoji_map.get(strength, "⚪")
 
         summary = (
             f"{emoji} Rug Probability: {prob:.1%} (confidence: {conf:.1%})\n"
@@ -304,10 +297,10 @@ class SidebetPredictor:
         )
 
         # Add key feature insights
-        features = prediction['feature_dict']
-        z_score = features['z_score']
-        tick_pct = features['tick_percentile']
-        death_spike = features['death_spike_score']
+        features = prediction["feature_dict"]
+        z_score = features["z_score"]
+        tick_pct = features["tick_percentile"]
+        death_spike = features["death_spike_score"]
 
         summary += (
             f"\n   Key Features: z_score={z_score:.2f}, "
@@ -318,7 +311,7 @@ class SidebetPredictor:
 
 
 # Convenience function for quick testing
-def test_predictor(model_path: str, prices: List[float]):
+def test_predictor(model_path: str, prices: list[float]):
     """
     Quick test function for the predictor
 
@@ -328,24 +321,21 @@ def test_predictor(model_path: str, prices: List[float]):
     """
     predictor = SidebetPredictor(model_path)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SIDEBET PREDICTOR TEST")
-    print("="*70)
+    print("=" * 70)
 
     # Test predictions at different ticks
     test_ticks = [50, 100, 200, 300]
 
     for tick in test_ticks:
         if tick < len(prices):
-            prediction = predictor.predict_rug_probability(
-                tick_num=tick,
-                prices=prices[:tick+1]
-            )
+            prediction = predictor.predict_rug_probability(tick_num=tick, prices=prices[: tick + 1])
 
             print(f"\nTick {tick}:")
             print(predictor.get_prediction_summary(prediction))
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ Position data model
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional
+
 from .enums import PositionStatus
 
 
@@ -25,16 +25,17 @@ class Position:
         pnl_sol: Profit/loss in SOL (if closed)
         pnl_percent: Profit/loss percentage (if closed)
     """
+
     entry_price: Decimal
     amount: Decimal
     entry_time: float
     entry_tick: int
     status: str = field(default=PositionStatus.ACTIVE)
-    exit_price: Optional[Decimal] = None
-    exit_time: Optional[float] = None
-    exit_tick: Optional[int] = None
-    pnl_sol: Optional[Decimal] = None
-    pnl_percent: Optional[Decimal] = None
+    exit_price: Decimal | None = None
+    exit_time: float | None = None
+    exit_tick: int | None = None
+    pnl_sol: Decimal | None = None
+    pnl_percent: Decimal | None = None
 
     def __post_init__(self):
         if self.entry_price <= 0:
@@ -88,8 +89,8 @@ class Position:
         """
         total_amount = self.amount + additional_amount
         weighted_avg_price = (
-            (self.amount * self.entry_price + additional_amount * additional_price) / total_amount
-        )
+            self.amount * self.entry_price + additional_amount * additional_price
+        ) / total_amount
         self.amount = total_amount
         self.entry_price = weighted_avg_price
 
@@ -109,11 +110,13 @@ class Position:
         if self.status != PositionStatus.ACTIVE:
             raise ValueError("Cannot reduce closed position")
 
-        valid_percentages = [Decimal('0.1'), Decimal('0.25'), Decimal('0.5'), Decimal('1.0')]
+        valid_percentages = [Decimal("0.1"), Decimal("0.25"), Decimal("0.5"), Decimal("1.0")]
         if percentage not in valid_percentages:
-            raise ValueError(f"Invalid percentage: {percentage}. Must be one of {valid_percentages}")
+            raise ValueError(
+                f"Invalid percentage: {percentage}. Must be one of {valid_percentages}"
+            )
 
-        if percentage == Decimal('1.0'):
+        if percentage == Decimal("1.0"):
             raise ValueError("Cannot reduce by 100% - use close() instead")
 
         # Calculate reduction
@@ -128,20 +131,21 @@ class Position:
         Args:
             preserve_precision: If True, keep Decimals as strings
         """
+
         def convert(value):
             if isinstance(value, Decimal):
                 return str(value) if preserve_precision else float(value)
             return value
 
         return {
-            'entry_price': convert(self.entry_price),
-            'amount': convert(self.amount),
-            'entry_time': self.entry_time,
-            'entry_tick': self.entry_tick,
-            'status': self.status,
-            'exit_price': convert(self.exit_price) if self.exit_price else None,
-            'exit_time': self.exit_time,
-            'exit_tick': self.exit_tick,
-            'pnl_sol': convert(self.pnl_sol) if self.pnl_sol else None,
-            'pnl_percent': convert(self.pnl_percent) if self.pnl_percent else None
+            "entry_price": convert(self.entry_price),
+            "amount": convert(self.amount),
+            "entry_time": self.entry_time,
+            "entry_tick": self.entry_tick,
+            "status": self.status,
+            "exit_price": convert(self.exit_price) if self.exit_price else None,
+            "exit_time": self.exit_time,
+            "exit_tick": self.exit_tick,
+            "pnl_sol": convert(self.pnl_sol) if self.pnl_sol else None,
+            "pnl_percent": convert(self.pnl_percent) if self.pnl_percent else None,
         }

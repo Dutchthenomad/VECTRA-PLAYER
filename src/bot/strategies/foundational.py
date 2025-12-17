@@ -16,7 +16,7 @@ Design Philosophy:
 """
 
 from decimal import Decimal
-from typing import Tuple, Optional, Dict, Any
+from typing import Any
 
 from .base import TradingStrategy
 
@@ -51,32 +51,30 @@ class FoundationalStrategy(TradingStrategy):
         super().__init__()
 
         # Entry parameters (sweet spot from empirical analysis)
-        self.ENTRY_PRICE_MIN = Decimal('25.0')  # Sweet spot lower bound
-        self.ENTRY_PRICE_MAX = Decimal('50.0')  # Sweet spot upper bound
-        self.SAFE_WINDOW_TICKS = 69             # < 30% rug risk
+        self.ENTRY_PRICE_MIN = Decimal("25.0")  # Sweet spot lower bound
+        self.ENTRY_PRICE_MAX = Decimal("50.0")  # Sweet spot upper bound
+        self.SAFE_WINDOW_TICKS = 69  # < 30% rug risk
 
         # Exit parameters (based on optimal hold times)
-        self.PROFIT_TARGET = Decimal('100')     # 100% (median return for sweet spot)
-        self.STOP_LOSS = Decimal('-30')          # -30% (NOT -10%!)
-        self.MAX_HOLD_TICKS = 60                 # Optimal for sweet spot (48-60 ticks)
-        self.MEDIAN_RUG_TICK = 138               # Exit before median rug time
+        self.PROFIT_TARGET = Decimal("100")  # 100% (median return for sweet spot)
+        self.STOP_LOSS = Decimal("-30")  # -30% (NOT -10%!)
+        self.MAX_HOLD_TICKS = 60  # Optimal for sweet spot (48-60 ticks)
+        self.MEDIAN_RUG_TICK = 138  # Exit before median rug time
 
         # Sidebet parameters (danger zone)
         self.SIDEBET_TICK_MIN = 104  # P50 rug probability (danger zone start)
         self.SIDEBET_TICK_MAX = 138  # Median rug time (danger zone end)
 
         # Amounts
-        self.BUY_AMOUNT = Decimal('0.005')     # Fixed position size
-        self.SIDEBET_AMOUNT = Decimal('0.002')  # Conservative sidebet
+        self.BUY_AMOUNT = Decimal("0.005")  # Fixed position size
+        self.SIDEBET_AMOUNT = Decimal("0.002")  # Conservative sidebet
 
         # State tracking
         self.entry_tick = None  # Track when we entered position
 
     def decide(
-        self,
-        observation: Dict[str, Any],
-        info: Dict[str, Any]
-    ) -> Tuple[str, Optional[Decimal], str]:
+        self, observation: dict[str, Any], info: dict[str, Any]
+    ) -> tuple[str, Decimal | None, str]:
         """
         Make trading decision based on empirical analysis rules
 
@@ -90,32 +88,29 @@ class FoundationalStrategy(TradingStrategy):
 
         if not observation:
             return self._validate_action(
-                "WAIT",
-                None,
-                "No game state available",
-                info.get("valid_actions", [])
+                "WAIT", None, "No game state available", info.get("valid_actions", [])
             )
 
         # Extract state
-        state = observation['current_state']
-        position = observation['position']
-        sidebet = observation['sidebet']
-        wallet = observation['wallet']
+        state = observation["current_state"]
+        position = observation["position"]
+        sidebet = observation["sidebet"]
+        wallet = observation["wallet"]
 
-        price = Decimal(str(state['price']))
-        tick = state['tick']
-        balance = Decimal(str(wallet['balance']))
+        price = Decimal(str(state["price"]))
+        tick = state["tick"]
+        balance = Decimal(str(wallet["balance"]))
         valid_actions = info.get("valid_actions", [])
 
-        def decide_action(action: str, amount: Optional[Decimal], reasoning: str):
+        def decide_action(action: str, amount: Decimal | None, reasoning: str):
             return self._validate_action(action, amount, reasoning, valid_actions)
 
         # =====================================================================
         # POSITION MANAGEMENT (Priority 1: Exit existing positions)
         # =====================================================================
 
-        if position is not None and info['can_sell']:
-            pnl_pct = Decimal(str(position['current_pnl_percent']))
+        if position is not None and info["can_sell"]:
+            pnl_pct = Decimal(str(position["current_pnl_percent"]))
             ticks_held = tick - self.entry_tick if self.entry_tick else 0
 
             # Profit target: +100% (sweet spot median return)
@@ -123,15 +118,13 @@ class FoundationalStrategy(TradingStrategy):
                 return decide_action(
                     "SELL",
                     None,
-                    f"✅ Take profit at +{pnl_pct:.1f}% (target: {self.PROFIT_TARGET}%)"
+                    f"✅ Take profit at +{pnl_pct:.1f}% (target: {self.PROFIT_TARGET}%)",
                 )
 
             # Stop loss: -30% (conservative, prevents large losses)
             if pnl_pct <= self.STOP_LOSS:
                 return decide_action(
-                    "SELL",
-                    None,
-                    f"🛑 Stop loss at {pnl_pct:.1f}% (limit: {self.STOP_LOSS}%)"
+                    "SELL", None, f"🛑 Stop loss at {pnl_pct:.1f}% (limit: {self.STOP_LOSS}%)"
                 )
 
             # Temporal risk: Exit before median rug time (tick 138)
@@ -139,7 +132,7 @@ class FoundationalStrategy(TradingStrategy):
                 return decide_action(
                     "SELL",
                     None,
-                    f"⏰ Exit at tick {tick} (median rug time: {self.MEDIAN_RUG_TICK})"
+                    f"⏰ Exit at tick {tick} (median rug time: {self.MEDIAN_RUG_TICK})",
                 )
 
             # Optimal hold time: 60 ticks for sweet spot
@@ -147,32 +140,32 @@ class FoundationalStrategy(TradingStrategy):
                 return decide_action(
                     "SELL",
                     None,
-                    f"⌛ Hold time exceeded ({ticks_held} ticks, optimal: {self.MAX_HOLD_TICKS})"
+                    f"⌛ Hold time exceeded ({ticks_held} ticks, optimal: {self.MAX_HOLD_TICKS})",
                 )
 
         # =====================================================================
         # ENTRY LOGIC (Priority 2: Enter at sweet spot during safe window)
         # =====================================================================
 
-        if position is None and info['can_buy']:
+        if position is None and info["can_buy"]:
             if self._should_enter(price, tick, balance):
                 self.entry_tick = tick  # Track entry time
                 return decide_action(
                     "BUY",
                     self.BUY_AMOUNT,
-                    f"🎯 Enter sweet spot at {price:.1f}x (tick {tick}, safe window: < {self.SAFE_WINDOW_TICKS})"
+                    f"🎯 Enter sweet spot at {price:.1f}x (tick {tick}, safe window: < {self.SAFE_WINDOW_TICKS})",
                 )
 
         # =====================================================================
         # SIDEBET LOGIC (Priority 3: Place sidebet during danger zone)
         # =====================================================================
 
-        if sidebet is None and info['can_sidebet']:
+        if sidebet is None and info["can_sidebet"]:
             if self._should_sidebet(tick, balance):
                 return decide_action(
                     "SIDE",
                     self.SIDEBET_AMOUNT,
-                    f"💰 Sidebet at tick {tick} (danger zone: {self.SIDEBET_TICK_MIN}-{self.SIDEBET_TICK_MAX})"
+                    f"💰 Sidebet at tick {tick} (danger zone: {self.SIDEBET_TICK_MIN}-{self.SIDEBET_TICK_MAX})",
                 )
 
         # =====================================================================
@@ -180,37 +173,31 @@ class FoundationalStrategy(TradingStrategy):
         # =====================================================================
 
         if position:
-            pnl_pct = Decimal(str(position['current_pnl_percent']))
+            pnl_pct = Decimal(str(position["current_pnl_percent"]))
             ticks_held = tick - self.entry_tick if self.entry_tick else 0
             return decide_action(
                 "WAIT",
                 None,
-                f"⏳ Holding (Price: {price:.1f}x, P&L: {pnl_pct:.1f}%, Held: {ticks_held} ticks)"
+                f"⏳ Holding (Price: {price:.1f}x, P&L: {pnl_pct:.1f}%, Held: {ticks_held} ticks)",
             )
         else:
             if price < self.ENTRY_PRICE_MIN:
                 return decide_action(
-                    "WAIT",
-                    None,
-                    f"⏳ Price too low ({price:.1f}x, need: {self.ENTRY_PRICE_MIN}x+)"
+                    "WAIT", None, f"⏳ Price too low ({price:.1f}x, need: {self.ENTRY_PRICE_MIN}x+)"
                 )
             elif price > self.ENTRY_PRICE_MAX:
                 return decide_action(
-                    "WAIT",
-                    None,
-                    f"⏳ Price too high ({price:.1f}x, max: {self.ENTRY_PRICE_MAX}x)"
+                    "WAIT", None, f"⏳ Price too high ({price:.1f}x, max: {self.ENTRY_PRICE_MAX}x)"
                 )
             elif tick >= self.SAFE_WINDOW_TICKS:
                 return decide_action(
                     "WAIT",
                     None,
-                    f"⏳ Past safe window (tick {tick}, limit: {self.SAFE_WINDOW_TICKS})"
+                    f"⏳ Past safe window (tick {tick}, limit: {self.SAFE_WINDOW_TICKS})",
                 )
             else:
                 return decide_action(
-                    "WAIT",
-                    None,
-                    f"⏳ Waiting for sweet spot (Price: {price:.1f}x, Tick: {tick})"
+                    "WAIT", None, f"⏳ Waiting for sweet spot (Price: {price:.1f}x, Tick: {tick})"
                 )
 
     def _should_enter(self, price: Decimal, tick: int, balance: Decimal) -> bool:

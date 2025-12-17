@@ -3,13 +3,12 @@ Chart Widget - Logarithmic price chart display
 Handles smooth progression from 1x to 100x+ using log scale
 """
 
+import logging
+import math
 import tkinter as tk
-from tkinter import Canvas
 from collections import deque
 from decimal import Decimal
-import math
-from typing import Optional, List, Tuple
-import logging
+from tkinter import Canvas
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +29,7 @@ class ChartWidget(Canvas):
     def __init__(self, parent, width=800, height=400, **kwargs):
         # Initialize canvas with dark theme
         super().__init__(
-            parent,
-            width=width,
-            height=height,
-            bg='#0a0a0a',
-            highlightthickness=0,
-            **kwargs
+            parent, width=width, height=height, bg="#0a0a0a", highlightthickness=0, **kwargs
         )
 
         # Chart dimensions
@@ -58,8 +52,8 @@ class ChartWidget(Canvas):
         self.scroll_offset = 0
 
         # Price range for auto-scaling
-        self.min_price = Decimal('1.0')
-        self.max_price = Decimal('2.0')
+        self.min_price = Decimal("1.0")
+        self.max_price = Decimal("2.0")
 
         # Colors (Phase 5: Theme-aware)
         self.colors = self._get_theme_colors()
@@ -68,7 +62,7 @@ class ChartWidget(Canvas):
         self.log_base = 10
 
         # Bind resize event to handle dynamic sizing
-        self.bind('<Configure>', self._on_resize)
+        self.bind("<Configure>", self._on_resize)
 
         logger.info(f"ChartWidget initialized ({width}x{height}, log scale)")
 
@@ -86,51 +80,51 @@ class ChartWidget(Canvas):
 
             # Theme-specific color palettes
             theme_colors = {
-                'cyborg': {
-                    'grid': '#1a1a1a',
-                    'grid_major': '#2a2a2a',
-                    'text': '#77B7D7',
-                    'text_bright': '#ffffff',
-                    'price_up': '#2A9FD6',
-                    'price_down': '#ff3366',
-                    'price_neutral': '#ffcc00',
-                    'background': '#060606'
+                "cyborg": {
+                    "grid": "#1a1a1a",
+                    "grid_major": "#2a2a2a",
+                    "text": "#77B7D7",
+                    "text_bright": "#ffffff",
+                    "price_up": "#2A9FD6",
+                    "price_down": "#ff3366",
+                    "price_neutral": "#ffcc00",
+                    "background": "#060606",
                 },
-                'darkly': {
-                    'grid': '#2a2a2a',
-                    'grid_major': '#3a3a3a',
-                    'text': '#AAAAAA',
-                    'text_bright': '#ffffff',
-                    'price_up': '#375A7F',
-                    'price_down': '#ff3366',
-                    'price_neutral': '#ffcc00',
-                    'background': '#222222'
+                "darkly": {
+                    "grid": "#2a2a2a",
+                    "grid_major": "#3a3a3a",
+                    "text": "#AAAAAA",
+                    "text_bright": "#ffffff",
+                    "price_up": "#375A7F",
+                    "price_down": "#ff3366",
+                    "price_neutral": "#ffcc00",
+                    "background": "#222222",
                 },
-                'superhero': {
-                    'grid': '#2a2a2a',
-                    'grid_major': '#3a3a3a',
-                    'text': '#AAAAAA',
-                    'text_bright': '#ffffff',
-                    'price_up': '#4F9FE0',
-                    'price_down': '#DF6919',
-                    'price_neutral': '#ECA400',
-                    'background': '#2B3E50'
+                "superhero": {
+                    "grid": "#2a2a2a",
+                    "grid_major": "#3a3a3a",
+                    "text": "#AAAAAA",
+                    "text_bright": "#ffffff",
+                    "price_up": "#4F9FE0",
+                    "price_down": "#DF6919",
+                    "price_neutral": "#ECA400",
+                    "background": "#2B3E50",
                 },
                 # Default colors for other themes
-                'default': {
-                    'grid': '#1a1a1a',
-                    'grid_major': '#2a2a2a',
-                    'text': '#666666',
-                    'text_bright': '#ffffff',
-                    'price_up': '#00ff88',
-                    'price_down': '#ff3366',
-                    'price_neutral': '#ffcc00',
-                    'background': '#0a0a0a'
-                }
+                "default": {
+                    "grid": "#1a1a1a",
+                    "grid_major": "#2a2a2a",
+                    "text": "#666666",
+                    "text_bright": "#ffffff",
+                    "price_up": "#00ff88",
+                    "price_down": "#ff3366",
+                    "price_neutral": "#ffcc00",
+                    "background": "#0a0a0a",
+                },
             }
 
             # Get colors for current theme or use default
-            colors = theme_colors.get(theme, theme_colors['default'])
+            colors = theme_colors.get(theme, theme_colors["default"])
             logger.debug(f"Using chart colors for theme: {theme}")
             return colors
 
@@ -138,14 +132,14 @@ class ChartWidget(Canvas):
             logger.warning(f"Could not get theme colors: {e}, using defaults")
             # Fallback to default colors
             return {
-                'grid': '#1a1a1a',
-                'grid_major': '#2a2a2a',
-                'text': '#666666',
-                'text_bright': '#ffffff',
-                'price_up': '#00ff88',
-                'price_down': '#ff3366',
-                'price_neutral': '#ffcc00',
-                'background': '#0a0a0a'
+                "grid": "#1a1a1a",
+                "grid_major": "#2a2a2a",
+                "text": "#666666",
+                "text_bright": "#ffffff",
+                "price_up": "#00ff88",
+                "price_down": "#ff3366",
+                "price_neutral": "#ffcc00",
+                "background": "#0a0a0a",
             }
 
     def update_theme_colors(self):
@@ -155,7 +149,7 @@ class ChartWidget(Canvas):
         Phase 5: Theme coordination
         """
         self.colors = self._get_theme_colors()
-        self.config(bg=self.colors['background'])
+        self.config(bg=self.colors["background"])
         self.draw()  # Redraw with new colors
 
     def _on_resize(self, event):
@@ -198,8 +192,8 @@ class ChartWidget(Canvas):
     def clear_history(self):
         """Clear all price history"""
         self.price_history.clear()
-        self.min_price = Decimal('1.0')
-        self.max_price = Decimal('2.0')
+        self.min_price = Decimal("1.0")
+        self.max_price = Decimal("2.0")
         self.draw()
 
     def _update_price_range(self):
@@ -208,7 +202,7 @@ class ChartWidget(Canvas):
             return
 
         # Get visible prices
-        visible = list(self.price_history)[-self.visible_ticks:]
+        visible = list(self.price_history)[-self.visible_ticks :]
         if not visible:
             return
 
@@ -224,10 +218,10 @@ class ChartWidget(Canvas):
         self.max_price = Decimal(str(10 ** (math.log10(float(self.max_price)) + padding)))
 
         # Ensure minimum range
-        if self.max_price / self.min_price < Decimal('1.2'):
+        if self.max_price / self.min_price < Decimal("1.2"):
             center = (self.min_price + self.max_price) / 2
-            self.min_price = center * Decimal('0.9')
-            self.max_price = center * Decimal('1.1')
+            self.min_price = center * Decimal("0.9")
+            self.max_price = center * Decimal("1.1")
 
     # ========================================================================
     # COORDINATE CONVERSION (LOG SCALE)
@@ -244,7 +238,7 @@ class ChartWidget(Canvas):
             Y coordinate on canvas
         """
         if price <= 0:
-            price = Decimal('0.01')
+            price = Decimal("0.01")
 
         # Logarithmic transformation
         log_price = math.log10(float(price))
@@ -287,7 +281,7 @@ class ChartWidget(Canvas):
     def draw(self):
         """Redraw the entire chart"""
         # Clear canvas
-        self.delete('all')
+        self.delete("all")
 
         if not self.price_history:
             self._draw_empty_state()
@@ -307,8 +301,8 @@ class ChartWidget(Canvas):
             self.width / 2,
             self.height / 2,
             text="No price data",
-            fill=self.colors['text'],
-            font=('Arial', 14)
+            fill=self.colors["text"],
+            font=("Arial", 14),
         )
 
     def _draw_background(self):
@@ -318,8 +312,8 @@ class ChartWidget(Canvas):
             self.padding_top,
             self.width - self.padding_right,
             self.height - self.padding_bottom,
-            fill=self.colors['background'],
-            outline=''
+            fill=self.colors["background"],
+            outline="",
         )
 
     def _draw_grid(self):
@@ -351,8 +345,8 @@ class ChartWidget(Canvas):
             y = self.price_to_y(price)
 
             # Major grid lines at 10^n
-            is_major = (float(price) == 10 ** round(math.log10(float(price))))
-            color = self.colors['grid_major'] if is_major else self.colors['grid']
+            is_major = float(price) == 10 ** round(math.log10(float(price)))
+            color = self.colors["grid_major"] if is_major else self.colors["grid"]
 
             self.create_line(
                 self.padding_left,
@@ -360,7 +354,7 @@ class ChartWidget(Canvas):
                 self.width - self.padding_right,
                 y,
                 fill=color,
-                dash=(2, 4) if not is_major else None
+                dash=(2, 4) if not is_major else None,
             )
 
     def _draw_price_labels(self):
@@ -397,9 +391,9 @@ class ChartWidget(Canvas):
                 self.padding_left - 10,
                 y,
                 text=label,
-                fill=self.colors['text_bright'],
-                anchor='e',
-                font=('Arial', 9)
+                fill=self.colors["text_bright"],
+                anchor="e",
+                font=("Arial", 9),
             )
 
     def _draw_price_line(self):
@@ -408,7 +402,7 @@ class ChartWidget(Canvas):
             return
 
         # Get visible ticks
-        visible = list(self.price_history)[-self.visible_ticks:]
+        visible = list(self.price_history)[-self.visible_ticks :]
 
         if len(visible) < 2:
             return
@@ -425,27 +419,17 @@ class ChartWidget(Canvas):
 
             # Color based on price movement
             if price2 > price1:
-                color = self.colors['price_up']
+                color = self.colors["price_up"]
             elif price2 < price1:
-                color = self.colors['price_down']
+                color = self.colors["price_down"]
             else:
-                color = self.colors['price_neutral']
+                color = self.colors["price_neutral"]
 
             # Draw line segment
-            self.create_line(
-                x1, y1, x2, y2,
-                fill=color,
-                width=2,
-                capstyle=tk.ROUND
-            )
+            self.create_line(x1, y1, x2, y2, fill=color, width=2, capstyle=tk.ROUND)
 
             # Draw dot at each point
-            self.create_oval(
-                x1 - 2, y1 - 2,
-                x1 + 2, y1 + 2,
-                fill=color,
-                outline=''
-            )
+            self.create_oval(x1 - 2, y1 - 2, x1 + 2, y1 + 2, fill=color, outline="")
 
         # Draw final point
         last_i = len(visible) - 1
@@ -454,11 +438,13 @@ class ChartWidget(Canvas):
         y = self.price_to_y(last_price)
 
         self.create_oval(
-            x - 3, y - 3,
-            x + 3, y + 3,
-            fill=self.colors['price_neutral'],
-            outline=self.colors['text_bright'],
-            width=1
+            x - 3,
+            y - 3,
+            x + 3,
+            y + 3,
+            fill=self.colors["price_neutral"],
+            outline=self.colors["text_bright"],
+            width=1,
         )
 
     def _draw_tick_labels(self):
@@ -466,7 +452,7 @@ class ChartWidget(Canvas):
         if not self.price_history:
             return
 
-        visible = list(self.price_history)[-self.visible_ticks:]
+        visible = list(self.price_history)[-self.visible_ticks :]
 
         if not visible:
             return
@@ -482,10 +468,7 @@ class ChartWidget(Canvas):
             y = self.height - self.padding_bottom + 20
 
             self.create_text(
-                x, y,
-                text=f"#{tick_number}",
-                fill=self.colors['text'],
-                font=('Arial', 9)
+                x, y, text=f"#{tick_number}", fill=self.colors["text"], font=("Arial", 9)
             )
 
     def _draw_border(self):
@@ -495,8 +478,8 @@ class ChartWidget(Canvas):
             self.padding_top,
             self.width - self.padding_right,
             self.height - self.padding_bottom,
-            outline=self.colors['grid_major'],
-            width=1
+            outline=self.colors["grid_major"],
+            width=1,
         )
 
     # ========================================================================
@@ -531,9 +514,11 @@ class ChartWidget(Canvas):
     def get_info(self) -> dict:
         """Get chart info"""
         return {
-            'tick_count': len(self.price_history),
-            'visible_ticks': self.visible_ticks,
-            'min_price': float(self.min_price),
-            'max_price': float(self.max_price),
-            'price_range_ratio': float(self.max_price / self.min_price) if self.min_price > 0 else 0
+            "tick_count": len(self.price_history),
+            "visible_ticks": self.visible_ticks,
+            "min_price": float(self.min_price),
+            "max_price": float(self.max_price),
+            "price_range_ratio": float(self.max_price / self.min_price)
+            if self.min_price > 0
+            else 0,
         }

@@ -8,23 +8,19 @@ Combines persistent profile, wallet automation, and async integration.
 Created for Checkpoint 3.5E.3
 """
 
-
-from pathlib import Path
-from enum import Enum
-from typing import Optional
 import asyncio
+from enum import Enum
+from pathlib import Path
 
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page
-from browser.profiles import (
-    PersistentProfileConfig,
-    build_launch_options
-)
 from browser.automation import connect_phantom_wallet, wait_for_game_ready
+from browser.profiles import PersistentProfileConfig, build_launch_options
 
 
 class BrowserStatus(Enum):
     """Browser manager status states"""
+
     STOPPED = "stopped"
     LAUNCHING = "launching"
     RUNNING = "running"
@@ -68,9 +64,9 @@ class RugsBrowserManager:
 
         # Playwright components
         self.playwright = None
-        self.browser: Optional[Browser] = None
-        self.context: Optional[BrowserContext] = None
-        self.page: Optional[Page] = None
+        self.browser: Browser | None = None
+        self.context: BrowserContext | None = None
+        self.page: Page | None = None
 
         # Status tracking
         self.status = BrowserStatus.STOPPED
@@ -83,8 +79,8 @@ class RugsBrowserManager:
             if manifest_path.exists():
                 extension_dirs.append(self.extension_path)
             else:
-                print(f"   ⚠️  Phantom extension directory exists but manifest.json missing")
-                print(f"      Extension will not be loaded - manual wallet connection required")
+                print("   ⚠️  Phantom extension directory exists but manifest.json missing")
+                print("      Extension will not be loaded - manual wallet connection required")
 
         self.profile_config = PersistentProfileConfig(
             user_data_dir=self.profile_path,
@@ -93,8 +89,8 @@ class RugsBrowserManager:
             block_ads=False,
             extra_args=[
                 "--start-maximized",  # Force window to be visible and maximized
-                "--new-window",       # Open in new window (not just new tab)
-            ]
+                "--new-window",  # Open in new window (not just new tab)
+            ],
         )
 
     async def start_browser(self) -> bool:
@@ -114,13 +110,12 @@ class RugsBrowserManager:
             launch_options = build_launch_options(self.profile_config)
 
             # Remove user_data_dir from launch_options (we pass it separately)
-            if 'user_data_dir' in launch_options:
-                del launch_options['user_data_dir']
+            if "user_data_dir" in launch_options:
+                del launch_options["user_data_dir"]
 
             # Launch browser with persistent profile
             self.context = await self.playwright.chromium.launch_persistent_context(
-                user_data_dir=str(self.profile_config.user_data_dir),
-                **launch_options
+                user_data_dir=str(self.profile_config.user_data_dir), **launch_options
             )
 
             # Create new page
@@ -234,7 +229,7 @@ class RugsBrowserManager:
             self.status = BrowserStatus.ERROR
             return False
 
-    async def get_screenshot(self) -> Optional[bytes]:
+    async def get_screenshot(self) -> bytes | None:
         """
         Capture screenshot of current page.
 
@@ -260,7 +255,7 @@ class RugsBrowserManager:
             BrowserStatus.RUNNING,
             BrowserStatus.CONNECTING_WALLET,
             BrowserStatus.WALLET_CONNECTED,
-            BrowserStatus.GAME_READY
+            BrowserStatus.GAME_READY,
         ]
 
     def is_ready_for_observation(self) -> bool:

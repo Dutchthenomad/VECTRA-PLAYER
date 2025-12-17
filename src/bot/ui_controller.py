@@ -10,13 +10,12 @@ Key Concepts:
 - Prepares bot for live browser automation (Phase 8.5)
 """
 
-import time
-import random
 import logging
+import random
 import threading
-from decimal import Decimal
-from typing import Optional
+import time
 import tkinter as tk
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +37,13 @@ class BotUIController:
     a live browser via Playwright using identical timing.
     """
 
-    def __init__(self, main_window, button_depress_duration_ms: int = 50, inter_click_pause_ms: int = 100,
-                 clear_pause_ms: int = 50):
+    def __init__(
+        self,
+        main_window,
+        button_depress_duration_ms: int = 50,
+        inter_click_pause_ms: int = 100,
+        clear_pause_ms: int = 50,
+    ):
         """
         Initialize UI controller
 
@@ -68,10 +72,12 @@ class BotUIController:
         # AUDIT FIX: Access via property getters for existence checking
         self._main_window = main_window
 
-        logger.info(f"BotUIController initialized (UI-layer execution mode, "
-                   f"button_depress={button_depress_duration_ms}ms, "
-                   f"inter_click_pause={inter_click_pause_ms}ms, "
-                   f"clear_pause={clear_pause_ms}ms)")
+        logger.info(
+            f"BotUIController initialized (UI-layer execution mode, "
+            f"button_depress={button_depress_duration_ms}ms, "
+            f"inter_click_pause={inter_click_pause_ms}ms, "
+            f"clear_pause={clear_pause_ms}ms)"
+        )
 
     # AUDIT FIX: Safe widget access with existence checking
     def _widget_exists(self, widget) -> bool:
@@ -93,35 +99,35 @@ class BotUIController:
 
     @property
     def clear_button(self):
-        return self._get_button('clear_button')
+        return self._get_button("clear_button")
 
     @property
     def increment_001_button(self):
-        return self._get_button('increment_001_button')
+        return self._get_button("increment_001_button")
 
     @property
     def increment_01_button(self):
-        return self._get_button('increment_01_button')
+        return self._get_button("increment_01_button")
 
     @property
     def increment_10_button(self):
-        return self._get_button('increment_10_button')
+        return self._get_button("increment_10_button")
 
     @property
     def increment_1_button(self):
-        return self._get_button('increment_1_button')
+        return self._get_button("increment_1_button")
 
     @property
     def half_button(self):
-        return self._get_button('half_button')
+        return self._get_button("half_button")
 
     @property
     def double_button(self):
-        return self._get_button('double_button')
+        return self._get_button("double_button")
 
     @property
     def max_button(self):
-        return self._get_button('max_button')
+        return self._get_button("max_button")
 
     def _schedule_ui_action(self, action):
         """
@@ -209,14 +215,14 @@ class BotUIController:
             click_increment_button('+0.001', 3)  # 0.0 → 0.003
         """
         button_map = {
-            'X': self.clear_button,
-            '+0.001': self.increment_001_button,
-            '+0.01': self.increment_01_button,
-            '+0.1': self.increment_10_button,
-            '+1': self.increment_1_button,
-            '1/2': self.half_button,
-            'X2': self.double_button,
-            'MAX': self.max_button,
+            "X": self.clear_button,
+            "+0.001": self.increment_001_button,
+            "+0.01": self.increment_01_button,
+            "+0.1": self.increment_10_button,
+            "+1": self.increment_1_button,
+            "1/2": self.half_button,
+            "X2": self.double_button,
+            "MAX": self.max_button,
         }
 
         button = button_map.get(button_type)
@@ -227,6 +233,7 @@ class BotUIController:
         try:
             # Click button {times} times with human delays
             for i in range(times):
+
                 def _click_button_with_visual_feedback(btn=button):
                     """
                     Click button with visual depression effect
@@ -234,9 +241,9 @@ class BotUIController:
                     Phase A.7: Configurable visual feedback duration + color indication
                     """
                     # Save original button state
-                    original_relief = btn.cget('relief')
+                    original_relief = btn.cget("relief")
                     try:
-                        original_bg = btn.cget('background')
+                        original_bg = btn.cget("background")
                     except tk.TclError:
                         # AUDIT FIX: Catch specific Tkinter exception
                         original_bg = None
@@ -244,14 +251,16 @@ class BotUIController:
                     # Press button down (sunken relief + color change)
                     btn.config(relief=tk.SUNKEN)
                     if original_bg:
-                        btn.config(background='#90EE90')  # Light green when pressed
+                        btn.config(background="#90EE90")  # Light green when pressed
 
                     # Force UI update to show pressed state
                     btn.update_idletasks()
 
                     # Hold pressed state (configurable duration)
-                    self.root.after(self.button_depress_duration_ms,
-                                  lambda: self._release_button(btn, original_relief, original_bg))
+                    self.root.after(
+                        self.button_depress_duration_ms,
+                        lambda: self._release_button(btn, original_relief, original_bg),
+                    )
 
                     # Execute the button's command
                     btn.invoke()
@@ -315,7 +324,7 @@ class BotUIController:
         """
         try:
             # Clear to 0.0 first
-            if not self.click_increment_button('X'):
+            if not self.click_increment_button("X"):
                 logger.error("Failed to clear bet amount")
                 return False
 
@@ -364,7 +373,7 @@ class BotUIController:
             if abs(target - inc / 2) < 0.0001:  # Close enough to half
                 # Build to inc, then halve
                 base_sequence = self._greedy_sequence(inc)
-                return base_sequence + [('1/2', 1)]
+                return base_sequence + [("1/2", 1)]
 
         # Check if target can be built efficiently with X2
         # e.g., 0.012 = (0.006) × 2 = (0.005 + 0.001) × 2
@@ -381,7 +390,7 @@ class BotUIController:
 
             # Use doubling if it's more efficient
             if double_clicks < direct_clicks:
-                return half_sequence + [('X2', 1)]
+                return half_sequence + [("X2", 1)]
 
         # Fall back to greedy algorithm (no optimization found)
         return self._greedy_sequence(target)
@@ -398,17 +407,17 @@ class BotUIController:
         Returns:
             List of (button_type, count) tuples
         """
-        from decimal import Decimal, ROUND_DOWN
+        from decimal import Decimal
 
         # AUDIT FIX: Convert to Decimal for precise arithmetic
         remaining = Decimal(str(target))
         sequence = []
 
         increments = [
-            (Decimal('1'), '+1'),
-            (Decimal('0.1'), '+0.1'),
-            (Decimal('0.01'), '+0.01'),
-            (Decimal('0.001'), '+0.001'),
+            (Decimal("1"), "+1"),
+            (Decimal("0.1"), "+0.1"),
+            (Decimal("0.01"), "+0.01"),
+            (Decimal("0.001"), "+0.001"),
         ]
 
         for increment_value, button_type in increments:
@@ -437,13 +446,13 @@ class BotUIController:
                 return False
 
             btn_info = self.main_window.percentage_buttons[percentage]
-            button = btn_info['button']
+            button = btn_info["button"]
 
             # Schedule button click on main thread
             self._schedule_ui_action(button.invoke)
             self._human_delay()
 
-            logger.debug(f"UI: Clicked {percentage*100:.0f}% button")
+            logger.debug(f"UI: Clicked {percentage * 100:.0f}% button")
             return True
 
         except Exception as e:
@@ -469,7 +478,7 @@ class BotUIController:
             logger.error(f"Failed to click BUY: {e}")
             return False
 
-    def click_sell(self, percentage: Optional[float] = None) -> bool:
+    def click_sell(self, percentage: float | None = None) -> bool:
         """
         Click SELL button (optionally setting percentage first)
 
@@ -522,7 +531,7 @@ class BotUIController:
     # UI STATE READING METHODS (Phase 8.3)
     # ========================================================================
 
-    def read_balance(self) -> Optional[Decimal]:
+    def read_balance(self) -> Decimal | None:
         """
         Read balance from UI label
 
@@ -547,7 +556,7 @@ class BotUIController:
             logger.error(f"Failed to read balance from UI: {e}")
             return None
 
-    def read_position(self) -> Optional[dict]:
+    def read_position(self) -> dict | None:
         """
         Read position from UI label
 
@@ -567,12 +576,9 @@ class BotUIController:
             parts = label_text.split()
             if len(parts) >= 5:
                 amount_str = parts[1]  # "0.010"
-                price_str = parts[4].rstrip('x')  # "1.50"
+                price_str = parts[4].rstrip("x")  # "1.50"
 
-                return {
-                    'amount': Decimal(amount_str),
-                    'entry_price': Decimal(price_str)
-                }
+                return {"amount": Decimal(amount_str), "entry_price": Decimal(price_str)}
             else:
                 logger.warning(f"Unexpected position label format: {label_text}")
                 return None
@@ -581,7 +587,7 @@ class BotUIController:
             logger.error(f"Failed to read position from UI: {e}")
             return None
 
-    def read_current_price(self) -> Optional[Decimal]:
+    def read_current_price(self) -> Decimal | None:
         """
         Read current price from UI label
 
@@ -595,7 +601,7 @@ class BotUIController:
             # Extract price
             parts = label_text.split()
             if len(parts) >= 2:
-                price_str = parts[1].rstrip('x')  # "1.50"
+                price_str = parts[1].rstrip("x")  # "1.50"
                 price = Decimal(price_str)
                 return price
             else:

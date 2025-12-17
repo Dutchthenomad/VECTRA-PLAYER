@@ -3,18 +3,17 @@ Layout Manager Module
 Professional layout management system for organizing UI panels
 """
 
+import logging
 import tkinter as tk
-from tkinter import ttk
-from typing import Dict, Optional, Callable, List
 from dataclasses import dataclass
 from enum import Enum
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class PanelPosition(Enum):
     """Panel positioning options"""
+
     TOP = "top"
     BOTTOM = "bottom"
     LEFT = "left"
@@ -24,24 +23,26 @@ class PanelPosition(Enum):
 
 class ResizeMode(Enum):
     """Panel resize behavior"""
-    FIXED = "fixed"          # Fixed size
-    FLEXIBLE = "flexible"    # Can grow/shrink
+
+    FIXED = "fixed"  # Fixed size
+    FLEXIBLE = "flexible"  # Can grow/shrink
     PROPORTIONAL = "proportional"  # Maintains proportions
 
 
 @dataclass
 class PanelConfig:
     """Configuration for a UI panel"""
+
     name: str
     position: PanelPosition
-    min_width: Optional[int] = None
-    min_height: Optional[int] = None
-    max_width: Optional[int] = None
-    max_height: Optional[int] = None
+    min_width: int | None = None
+    min_height: int | None = None
+    max_width: int | None = None
+    max_height: int | None = None
     resize_mode: ResizeMode = ResizeMode.FLEXIBLE
     weight: int = 1  # Grid weight for resizing
     padding: int = 5
-    background: str = '#1a1a1a'
+    background: str = "#1a1a1a"
     visible: bool = True
 
 
@@ -56,15 +57,10 @@ class Panel:
         self.parent = parent
 
         # Create panel frame
-        self.frame = tk.Frame(
-            parent,
-            bg=config.background,
-            relief=tk.FLAT,
-            borderwidth=0
-        )
+        self.frame = tk.Frame(parent, bg=config.background, relief=tk.FLAT, borderwidth=0)
 
         # Store widgets for management
-        self.widgets: Dict[str, tk.Widget] = {}
+        self.widgets: dict[str, tk.Widget] = {}
         self._visible = config.visible
 
         logger.debug(f"Panel '{config.name}' initialized at {config.position.value}")
@@ -77,7 +73,7 @@ class Panel:
                 fill=self._get_pack_fill(),
                 expand=self._get_pack_expand(),
                 padx=self.config.padding,
-                pady=self.config.padding
+                pady=self.config.padding,
             )
             self._visible = True
             logger.debug(f"Panel '{self.config.name}' shown")
@@ -96,7 +92,7 @@ class Panel:
             PanelPosition.BOTTOM: tk.BOTTOM,
             PanelPosition.LEFT: tk.LEFT,
             PanelPosition.RIGHT: tk.RIGHT,
-            PanelPosition.CENTER: tk.TOP  # Center uses top with expand
+            PanelPosition.CENTER: tk.TOP,  # Center uses top with expand
         }
         return position_to_side.get(self.config.position, tk.TOP)
 
@@ -117,7 +113,7 @@ class Panel:
         """Add a widget to the panel's widget registry"""
         self.widgets[name] = widget
 
-    def get_widget(self, name: str) -> Optional[tk.Widget]:
+    def get_widget(self, name: str) -> tk.Widget | None:
         """Get a widget by name"""
         return self.widgets.get(name)
 
@@ -134,32 +130,32 @@ class LayoutManager:
     Handles panel creation, positioning, and responsive behavior
     """
 
-    def __init__(self, root: tk.Widget, theme: Optional[Dict] = None):
+    def __init__(self, root: tk.Widget, theme: dict | None = None):
         self.root = root
         self.theme = theme or self._default_theme()
-        self.panels: Dict[str, Panel] = {}
+        self.panels: dict[str, Panel] = {}
 
         # Create main container
-        self.main_container = tk.Frame(root, bg=self.theme['bg'])
+        self.main_container = tk.Frame(root, bg=self.theme["bg"])
         self.main_container.pack(fill=tk.BOTH, expand=True)
 
         logger.info("LayoutManager initialized")
 
     @staticmethod
-    def _default_theme() -> Dict:
+    def _default_theme() -> dict:
         """Default dark theme"""
         return {
-            'bg': '#1a1a1a',
-            'panel': '#2a2a2a',
-            'text': '#ffffff',
-            'accent': '#00ff88',
-            'error': '#ff3366',
-            'warning': '#ffcc00',
-            'info': '#3366ff',
-            'button_bg': '#444444',
-            'button_fg': '#ffffff',
-            'input_bg': '#333333',
-            'input_fg': '#ffffff',
+            "bg": "#1a1a1a",
+            "panel": "#2a2a2a",
+            "text": "#ffffff",
+            "accent": "#00ff88",
+            "error": "#ff3366",
+            "warning": "#ffcc00",
+            "info": "#3366ff",
+            "button_bg": "#444444",
+            "button_fg": "#ffffff",
+            "input_bg": "#333333",
+            "input_fg": "#ffffff",
         }
 
     def create_panel(self, config: PanelConfig) -> Panel:
@@ -186,7 +182,7 @@ class LayoutManager:
         logger.info(f"Panel '{config.name}' created at {config.position.value}")
         return panel
 
-    def get_panel(self, name: str) -> Optional[Panel]:
+    def get_panel(self, name: str) -> Panel | None:
         """Get a panel by name"""
         return self.panels.get(name)
 
@@ -211,7 +207,7 @@ class LayoutManager:
             else:
                 panel.show()
 
-    def resize_panel(self, name: str, width: Optional[int] = None, height: Optional[int] = None):
+    def resize_panel(self, name: str, width: int | None = None, height: int | None = None):
         """Resize a panel"""
         panel = self.panels.get(name)
         if panel:
@@ -237,20 +233,20 @@ class LayoutManager:
 
         logger.info(f"Grid layout created: {rows}x{cols}")
 
-    def apply_theme(self, theme: Dict):
+    def apply_theme(self, theme: dict):
         """Apply a color theme to all panels"""
         self.theme = theme
-        self.main_container.config(bg=theme['bg'])
+        self.main_container.config(bg=theme["bg"])
 
         for panel in self.panels.values():
-            panel.frame.config(bg=theme.get('panel', theme['bg']))
+            panel.frame.config(bg=theme.get("panel", theme["bg"]))
 
         logger.info("Theme applied to layout")
 
-    def get_layout_info(self) -> Dict:
+    def get_layout_info(self) -> dict:
         """Get information about current layout"""
         return {
-            'panels': list(self.panels.keys()),
-            'visible_panels': [name for name, panel in self.panels.items() if panel._visible],
-            'theme': self.theme
+            "panels": list(self.panels.keys()),
+            "visible_panels": [name for name, panel in self.panels.items() if panel._visible],
+            "theme": self.theme,
         }

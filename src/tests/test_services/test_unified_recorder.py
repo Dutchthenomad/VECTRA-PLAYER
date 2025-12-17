@@ -18,20 +18,21 @@ Tests cover:
 """
 
 import json
-import os
-import pytest
 import tempfile
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
+
+import pytest
+
+from models.recording_config import CaptureMode, RecordingConfig
+from models.recording_models import PlayerAction
+from services.recording_state_machine import RecordingState
 
 # These imports will FAIL until we create the module (TDD RED phase)
 from services.unified_recorder import UnifiedRecorder
-from models.recording_config import RecordingConfig, CaptureMode
-from models.recording_models import PlayerAction
-from services.recording_state_machine import RecordingState, RecordingStateMachine
-from sources.data_integrity_monitor import DataIntegrityMonitor, ThresholdType
+from sources.data_integrity_monitor import ThresholdType
 
 
 class TestUnifiedRecorderInitialization:
@@ -46,10 +47,7 @@ class TestUnifiedRecorderInitialization:
 
     def test_initialization_with_custom_config(self):
         """Test initialization with custom config"""
-        config = RecordingConfig(
-            capture_mode=CaptureMode.GAME_AND_PLAYER,
-            game_count=10
-        )
+        config = RecordingConfig(capture_mode=CaptureMode.GAME_AND_PLAYER, game_count=10)
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
             assert recorder.config.capture_mode == CaptureMode.GAME_AND_PLAYER
@@ -65,8 +63,7 @@ class TestUnifiedRecorderInitialization:
     def test_initialization_creates_integrity_monitor(self):
         """Test that initialization creates an integrity monitor"""
         config = RecordingConfig(
-            monitor_threshold_type=ThresholdType.GAMES,
-            monitor_threshold_value=5
+            monitor_threshold_type=ThresholdType.GAMES, monitor_threshold_value=5
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
@@ -130,7 +127,7 @@ class TestUnifiedRecorderGameStateOnly:
             recorder.on_game_end(
                 game_id="game-123",
                 prices=[Decimal("1.0") + Decimal(i) / 100 for i in range(10)],
-                peak=Decimal("1.09")
+                peak=Decimal("1.09"),
             )
 
             # Verify game was recorded
@@ -153,15 +150,11 @@ class TestUnifiedRecorderGameStateOnly:
                 amount=Decimal("0.001"),
                 price=Decimal("1.05"),
                 balance_after=Decimal("0.999"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             recorder.on_player_action(action)
 
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             # Check no player file exists
             demonstrations_dir = Path(tmpdir) / "demonstrations"
@@ -176,7 +169,13 @@ class TestUnifiedRecorderGameStateOnly:
             recorder.on_game_start(game_id="game-456")
 
             # Simulate ticks - prices go up then down
-            prices = [Decimal("1.0"), Decimal("1.5"), Decimal("2.0"), Decimal("1.8"), Decimal("1.2")]
+            prices = [
+                Decimal("1.0"),
+                Decimal("1.5"),
+                Decimal("2.0"),
+                Decimal("1.8"),
+                Decimal("1.2"),
+            ]
             for tick, price in enumerate(prices):
                 recorder.on_tick(tick=tick, price=price)
 
@@ -208,10 +207,7 @@ class TestUnifiedRecorderGameAndPlayer:
         config = RecordingConfig(capture_mode=CaptureMode.GAME_AND_PLAYER)
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(
-                base_path=tmpdir,
-                config=config,
-                player_id="player-123",
-                username="TestUser"
+                base_path=tmpdir, config=config, player_id="player-123", username="TestUser"
             )
             recorder.start_session()
             recorder.on_game_start(game_id="game-123")
@@ -225,15 +221,11 @@ class TestUnifiedRecorderGameAndPlayer:
                 amount=Decimal("0.001"),
                 price=Decimal("1.05"),
                 balance_after=Decimal("0.999"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             recorder.on_player_action(action)
 
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             recorder.stop_session()
 
@@ -250,10 +242,7 @@ class TestUnifiedRecorderGameAndPlayer:
         config = RecordingConfig(capture_mode=CaptureMode.GAME_AND_PLAYER)
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(
-                base_path=tmpdir,
-                config=config,
-                player_id="player-123",
-                username="TestUser"
+                base_path=tmpdir, config=config, player_id="player-123", username="TestUser"
             )
             recorder.start_session()
             recorder.on_game_start(game_id="game-123")
@@ -266,15 +255,11 @@ class TestUnifiedRecorderGameAndPlayer:
                 amount=Decimal("0.001"),
                 price=Decimal("1.05"),
                 balance_after=Decimal("0.999"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             recorder.on_player_action(action)
 
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             # Find and check game file
             games_dir = Path(tmpdir) / "games"
@@ -294,7 +279,7 @@ class TestUnifiedRecorderIntegrityMonitor:
         config = RecordingConfig(
             capture_mode=CaptureMode.GAME_STATE_ONLY,
             monitor_threshold_type=ThresholdType.TICKS,
-            monitor_threshold_value=5
+            monitor_threshold_value=5,
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
@@ -327,7 +312,7 @@ class TestUnifiedRecorderIntegrityMonitor:
         config = RecordingConfig(
             capture_mode=CaptureMode.GAME_STATE_ONLY,
             monitor_threshold_type=ThresholdType.TICKS,
-            monitor_threshold_value=5
+            monitor_threshold_value=5,
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
@@ -342,10 +327,7 @@ class TestUnifiedRecorderIntegrityMonitor:
             for tick in range(5):
                 recorder.on_tick(tick=tick, price=Decimal("1.0"))
             recorder.on_game_end(
-                game_id="game-clean",
-                prices=[Decimal("1.0")] * 5,
-                peak=Decimal("1.0"),
-                clean=True
+                game_id="game-clean", prices=[Decimal("1.0")] * 5, peak=Decimal("1.0"), clean=True
             )
 
             # Should be recovered
@@ -362,11 +344,7 @@ class TestUnifiedRecorderFileOrganization:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
             recorder.start_session()
             recorder.on_game_start(game_id="game-123")
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             games_dir = Path(tmpdir) / "games"
             assert games_dir.exists()
@@ -377,10 +355,7 @@ class TestUnifiedRecorderFileOrganization:
         config = RecordingConfig(capture_mode=CaptureMode.GAME_AND_PLAYER)
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(
-                base_path=tmpdir,
-                config=config,
-                player_id="player-123",
-                username="TestUser"
+                base_path=tmpdir, config=config, player_id="player-123", username="TestUser"
             )
             recorder.start_session()
             recorder.on_game_start(game_id="game-123")
@@ -393,15 +368,11 @@ class TestUnifiedRecorderFileOrganization:
                 amount=Decimal("0.001"),
                 price=Decimal("1.05"),
                 balance_after=Decimal("0.999"),
-                position_qty_after=Decimal("0.001")
+                position_qty_after=Decimal("0.001"),
             )
             recorder.on_player_action(action)
 
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
             recorder.stop_session()
 
             demonstrations_dir = Path(tmpdir) / "demonstrations"
@@ -421,11 +392,7 @@ class TestUnifiedRecorderCallbacks:
 
             recorder.start_session()
             recorder.on_game_start(game_id="game-123")
-            recorder.on_game_end(
-                game_id="game-123",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-123", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             callback.assert_called_once()
             args = callback.call_args[0]
@@ -442,11 +409,7 @@ class TestUnifiedRecorderCallbacks:
 
             recorder.start_session()
             recorder.on_game_start(game_id="game-1")
-            recorder.on_game_end(
-                game_id="game-1",
-                prices=[Decimal("1.0")],
-                peak=Decimal("1.0")
-            )
+            recorder.on_game_end(game_id="game-1", prices=[Decimal("1.0")], peak=Decimal("1.0"))
 
             callback.assert_called_once_with(1)  # 1 game recorded
 
@@ -507,19 +470,14 @@ class TestUnifiedRecorderHelpers:
             for i in range(3):
                 recorder.on_game_start(game_id=f"game-{i}")
                 recorder.on_game_end(
-                    game_id=f"game-{i}",
-                    prices=[Decimal("1.0")],
-                    peak=Decimal("1.0")
+                    game_id=f"game-{i}", prices=[Decimal("1.0")], peak=Decimal("1.0")
                 )
 
             assert recorder.games_recorded == 3
 
     def test_get_status(self):
         """Test get_status returns comprehensive status"""
-        config = RecordingConfig(
-            capture_mode=CaptureMode.GAME_AND_PLAYER,
-            game_count=10
-        )
+        config = RecordingConfig(capture_mode=CaptureMode.GAME_AND_PLAYER, game_count=10)
         with tempfile.TemporaryDirectory() as tmpdir:
             recorder = UnifiedRecorder(base_path=tmpdir, config=config)
             recorder.start_session()

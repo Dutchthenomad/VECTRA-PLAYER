@@ -21,9 +21,8 @@ Main exports for common use:
 
 from __future__ import annotations
 
-from typing import Any
 import importlib
-
+from typing import Any
 
 _LAZY_EXPORTS = {
     "BrowserExecutor": ("browser.executor", "BrowserExecutor"),

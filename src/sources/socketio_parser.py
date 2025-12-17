@@ -1,42 +1,44 @@
 """Socket.IO frame parser for CDP WebSocket interception."""
+
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
 class SocketIOFrame:
     """Parsed Socket.IO frame."""
-    type: str           # "connect", "disconnect", "event", "ping", "pong", "error"
-    event_name: Optional[str] = None
-    data: Optional[Any] = None
+
+    type: str  # "connect", "disconnect", "event", "ping", "pong", "error"
+    event_name: str | None = None
+    data: Any | None = None
     raw: str = ""
 
 
 # Socket.IO Engine.IO packet types
 PACKET_TYPES = {
-    '0': 'connect',
-    '1': 'disconnect',
-    '2': 'ping',
-    '3': 'pong',
-    '4': 'message',
-    '5': 'upgrade',
-    '6': 'noop',
+    "0": "connect",
+    "1": "disconnect",
+    "2": "ping",
+    "3": "pong",
+    "4": "message",
+    "5": "upgrade",
+    "6": "noop",
 }
 
 # Socket.IO packet types (after Engine.IO '4' message)
 SOCKETIO_TYPES = {
-    '0': 'connect',
-    '1': 'disconnect',
-    '2': 'event',
-    '3': 'ack',
-    '4': 'error',
-    '5': 'binary_event',
-    '6': 'binary_ack',
+    "0": "connect",
+    "1": "disconnect",
+    "2": "event",
+    "3": "ack",
+    "4": "error",
+    "5": "binary_event",
+    "6": "binary_ack",
 }
 
 
-def parse_socketio_frame(raw: str) -> Optional[SocketIOFrame]:
+def parse_socketio_frame(raw: str) -> SocketIOFrame | None:
     """
     Parse a Socket.IO frame from raw WebSocket data.
 
@@ -72,31 +74,31 @@ def parse_socketio_frame(raw: str) -> Optional[SocketIOFrame]:
     packet_type = PACKET_TYPES[engine_type]
 
     # Handle simple packets (ping/pong)
-    if packet_type in ('ping', 'pong', 'noop', 'upgrade'):
+    if packet_type in ("ping", "pong", "noop", "upgrade"):
         return SocketIOFrame(type=packet_type, raw=raw)
 
     # Handle connect packet
-    if packet_type == 'connect':
+    if packet_type == "connect":
         data = None
         if len(raw) > 1:
             try:
                 data = json.loads(raw[1:])
             except json.JSONDecodeError:
                 pass
-        return SocketIOFrame(type='connect', data=data, raw=raw)
+        return SocketIOFrame(type="connect", data=data, raw=raw)
 
     # Handle disconnect
-    if packet_type == 'disconnect':
-        return SocketIOFrame(type='disconnect', raw=raw)
+    if packet_type == "disconnect":
+        return SocketIOFrame(type="disconnect", raw=raw)
 
     # Handle message packet (contains Socket.IO data)
-    if packet_type == 'message':
+    if packet_type == "message":
         return _parse_socketio_message(raw[1:], raw)
 
     return None
 
 
-def _parse_socketio_message(data: str, raw: str) -> Optional[SocketIOFrame]:
+def _parse_socketio_message(data: str, raw: str) -> SocketIOFrame | None:
     """Parse Socket.IO message payload."""
     if not data:
         return None
@@ -110,14 +112,14 @@ def _parse_socketio_message(data: str, raw: str) -> Optional[SocketIOFrame]:
     sio_packet_type = SOCKETIO_TYPES[sio_type]
 
     # Handle event (type 2)
-    if sio_packet_type == 'event':
+    if sio_packet_type == "event":
         return _parse_event(data[1:], raw)
 
     # Handle other types
     return SocketIOFrame(type=sio_packet_type, raw=raw)
 
 
-def _parse_event(data: str, raw: str) -> Optional[SocketIOFrame]:
+def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
     """Parse Socket.IO event from JSON array.
 
     Supports:
@@ -130,14 +132,14 @@ def _parse_event(data: str, raw: str) -> Optional[SocketIOFrame]:
         return None
 
     # Strip optional namespace prefix: /ns,
-    if data.startswith('/'):
-        comma_idx = data.find(',')
+    if data.startswith("/"):
+        comma_idx = data.find(",")
         if comma_idx == -1:
             return None
-        data = data[comma_idx + 1:]
+        data = data[comma_idx + 1 :]
 
     # Skip optional ack id digits before JSON
-    bracket_idx = data.find('[')
+    bracket_idx = data.find("[")
     if bracket_idx == -1:
         return None
 
@@ -152,12 +154,7 @@ def _parse_event(data: str, raw: str) -> Optional[SocketIOFrame]:
         event_name = parsed[0]
         event_data = parsed[1] if len(parsed) > 1 else None
 
-        return SocketIOFrame(
-            type='event',
-            event_name=event_name,
-            data=event_data,
-            raw=raw
-        )
+        return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
 
     return None
 
@@ -169,12 +166,7 @@ def _parse_event(data: str, raw: str) -> Optional[SocketIOFrame]:
             event_name = parsed[0]
             event_data = parsed[1] if len(parsed) > 1 else None
 
-            return SocketIOFrame(
-                type='event',
-                event_name=event_name,
-                data=event_data,
-                raw=raw
-            )
+            return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
     except json.JSONDecodeError:
         pass
 

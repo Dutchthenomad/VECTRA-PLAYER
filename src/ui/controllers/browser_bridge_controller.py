@@ -9,11 +9,11 @@ Handles:
 - Connection lifecycle management
 """
 
-import tkinter as tk
 import asyncio
 import logging
-from typing import Callable, Optional
-from browser.executor import BrowserExecutor
+import tkinter as tk
+from collections.abc import Callable
+
 from browser.bridge import BridgeStatus
 from ui.browser_connection_dialog import BrowserConnectionDialog
 
@@ -38,7 +38,7 @@ class BrowserBridgeController:
         # Notifications
         toast,
         # Callbacks
-        log_callback: Callable[[str], None]
+        log_callback: Callable[[str], None],
     ):
         """
         Initialize BrowserBridgeController with dependencies.
@@ -73,7 +73,7 @@ class BrowserBridgeController:
             dialog = BrowserConnectionDialog(
                 parent=self.root,
                 on_connected=self.on_browser_connected,
-                on_failed=self.on_browser_connection_failed
+                on_failed=self.on_browser_connection_failed,
             )
             dialog.show()
 
@@ -91,16 +91,12 @@ class BrowserBridgeController:
                 self.toast.show("Browser connected", "success")
 
             # Update browser menu
-            if hasattr(self, 'browser_menu'):
+            if hasattr(self, "browser_menu"):
                 # Enable disconnect button
-                self.browser_menu.entryconfig(
-                    self.browser_disconnect_item_index,
-                    state=tk.NORMAL
-                )
+                self.browser_menu.entryconfig(self.browser_disconnect_item_index, state=tk.NORMAL)
                 # Update status indicator
                 self.browser_menu.entryconfig(
-                    self.browser_status_item_index,
-                    label="🟢 Status: Connected"
+                    self.browser_status_item_index, label="🟢 Status: Connected"
                 )
 
         except Exception as e:
@@ -121,10 +117,11 @@ class BrowserBridgeController:
 
         # Confirm disconnection
         from tkinter import messagebox
+
         if not messagebox.askyesno(
             "Disconnect Browser",
             "Are you sure you want to disconnect the browser?\n\n"
-            "The browser window will remain open but automation will stop."
+            "The browser window will remain open but automation will stop.",
         ):
             return
 
@@ -146,6 +143,7 @@ class BrowserBridgeController:
                     self.root.after(0, lambda: self.log(f"Disconnect error: {e}"))
 
             import threading
+
             disconnect_thread = threading.Thread(target=run_disconnect, daemon=True)
             disconnect_thread.start()
 
@@ -162,16 +160,12 @@ class BrowserBridgeController:
                 self.toast.show("Browser disconnected", "info")
 
             # Update browser menu
-            if hasattr(self, 'browser_menu'):
+            if hasattr(self, "browser_menu"):
                 # Disable disconnect button
-                self.browser_menu.entryconfig(
-                    self.browser_disconnect_item_index,
-                    state=tk.DISABLED
-                )
+                self.browser_menu.entryconfig(self.browser_disconnect_item_index, state=tk.DISABLED)
                 # Update status indicator
                 self.browser_menu.entryconfig(
-                    self.browser_status_item_index,
-                    label="⚫ Status: Disconnected"
+                    self.browser_status_item_index, label="⚫ Status: Disconnected"
                 )
 
         except Exception as e:
@@ -185,33 +179,26 @@ class BrowserBridgeController:
         """Update browser status indicator"""
         # Map status to icon and color
         status_map = {
-            'disconnected': ('⚫', 'Disconnected'),
-            'connecting': ('🟡', 'Connecting...'),
-            'connected': ('🟢', 'Connected'),
-            'error': ('🔴', 'Error'),
-            'reconnecting': ('🟡', 'Reconnecting...'),
+            "disconnected": ("⚫", "Disconnected"),
+            "connecting": ("🟡", "Connecting..."),
+            "connected": ("🟢", "Connected"),
+            "error": ("🔴", "Error"),
+            "reconnecting": ("🟡", "Reconnecting..."),
         }
 
-        icon, label = status_map.get(status, ('⚫', 'Unknown'))
+        icon, label = status_map.get(status, ("⚫", "Unknown"))
 
         # Update menu item
-        if hasattr(self, 'browser_menu'):
+        if hasattr(self, "browser_menu"):
             self.browser_menu.entryconfig(
-                self.browser_status_item_index,
-                label=f"{icon} Status: {label}"
+                self.browser_status_item_index, label=f"{icon} Status: {label}"
             )
 
             # Enable/disable disconnect button based on status
-            if status == 'connected':
-                self.browser_menu.entryconfig(
-                    self.browser_disconnect_item_index,
-                    state=tk.NORMAL
-                )
+            if status == "connected":
+                self.browser_menu.entryconfig(self.browser_disconnect_item_index, state=tk.NORMAL)
             else:
-                self.browser_menu.entryconfig(
-                    self.browser_disconnect_item_index,
-                    state=tk.DISABLED
-                )
+                self.browser_menu.entryconfig(self.browser_disconnect_item_index, state=tk.DISABLED)
 
     # ========================================================================
     # CDP BRIDGE CONNECTION (Phase 9.3)
@@ -241,35 +228,32 @@ class BrowserBridgeController:
         THREAD-SAFE: Marshals UI updates to main thread
         """
         # Extract data in worker thread
-        status_value = status.value if hasattr(status, 'value') else str(status)
+        status_value = status.value if hasattr(status, "value") else str(status)
 
         # Marshal to main thread
         def update_ui():
             try:
                 # Map BridgeStatus to menu display
                 status_display_map = {
-                    BridgeStatus.DISCONNECTED: ('⚫', 'Disconnected', tk.DISABLED),
-                    BridgeStatus.CONNECTING: ('🟡', 'Connecting...', tk.DISABLED),
-                    BridgeStatus.CONNECTED: ('🟢', 'Connected', tk.NORMAL),
-                    BridgeStatus.ERROR: ('🔴', 'Error', tk.DISABLED),
-                    BridgeStatus.RECONNECTING: ('🟡', 'Reconnecting...', tk.DISABLED),
+                    BridgeStatus.DISCONNECTED: ("⚫", "Disconnected", tk.DISABLED),
+                    BridgeStatus.CONNECTING: ("🟡", "Connecting...", tk.DISABLED),
+                    BridgeStatus.CONNECTED: ("🟢", "Connected", tk.NORMAL),
+                    BridgeStatus.ERROR: ("🔴", "Error", tk.DISABLED),
+                    BridgeStatus.RECONNECTING: ("🟡", "Reconnecting...", tk.DISABLED),
                 }
 
                 icon, label, disconnect_state = status_display_map.get(
-                    status,
-                    ('⚫', 'Unknown', tk.DISABLED)
+                    status, ("⚫", "Unknown", tk.DISABLED)
                 )
 
                 # Update status indicator
                 self.browser_menu.entryconfig(
-                    self.browser_status_item_index,
-                    label=f"{icon} Status: {label}"
+                    self.browser_status_item_index, label=f"{icon} Status: {label}"
                 )
 
                 # Update disconnect button state
                 self.browser_menu.entryconfig(
-                    self.browser_disconnect_item_index,
-                    state=disconnect_state
+                    self.browser_disconnect_item_index, state=disconnect_state
                 )
 
                 # Log status change

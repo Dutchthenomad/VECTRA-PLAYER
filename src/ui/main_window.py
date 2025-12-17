@@ -3,37 +3,37 @@ Main Window UI Module - Minimal Implementation
 This gets your app running with basic UI
 """
 
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from pathlib import Path
-from decimal import Decimal
 import json
 import logging
-from typing import Optional, List, Dict
-import threading
+import tkinter as tk
+from decimal import Decimal
+from pathlib import Path
+from tkinter import messagebox, ttk
 
-from core import ReplayEngine, TradeManager
-from core.game_queue import GameQueue
-from core.demo_recorder import DemoRecorderSink  # Phase 10
-from debug.raw_capture_recorder import RawCaptureRecorder  # Raw capture debug tool
-from models import GameTick
-from ui.widgets import ChartWidget, ToastNotification
-from services.ui_dispatcher import TkDispatcher  # Phase 1: Moved to services
-from ui.builders import (  # Phase Issue-4: Extracted builders
-    MenuBarBuilder, StatusBarBuilder, ChartBuilder,
-    PlaybackBuilder, BettingBuilder, ActionBuilder
-)
-from ui.bot_config_panel import BotConfigPanel  # Phase 8.4
-from ui.balance_edit_dialog import BalanceUnlockDialog, BalanceRelockDialog, BalanceEditEntry
-from bot import BotInterface, BotController, list_strategies
+from bot import BotController, BotInterface, list_strategies
 from bot.async_executor import AsyncBotExecutor
 from bot.execution_mode import ExecutionMode  # Phase 8.4
 from bot.ui_controller import BotUIController  # Phase 8.4
-from browser.executor import BrowserExecutor  # Phase 2: Browser consolidation
-from browser.bridge import get_browser_bridge, BridgeStatus  # Phase 2: Browser consolidation
-from sources import WebSocketFeed
+from browser.bridge import get_browser_bridge  # Phase 2: Browser consolidation
+from core import ReplayEngine, TradeManager
+from core.demo_recorder import DemoRecorderSink  # Phase 10
+from core.game_queue import GameQueue
+from debug.raw_capture_recorder import RawCaptureRecorder  # Raw capture debug tool
+from models import GameTick
+from services.ui_dispatcher import TkDispatcher  # Phase 1: Moved to services
+from ui.balance_edit_dialog import BalanceEditEntry, BalanceRelockDialog, BalanceUnlockDialog
+from ui.bot_config_panel import BotConfigPanel  # Phase 8.4
+from ui.builders import (  # Phase Issue-4: Extracted builders
+    BettingBuilder,
+    ChartBuilder,
+    MenuBarBuilder,
+    PlaybackBuilder,
+    StatusBarBuilder,
+)
+from ui.widgets import ToastNotification
 
 logger = logging.getLogger(__name__)
+
 
 class MainWindow:
     """
@@ -60,13 +60,13 @@ class MainWindow:
 
         # Balance editing state (lock/unlock sync to rugs.fun)
         self.balance_locked = True
-        self.manual_balance: Optional[Decimal] = None
-        self.tracked_balance: Decimal = self.state.get('balance')
+        self.manual_balance: Decimal | None = None
+        self.tracked_balance: Decimal = self.state.get("balance")
 
         # Phase 10.8: Server state tracking (from WebSocket)
-        self.server_username: Optional[str] = None
-        self.server_player_id: Optional[str] = None
-        self.server_balance: Optional[Decimal] = None
+        self.server_username: str | None = None
+        self.server_player_id: str | None = None
+        self.server_balance: Decimal | None = None
         self.server_authenticated = False
 
         # Phase 8.5: Initialize browser executor (user controls connection via menu)
@@ -75,6 +75,7 @@ class MainWindow:
 
         try:
             from browser.executor import BrowserExecutor
+
             self.browser_executor = BrowserExecutor(profile_name="rugs_fun_phantom")
             logger.info("BrowserExecutor available - user can connect via Browser menu")
         except Exception as e:
@@ -91,7 +92,7 @@ class MainWindow:
         self.trade_manager = TradeManager(state)
 
         # Phase 10: Initialize demo recorder for human demonstration recording
-        demo_dir = Path(config.FILES.get('recordings_dir', 'rugs_recordings')) / 'demonstrations'
+        demo_dir = Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
         self.demo_recorder = DemoRecorderSink(demo_dir)
         logger.info(f"DemoRecorderSink initialized: {demo_dir}")
 
@@ -103,7 +104,7 @@ class MainWindow:
         logger.info("RawCaptureRecorder initialized for WebSocket debugging")
 
         # Initialize game queue for multi-game sessions
-        recordings_dir = config.FILES['recordings_dir']
+        recordings_dir = config.FILES["recordings_dir"]
         self.game_queue = GameQueue(recordings_dir)
         self.multi_game_mode = False  # Programmatically controlled, not via UI
 
@@ -117,8 +118,8 @@ class MainWindow:
         # Phase A.2: Bot components will be initialized AFTER UI is built (line ~640)
         # to avoid AttributeError when accessing button references
         self.bot_ui_controller = None  # Placeholder, will be set later
-        self.bot_controller = None     # Placeholder, will be set later
-        self.bot_executor = None       # Placeholder, will be set later
+        self.bot_controller = None  # Placeholder, will be set later
+        self.bot_executor = None  # Placeholder, will be set later
 
         # Phase 8.4: Set bot enabled state from config
         self.bot_enabled = self.bot_config_panel.is_bot_enabled()
@@ -150,7 +151,7 @@ class MainWindow:
             logger.info("Bot executor auto-started from config")
 
         # Auto-start live feed connection on UI startup (optional)
-        if self.config.LIVE_FEED.get('auto_connect', False):
+        if self.config.LIVE_FEED.get("auto_connect", False):
             self.root.after(1000, self._auto_connect_live_feed)
 
         # Phase 3.1: Monitoring loops now handled by BotManager
@@ -162,43 +163,71 @@ class MainWindow:
         """Create menu bar using MenuBarBuilder (Phase Issue-4: Extracted)"""
         # Callbacks dictionary - uses lambdas to defer controller access
         callbacks = {
-            'load_file': lambda: self.replay_controller.load_file_dialog() if hasattr(self, 'replay_controller') else None,
-            'exit_app': self.root.quit,
-            'toggle_playback': lambda: self.replay_controller.toggle_play_pause() if hasattr(self, 'replay_controller') else None,
-            'reset_game': lambda: self.replay_controller.reset_game() if hasattr(self, 'replay_controller') else None,
-            'show_recording_config': self._show_recording_config,
-            'stop_recording': self._stop_recording_session,
-            'toggle_recording': lambda: self.replay_controller.toggle_recording() if hasattr(self, 'replay_controller') else None,
-            'open_recordings_folder': lambda: self.replay_controller.open_recordings_folder() if hasattr(self, 'replay_controller') else None,
-            'show_recording_status': self._show_recording_status,
-            'start_demo_session': self._start_demo_session,
-            'end_demo_session': self._end_demo_session,
-            'start_demo_game': self._start_demo_game,
-            'end_demo_game': self._end_demo_game,
-            'show_demo_status': self._show_demo_status,
-            'toggle_bot': lambda: self.bot_manager.toggle_bot_from_menu() if hasattr(self, 'bot_manager') else None,
-            'show_bot_config': lambda: self.root.after(0, self.bot_manager.show_bot_config) if hasattr(self, 'bot_manager') else None,
-            'show_timing_metrics': lambda: self.root.after(0, self.bot_manager.show_timing_metrics) if hasattr(self, 'bot_manager') else None,
-            'toggle_timing_overlay': lambda: self.bot_manager.toggle_timing_overlay() if hasattr(self, 'bot_manager') else None,
-            'toggle_live_feed': lambda: self.live_feed_controller.toggle_live_feed_from_menu() if hasattr(self, 'live_feed_controller') else None,
-            'connect_browser': lambda: self.root.after(0, self.browser_bridge_controller.connect_browser_bridge) if hasattr(self, 'browser_bridge_controller') else None,
-            'disconnect_browser': lambda: self.root.after(0, self.browser_bridge_controller.disconnect_browser_bridge) if hasattr(self, 'browser_bridge_controller') else None,
-            'change_theme': self._change_theme,
-            'set_ui_style': self._set_ui_style,
-            'toggle_raw_capture': self._toggle_raw_capture,
-            'analyze_capture': self._analyze_last_capture,
-            'open_captures_folder': self._open_captures_folder,
-            'show_capture_status': self._show_capture_status,
-            'open_debug_terminal': self._open_debug_terminal,
-            'show_about': self._show_about,
+            "load_file": lambda: self.replay_controller.load_file_dialog()
+            if hasattr(self, "replay_controller")
+            else None,
+            "exit_app": self.root.quit,
+            "toggle_playback": lambda: self.replay_controller.toggle_play_pause()
+            if hasattr(self, "replay_controller")
+            else None,
+            "reset_game": lambda: self.replay_controller.reset_game()
+            if hasattr(self, "replay_controller")
+            else None,
+            "show_recording_config": self._show_recording_config,
+            "stop_recording": self._stop_recording_session,
+            "toggle_recording": lambda: self.replay_controller.toggle_recording()
+            if hasattr(self, "replay_controller")
+            else None,
+            "open_recordings_folder": lambda: self.replay_controller.open_recordings_folder()
+            if hasattr(self, "replay_controller")
+            else None,
+            "show_recording_status": self._show_recording_status,
+            "start_demo_session": self._start_demo_session,
+            "end_demo_session": self._end_demo_session,
+            "start_demo_game": self._start_demo_game,
+            "end_demo_game": self._end_demo_game,
+            "show_demo_status": self._show_demo_status,
+            "toggle_bot": lambda: self.bot_manager.toggle_bot_from_menu()
+            if hasattr(self, "bot_manager")
+            else None,
+            "show_bot_config": lambda: self.root.after(0, self.bot_manager.show_bot_config)
+            if hasattr(self, "bot_manager")
+            else None,
+            "show_timing_metrics": lambda: self.root.after(0, self.bot_manager.show_timing_metrics)
+            if hasattr(self, "bot_manager")
+            else None,
+            "toggle_timing_overlay": lambda: self.bot_manager.toggle_timing_overlay()
+            if hasattr(self, "bot_manager")
+            else None,
+            "toggle_live_feed": lambda: self.live_feed_controller.toggle_live_feed_from_menu()
+            if hasattr(self, "live_feed_controller")
+            else None,
+            "connect_browser": lambda: self.root.after(
+                0, self.browser_bridge_controller.connect_browser_bridge
+            )
+            if hasattr(self, "browser_bridge_controller")
+            else None,
+            "disconnect_browser": lambda: self.root.after(
+                0, self.browser_bridge_controller.disconnect_browser_bridge
+            )
+            if hasattr(self, "browser_bridge_controller")
+            else None,
+            "change_theme": self._change_theme,
+            "set_ui_style": self._set_ui_style,
+            "toggle_raw_capture": self._toggle_raw_capture,
+            "analyze_capture": self._analyze_last_capture,
+            "open_captures_folder": self._open_captures_folder,
+            "show_capture_status": self._show_capture_status,
+            "open_debug_terminal": self._open_debug_terminal,
+            "show_about": self._show_about,
         }
 
         # Variables for checkbutton menus
         variables = {
-            'recording_var': self.recording_var,
-            'bot_var': self.bot_var,
-            'live_feed_var': self.live_feed_var,
-            'timing_overlay_var': self.timing_overlay_var,
+            "recording_var": self.recording_var,
+            "bot_var": self.bot_var,
+            "live_feed_var": self.live_feed_var,
+            "timing_overlay_var": self.timing_overlay_var,
         }
 
         # Build menu bar
@@ -206,12 +235,12 @@ class MainWindow:
         menubar, refs = builder.build()
 
         # Store menu references for dynamic updates
-        self.browser_menu = refs['browser_menu']
-        self.dev_menu = refs['dev_menu']
-        self.browser_status_item_index = refs['browser_status_item_index']
-        self.browser_disconnect_item_index = refs['browser_disconnect_item_index']
-        self.browser_connect_item_index = refs['browser_connect_item_index']
-        self.dev_capture_item_index = refs['dev_capture_item_index']
+        self.browser_menu = refs["browser_menu"]
+        self.dev_menu = refs["dev_menu"]
+        self.browser_status_item_index = refs["browser_status_item_index"]
+        self.browser_disconnect_item_index = refs["browser_disconnect_item_index"]
+        self.browser_connect_item_index = refs["browser_connect_item_index"]
+        self.dev_capture_item_index = refs["dev_capture_item_index"]
 
     def _create_ui(self):
         """Create UI matching the user's mockup design"""
@@ -225,165 +254,207 @@ class MainWindow:
 
         # ========== ROW 1: STATUS BAR (Phase Issue-4: Using builder) ==========
         status_widgets = StatusBarBuilder(
-            self.root,
-            toggle_recording=self._toggle_recording_from_button
+            self.root, toggle_recording=self._toggle_recording_from_button
         ).build()
-        self.tick_label = status_widgets['tick_label']
-        self.price_label = status_widgets['price_label']
-        self.phase_label = status_widgets['phase_label']
-        self.player_profile_label = status_widgets['player_profile_label']
-        self.browser_status_label = status_widgets['browser_status_label']
-        self.source_label = status_widgets['source_label']
-        self.recording_toggle = status_widgets['recording_toggle']
+        self.tick_label = status_widgets["tick_label"]
+        self.price_label = status_widgets["price_label"]
+        self.phase_label = status_widgets["phase_label"]
+        self.player_profile_label = status_widgets["player_profile_label"]
+        self.browser_status_label = status_widgets["browser_status_label"]
+        self.source_label = status_widgets["source_label"]
+        self.recording_toggle = status_widgets["recording_toggle"]
 
         # ========== ROW 2: CHART AREA (Phase Issue-4: Using builder) ==========
         chart_widgets = ChartBuilder(self.root).build()
-        self.chart = chart_widgets['chart']
+        self.chart = chart_widgets["chart"]
 
         # ========== ROW 3: PLAYBACK CONTROLS (Phase Issue-4: Using builder) ==========
         playback_callbacks = {
-            'load_game': lambda: self.replay_controller.load_game() if hasattr(self, 'replay_controller') else None,
-            'toggle_playback': lambda: self.replay_controller.toggle_playback() if hasattr(self, 'replay_controller') else None,
-            'step_forward': lambda: self.replay_controller.step_forward() if hasattr(self, 'replay_controller') else None,
-            'reset_game': lambda: self.replay_controller.reset_game() if hasattr(self, 'replay_controller') else None,
-            'set_speed': lambda s: self.replay_controller.set_playback_speed(s) if hasattr(self, 'replay_controller') else None,
+            "load_game": lambda: self.replay_controller.load_game()
+            if hasattr(self, "replay_controller")
+            else None,
+            "toggle_playback": lambda: self.replay_controller.toggle_playback()
+            if hasattr(self, "replay_controller")
+            else None,
+            "step_forward": lambda: self.replay_controller.step_forward()
+            if hasattr(self, "replay_controller")
+            else None,
+            "reset_game": lambda: self.replay_controller.reset_game()
+            if hasattr(self, "replay_controller")
+            else None,
+            "set_speed": lambda s: self.replay_controller.set_playback_speed(s)
+            if hasattr(self, "replay_controller")
+            else None,
         }
         playback_widgets = PlaybackBuilder(self.root, playback_callbacks).build()
-        self.load_button = playback_widgets['load_button']
-        self.play_button = playback_widgets['play_button']
-        self.step_button = playback_widgets['step_button']
-        self.reset_button = playback_widgets['reset_button']
-        self.speed_label = playback_widgets['speed_label']
+        self.load_button = playback_widgets["load_button"]
+        self.play_button = playback_widgets["play_button"]
+        self.step_button = playback_widgets["step_button"]
+        self.reset_button = playback_widgets["reset_button"]
+        self.speed_label = playback_widgets["speed_label"]
 
         # ========== ROW 4: BET AMOUNT CONTROLS (Phase Issue-4: Using builder) ==========
         bet_callbacks = {
-            'clear_bet': lambda: self.trading_controller.clear_bet_amount() if hasattr(self, 'trading_controller') else None,
-            'increment_bet': lambda a: self.trading_controller.increment_bet_amount(a) if hasattr(self, 'trading_controller') else None,
-            'half_bet': lambda: self.trading_controller.half_bet_amount() if hasattr(self, 'trading_controller') else None,
-            'double_bet': lambda: self.trading_controller.double_bet_amount() if hasattr(self, 'trading_controller') else None,
-            'max_bet': lambda: self.trading_controller.max_bet_amount() if hasattr(self, 'trading_controller') else None,
-            'toggle_balance_lock': self._toggle_balance_lock,
+            "clear_bet": lambda: self.trading_controller.clear_bet_amount()
+            if hasattr(self, "trading_controller")
+            else None,
+            "increment_bet": lambda a: self.trading_controller.increment_bet_amount(a)
+            if hasattr(self, "trading_controller")
+            else None,
+            "half_bet": lambda: self.trading_controller.half_bet_amount()
+            if hasattr(self, "trading_controller")
+            else None,
+            "double_bet": lambda: self.trading_controller.double_bet_amount()
+            if hasattr(self, "trading_controller")
+            else None,
+            "max_bet": lambda: self.trading_controller.max_bet_amount()
+            if hasattr(self, "trading_controller")
+            else None,
+            "toggle_balance_lock": self._toggle_balance_lock,
         }
         bet_widgets = BettingBuilder(
-            self.root, bet_callbacks,
-            Decimal(str(self.config.FINANCIAL['default_bet'])),
-            self.state.get('balance')
+            self.root,
+            bet_callbacks,
+            Decimal(str(self.config.FINANCIAL["default_bet"])),
+            self.state.get("balance"),
         ).build()
-        self.bet_entry = bet_widgets['bet_entry']
-        self.clear_button = bet_widgets['clear_button']
-        self.increment_001_button = bet_widgets['increment_001_button']
-        self.increment_01_button = bet_widgets['increment_01_button']
-        self.increment_10_button = bet_widgets['increment_10_button']
-        self.increment_1_button = bet_widgets['increment_1_button']
-        self.half_button = bet_widgets['half_button']
-        self.double_button = bet_widgets['double_button']
-        self.max_button = bet_widgets['max_button']
-        self.balance_label = bet_widgets['balance_label']
-        self.balance_lock_button = bet_widgets['balance_lock_button']
+        self.bet_entry = bet_widgets["bet_entry"]
+        self.clear_button = bet_widgets["clear_button"]
+        self.increment_001_button = bet_widgets["increment_001_button"]
+        self.increment_01_button = bet_widgets["increment_01_button"]
+        self.increment_10_button = bet_widgets["increment_10_button"]
+        self.increment_1_button = bet_widgets["increment_1_button"]
+        self.half_button = bet_widgets["half_button"]
+        self.double_button = bet_widgets["double_button"]
+        self.max_button = bet_widgets["max_button"]
+        self.balance_label = bet_widgets["balance_label"]
+        self.balance_lock_button = bet_widgets["balance_lock_button"]
 
         # ========== ROW 5: ACTION BUTTONS ==========
-        action_row = tk.Frame(self.root, bg='#1a1a1a', height=80)
+        action_row = tk.Frame(self.root, bg="#1a1a1a", height=80)
         action_row.pack(fill=tk.X)
         action_row.pack_propagate(False)
 
         # Left - large action buttons
-        action_left = tk.Frame(action_row, bg='#1a1a1a')
+        action_left = tk.Frame(action_row, bg="#1a1a1a")
         action_left.pack(side=tk.LEFT, padx=10, pady=10)
 
-        large_btn_style = {'font': ('Arial', 14, 'bold'), 'width': 10, 'height': 2, 'bd': 2, 'relief': tk.RAISED}
+        large_btn_style = {
+            "font": ("Arial", 14, "bold"),
+            "width": 10,
+            "height": 2,
+            "bd": 2,
+            "relief": tk.RAISED,
+        }
 
         self.sidebet_button = tk.Button(
             action_left,
             text="SIDEBET",
-            command=lambda: self.trading_controller.execute_sidebet() if hasattr(self, 'trading_controller') else None,
-            bg='#3399ff',
-            fg='white',
+            command=lambda: self.trading_controller.execute_sidebet()
+            if hasattr(self, "trading_controller")
+            else None,
+            bg="#3399ff",
+            fg="white",
             state=tk.NORMAL,  # Always enabled for testing browser forwarding
-            **large_btn_style
+            **large_btn_style,
         )
         self.sidebet_button.pack(side=tk.LEFT, padx=5)
 
         self.buy_button = tk.Button(
             action_left,
             text="BUY",
-            command=lambda: self.trading_controller.execute_buy() if hasattr(self, 'trading_controller') else None,
-            bg='#00ff66',
-            fg='black',
+            command=lambda: self.trading_controller.execute_buy()
+            if hasattr(self, "trading_controller")
+            else None,
+            bg="#00ff66",
+            fg="black",
             state=tk.NORMAL,  # Always enabled for testing browser forwarding
-            **large_btn_style
+            **large_btn_style,
         )
         self.buy_button.pack(side=tk.LEFT, padx=5)
 
         self.sell_button = tk.Button(
             action_left,
             text="SELL",
-            command=lambda: self.trading_controller.execute_sell() if hasattr(self, 'trading_controller') else None,
-            bg='#ff3399',
-            fg='white',
+            command=lambda: self.trading_controller.execute_sell()
+            if hasattr(self, "trading_controller")
+            else None,
+            bg="#ff3399",
+            fg="white",
             state=tk.NORMAL,  # Always enabled for testing browser forwarding
-            **large_btn_style
+            **large_btn_style,
         )
         self.sell_button.pack(side=tk.LEFT, padx=5)
 
         # Phase 8.2: Percentage selector buttons (radio-button style)
         # Separator between action buttons and percentage selectors
-        separator = tk.Frame(action_left, bg='#444444', width=2)
+        separator = tk.Frame(action_left, bg="#444444", width=2)
         separator.pack(side=tk.LEFT, padx=10, fill=tk.Y, pady=15)
 
         # Percentage buttons (smaller, radio-style)
-        pct_btn_style = {'font': ('Arial', 10, 'bold'), 'width': 6, 'height': 1, 'bd': 2, 'relief': tk.RAISED}
+        pct_btn_style = {
+            "font": ("Arial", 10, "bold"),
+            "width": 6,
+            "height": 1,
+            "bd": 2,
+            "relief": tk.RAISED,
+        }
 
         self.percentage_buttons = {}
         percentages = [
-            ('10%', 0.1, '#666666'),
-            ('25%', 0.25, '#666666'),
-            ('50%', 0.5, '#666666'),
-            ('100%', 1.0, '#888888')  # Default selected (darker)
+            ("10%", 0.1, "#666666"),
+            ("25%", 0.25, "#666666"),
+            ("50%", 0.5, "#666666"),
+            ("100%", 1.0, "#888888"),  # Default selected (darker)
         ]
 
         for text, value, default_color in percentages:
             btn = tk.Button(
                 action_left,
                 text=text,
-                command=lambda v=value: self.trading_controller.set_sell_percentage(v) if hasattr(self, 'trading_controller') else None,
+                command=lambda v=value: self.trading_controller.set_sell_percentage(v)
+                if hasattr(self, "trading_controller")
+                else None,
                 bg=default_color,
-                fg='white',
-                **pct_btn_style
+                fg="white",
+                **pct_btn_style,
             )
             btn.pack(side=tk.LEFT, padx=3)
             self.percentage_buttons[value] = {
-                'button': btn,
-                'default_color': default_color,
-                'selected_color': '#00cc66',  # Green when selected
-                'value': value
+                "button": btn,
+                "default_color": default_color,
+                "selected_color": "#00cc66",  # Green when selected
+                "value": value,
             }
 
         # Set initial selection to 100%
         self.current_sell_percentage = 1.0
-        if hasattr(self, 'trading_controller'):
+        if hasattr(self, "trading_controller"):
             self.trading_controller.highlight_percentage_button(1.0)
 
         # Right - bot and info
-        action_right = tk.Frame(action_row, bg='#1a1a1a')
+        action_right = tk.Frame(action_row, bg="#1a1a1a")
         action_right.pack(side=tk.RIGHT, padx=10, pady=10)
 
         # Bot controls (top right)
-        bot_top = tk.Frame(action_right, bg='#1a1a1a')
-        bot_top.pack(anchor='e')
+        bot_top = tk.Frame(action_right, bg="#1a1a1a")
+        bot_top.pack(anchor="e")
 
         self.bot_toggle_button = tk.Button(
             bot_top,
             text="ENABLE BOT",
-            command=lambda: self.bot_manager.toggle_bot() if hasattr(self, 'bot_manager') else None,
-            bg='#444444',
-            fg='white',
-            font=('Arial', 10),
+            command=lambda: self.bot_manager.toggle_bot() if hasattr(self, "bot_manager") else None,
+            bg="#444444",
+            fg="white",
+            font=("Arial", 10),
             width=12,
-            state=tk.DISABLED
+            state=tk.DISABLED,
         )
         self.bot_toggle_button.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(bot_top, text="STRATEGY:", bg='#1a1a1a', fg='white', font=('Arial', 9)).pack(side=tk.LEFT, padx=5)
+        tk.Label(bot_top, text="STRATEGY:", bg="#1a1a1a", fg="white", font=("Arial", 9)).pack(
+            side=tk.LEFT, padx=5
+        )
 
         # Bug 3 Fix: Initialize strategy_var with loaded strategy from config (not hardcoded)
         loaded_strategy = self.bot_config_panel.get_strategy()
@@ -392,48 +463,42 @@ class MainWindow:
             bot_top,
             textvariable=self.strategy_var,
             values=list_strategies(),
-            state='readonly',
+            state="readonly",
             width=12,
-            font=('Arial', 9)
+            font=("Arial", 9),
         )
         self.strategy_dropdown.pack(side=tk.LEFT)
-        self.strategy_dropdown.bind('<<ComboboxSelected>>', lambda e: self.bot_manager.on_strategy_changed(e) if hasattr(self, 'bot_manager') else None)
+        self.strategy_dropdown.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self.bot_manager.on_strategy_changed(e)
+            if hasattr(self, "bot_manager")
+            else None,
+        )
 
         # Info labels (bottom right)
-        bot_bottom = tk.Frame(action_right, bg='#1a1a1a')
-        bot_bottom.pack(anchor='e', pady=(5, 0))
+        bot_bottom = tk.Frame(action_right, bg="#1a1a1a")
+        bot_bottom.pack(anchor="e", pady=(5, 0))
 
         # Bot status label
         self.bot_status_label = tk.Label(
-            bot_bottom,
-            text="BOT: DISABLED",
-            font=('Arial', 10),
-            bg='#1a1a1a',
-            fg='#666666'
+            bot_bottom, text="BOT: DISABLED", font=("Arial", 10), bg="#1a1a1a", fg="#666666"
         )
         self.bot_status_label.pack(side=tk.LEFT, padx=10)
 
         self.position_label = tk.Label(
-            bot_bottom,
-            text="POSITION: NONE",
-            font=('Arial', 10),
-            bg='#1a1a1a',
-            fg='#666666'
+            bot_bottom, text="POSITION: NONE", font=("Arial", 10), bg="#1a1a1a", fg="#666666"
         )
         self.position_label.pack(side=tk.LEFT, padx=10)
 
         self.sidebet_status_label = tk.Label(
-            bot_bottom,
-            text="SIDEBET: NONE",
-            font=('Arial', 10),
-            bg='#1a1a1a',
-            fg='#666666'
+            bot_bottom, text="SIDEBET: NONE", font=("Arial", 10), bg="#1a1a1a", fg="#666666"
         )
         self.sidebet_status_label.pack(side=tk.LEFT, padx=10)
 
         # Phase 8.6: Draggable timing overlay (replaces inline labels)
         # Create overlay widget (hidden initially, shown in UI_LAYER mode)
         from ui.timing_overlay import TimingOverlay
+
         self.timing_overlay = TimingOverlay(self.root, config_file="timing_overlay.json")
 
         # Initialize toast notifications
@@ -445,8 +510,8 @@ class MainWindow:
         bot_config = self.bot_config_panel.get_config()
         self.bot_ui_controller = BotUIController(
             self,
-            button_depress_duration_ms=bot_config.get('button_depress_duration_ms', 50),
-            inter_click_pause_ms=bot_config.get('inter_click_pause_ms', 100)
+            button_depress_duration_ms=bot_config.get("button_depress_duration_ms", 50),
+            inter_click_pause_ms=bot_config.get("inter_click_pause_ms", 100),
         )
 
         # Phase A.2: Create BotController now that ui_controller is ready
@@ -457,14 +522,23 @@ class MainWindow:
             self.bot_interface,
             strategy_name=strategy,
             execution_mode=execution_mode,
-            ui_controller=self.bot_ui_controller if execution_mode == ExecutionMode.UI_LAYER else None
+            ui_controller=self.bot_ui_controller
+            if execution_mode == ExecutionMode.UI_LAYER
+            else None,
         )
 
         # Phase A.2: Initialize async bot executor (prevents deadlock)
         self.bot_executor = AsyncBotExecutor(self.bot_controller)
 
         # Phase 3.1: Initialize BotManager controller
-        from ui.controllers import BotManager, ReplayController, TradingController, LiveFeedController, BrowserBridgeController
+        from ui.controllers import (
+            BotManager,
+            BrowserBridgeController,
+            LiveFeedController,
+            ReplayController,
+            TradingController,
+        )
+
         self.bot_manager = BotManager(
             root=self.root,
             state=self.state,
@@ -485,7 +559,7 @@ class MainWindow:
             # Notifications
             toast=self.toast,
             # Callbacks
-            log_callback=self.log
+            log_callback=self.log,
         )
 
         # Phase 3.2: Initialize ReplayController
@@ -506,7 +580,7 @@ class MainWindow:
             # Other dependencies
             toast=self.toast,
             # Callbacks
-            log_callback=self.log
+            log_callback=self.log,
         )
 
         # Phase 3.3: Initialize TradingController
@@ -526,7 +600,7 @@ class MainWindow:
             # Callbacks
             log_callback=self.log,
             # Phase 10: Demo recording
-            demo_recorder=self.demo_recorder
+            demo_recorder=self.demo_recorder,
         )
 
         # Phase 3.4: Initialize LiveFeedController
@@ -540,16 +614,15 @@ class MainWindow:
             # Notifications
             toast=self.toast,
             # Callbacks
-            log_callback=self.log
+            log_callback=self.log,
         )
 
         # Phase 10.5H: Initialize RecordingController
         from ui.controllers import RecordingController
-        recordings_dir = self.config.FILES.get('recordings_dir', 'rugs_recordings')
+
+        recordings_dir = self.config.FILES.get("recordings_dir", "rugs_recordings")
         self.recording_controller = RecordingController(
-            root=self.root,
-            recordings_path=recordings_dir,
-            game_state=self.state
+            root=self.root, recordings_path=recordings_dir, game_state=self.state
         )
 
         # Phase 10.6: Wire RecordingController to TradingController
@@ -575,11 +648,13 @@ class MainWindow:
             # Notifications
             toast=self.toast,
             # Callbacks
-            log_callback=self.log
+            log_callback=self.log,
         )
 
         # Phase 3.5: Register browser bridge status change callback
-        self.browser_bridge.on_status_change = self.browser_bridge_controller.on_bridge_status_change
+        self.browser_bridge.on_status_change = (
+            self.browser_bridge_controller.on_bridge_status_change
+        )
 
     def _setup_event_handlers(self):
         """Setup event bus subscriptions"""
@@ -604,20 +679,23 @@ class MainWindow:
 
         # Subscribe to state events
         from core.game_state import StateEvents
+
         self.state.subscribe(StateEvents.BALANCE_CHANGED, self._handle_balance_changed)
         self.state.subscribe(StateEvents.POSITION_OPENED, self._handle_position_opened)
         self.state.subscribe(StateEvents.POSITION_CLOSED, self._handle_position_closed)
         # Phase 8.2: Partial sell events
-        self.state.subscribe(StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed)
+        self.state.subscribe(
+            StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed
+        )
         self.state.subscribe(StateEvents.POSITION_REDUCED, self._handle_position_reduced)
-    
+
     def log(self, message: str):
         """Log message (using logger instead of text widget)"""
         logger.info(message)
 
     def _auto_connect_live_feed(self):
         """Auto-connect to live feed on startup."""
-        if hasattr(self, 'live_feed_controller'):
+        if hasattr(self, "live_feed_controller"):
             logger.info("Auto-connecting to live feed...")
             self.live_feed_controller.toggle_live_feed()
 
@@ -625,7 +703,7 @@ class MainWindow:
 
     # Phase 3.4: enable_live_feed, disable_live_feed, toggle_live_feed moved to LiveFeedController
 
-# display_tick() removed - now handled by ReplayEngine callbacks
+    # display_tick() removed - now handled by ReplayEngine callbacks
 
     # Phase 3.2: toggle_playback, step_forward, reset_game, set_playback_speed moved to ReplayController
 
@@ -668,42 +746,44 @@ class MainWindow:
             self.bot_executor.queue_execution(tick)
 
         # Live-mode safety: never block BUY/SELL/SIDEBET if live bridge or live_mode is on
-        live_override = self.live_mode or (self.browser_bridge and self.browser_bridge.is_connected())
+        live_override = self.live_mode or (
+            self.browser_bridge and self.browser_bridge.is_connected()
+        )
 
         # Update button states based on phase (only when bot disabled and not overridden)
         if not self.bot_enabled and not live_override:
             if tick.is_tradeable():
                 self.buy_button.config(state=tk.NORMAL)
-                if not self.state.get('sidebet'):
+                if not self.state.get("sidebet"):
                     self.sidebet_button.config(state=tk.NORMAL)
             else:
                 self.buy_button.config(state=tk.DISABLED)
                 self.sidebet_button.config(state=tk.DISABLED)
 
             # Check position status and display P&L
-            position = self.state.get('position')
-            if position and position.get('status') == 'active':
+            position = self.state.get("position")
+            if position and position.get("status") == "active":
                 self.sell_button.config(state=tk.NORMAL)
 
                 # Calculate P&L in both percentage and SOL
-                entry_price = position['entry_price']
-                amount = position['amount']
+                entry_price = position["entry_price"]
+                amount = position["amount"]
                 pnl_pct = ((tick.price / entry_price) - 1) * 100
                 pnl_sol = amount * (tick.price - entry_price)
 
                 self.position_label.config(
                     text=f"POS: {pnl_sol:+.4f} SOL ({pnl_pct:+.1f}%)",
-                    fg='#00ff88' if pnl_sol > 0 else '#ff3366'
+                    fg="#00ff88" if pnl_sol > 0 else "#ff3366",
                 )
             else:
                 self.sell_button.config(state=tk.DISABLED)
-                self.position_label.config(text="POSITION: NONE", fg='#666666')
+                self.position_label.config(text="POSITION: NONE", fg="#666666")
         else:
             # Keep position display updated even when bot is active or live override is enabled
-            position = self.state.get('position')
-            if position and position.get('status') == 'active':
-                entry_price = position['entry_price']
-                amount = position['amount']
+            position = self.state.get("position")
+            if position and position.get("status") == "active":
+                entry_price = position["entry_price"]
+                amount = position["amount"]
                 pnl_pct = ((tick.price / entry_price) - 1) * 100
                 pnl_sol = amount * (tick.price - entry_price)
 
@@ -714,7 +794,7 @@ class MainWindow:
 
                 self.position_label.config(
                     text=f"POS: {pnl_sol:+.4f} SOL ({pnl_pct:+.1f}%)",
-                    fg='#00ff88' if pnl_sol > 0 else '#ff3366'
+                    fg="#00ff88" if pnl_sol > 0 else "#ff3366",
                 )
             else:
                 # In live override, enable ALL buttons for manual control
@@ -725,24 +805,23 @@ class MainWindow:
                     self.sell_button.config(state=tk.NORMAL)
                 else:
                     self.sell_button.config(state=tk.DISABLED)
-                self.position_label.config(text="POSITION: NONE", fg='#666666')
+                self.position_label.config(text="POSITION: NONE", fg="#666666")
 
         # Update sidebet countdown
-        sidebet = self.state.get('sidebet')
-        if sidebet and sidebet.get('status') == 'active':
-            placed_tick = sidebet.get('placed_tick', 0)
-            resolution_window = self.config.GAME_RULES.get('sidebet_window_ticks', 40)
+        sidebet = self.state.get("sidebet")
+        if sidebet and sidebet.get("status") == "active":
+            placed_tick = sidebet.get("placed_tick", 0)
+            resolution_window = self.config.GAME_RULES.get("sidebet_window_ticks", 40)
             ticks_remaining = (placed_tick + resolution_window) - tick.tick
 
             if ticks_remaining > 0:
                 self.sidebet_status_label.config(
-                    text=f"SIDEBET: {ticks_remaining} ticks",
-                    fg='#ffcc00'
+                    text=f"SIDEBET: {ticks_remaining} ticks", fg="#ffcc00"
                 )
             else:
-                self.sidebet_status_label.config(text="SIDEBET: RESOLVING", fg='#ff9900')
+                self.sidebet_status_label.config(text="SIDEBET: RESOLVING", fg="#ff9900")
         else:
-            self.sidebet_status_label.config(text="SIDEBET: NONE", fg='#666666')
+            self.sidebet_status_label.config(text="SIDEBET: NONE", fg="#666666")
 
     def _on_game_end(self, metrics: dict):
         """Callback for game end - AUDIT FIX Phase 2.6: Thread-safe UI updates"""
@@ -751,18 +830,20 @@ class MainWindow:
         def _update_ui():
             """Execute UI updates on main thread"""
             # Check bankruptcy and reset for continuous testing
-            if self.state.get('balance') < Decimal('0.001'):
+            if self.state.get("balance") < Decimal("0.001"):
                 logger.warning("BANKRUPT - Resetting balance to initial")
-                self.state.update(balance=self.state.get('initial_balance'))
+                self.state.update(balance=self.state.get("initial_balance"))
                 self.log("⚠️ Balance reset to initial (bankruptcy)")
 
             # Multi-game auto-advance (if enabled programmatically)
             if self.multi_game_mode and self.game_queue.has_next():
                 next_file = self.game_queue.next_game()
                 logger.info(f"Auto-loading next game: {next_file.name}")
-                self.log(f"Auto-loading game {self.game_queue.current_index}/{len(self.game_queue)}")
+                self.log(
+                    f"Auto-loading game {self.game_queue.current_index}/{len(self.game_queue)}"
+                )
                 # Instant advance - NO DELAY
-                if hasattr(self, 'replay_controller'):
+                if hasattr(self, "replay_controller"):
                     self.replay_controller.load_next_game(next_file)
                 if not self.user_paused:
                     self.replay_engine.play()
@@ -774,8 +855,8 @@ class MainWindow:
                 if self.bot_enabled:
                     self.bot_executor.stop()
                     self.bot_enabled = False
-                    self.bot_toggle_button.config(text="🤖 Enable Bot", bg='#666666')
-                    self.bot_status_label.config(text="Bot: Disabled", fg='#666666')
+                    self.bot_toggle_button.config(text="🤖 Enable Bot", bg="#666666")
+                    self.bot_status_label.config(text="Bot: Disabled", fg="#666666")
 
                     # Bug 4 Fix: Sync menu checkbox when auto-shutdown occurs
                     self.bot_var.set(False)
@@ -794,36 +875,36 @@ class MainWindow:
     def _handle_game_tick(self, event):
         """Handle game tick event"""
         # Phase 10.5: Forward tick to recording controller
-        if hasattr(self, 'recording_controller') and self.recording_controller.is_active:
-            data = event.get('data', {})
-            game_tick = data.get('tick')  # This is a GameTick object
+        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
+            data = event.get("data", {})
+            game_tick = data.get("tick")  # This is a GameTick object
             # Extract tick number and price from GameTick object
-            if game_tick and hasattr(game_tick, 'tick') and hasattr(game_tick, 'price'):
+            if game_tick and hasattr(game_tick, "tick") and hasattr(game_tick, "price"):
                 self.recording_controller.on_tick(game_tick.tick, game_tick.price)
-    
+
     def _handle_trade_executed(self, event):
         """Handle successful trade"""
         self.log(f"Trade executed: {event.get('data')}")
-    
+
     def _handle_trade_failed(self, event):
         """Handle failed trade"""
         self.log(f"Trade failed: {event.get('data')}")
 
     def _handle_game_start_for_recording(self, event):
         """Handle game start event for recording - Phase 10.5"""
-        if hasattr(self, 'recording_controller') and self.recording_controller.is_active:
-            data = event.get('data', {})
-            game_id = data.get('game_id', 'unknown')
+        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
+            data = event.get("data", {})
+            game_id = data.get("game_id", "unknown")
             logger.debug(f"Recording: Game started - {game_id}")
             self.recording_controller.on_game_start(game_id)
 
     def _handle_game_end_for_recording(self, event):
         """Handle game end event for recording - Phase 10.5"""
-        if hasattr(self, 'recording_controller') and self.recording_controller.is_active:
-            data = event.get('data', {})
-            game_id = data.get('game_id', 'unknown')
-            seed_data = data.get('seed_data')
-            clean = data.get('clean', True)
+        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
+            data = event.get("data", {})
+            game_id = data.get("game_id", "unknown")
+            seed_data = data.get("seed_data")
+            clean = data.get("clean", True)
             # Let the recorder calculate prices/peak from collected ticks
             # Event may not contain all data, but recorder has it internally
             logger.debug(f"Recording: Game ended - {game_id}")
@@ -831,16 +912,16 @@ class MainWindow:
 
     def _handle_file_loaded(self, event):
         """Handle file loaded event"""
-        files = event.get('data', {}).get('files', [])
+        files = event.get("data", {}).get("files", [])
         if files:
             self.log(f"Found {len(files)} game files")
             # Auto-load first file
-            if hasattr(self, 'replay_controller'):
+            if hasattr(self, "replay_controller"):
                 self.replay_controller.load_game_file(files[0])
-    
+
     def _handle_balance_changed(self, data):
         """Handle balance change (thread-safe via TkDispatcher)"""
-        new_balance = data.get('new')
+        new_balance = data.get("new")
         if new_balance is not None:
             # Track P&L balance for later re-lock decision
             self.tracked_balance = new_balance
@@ -848,7 +929,9 @@ class MainWindow:
             # Phase 11: Skip UI update when authenticated - server state is truth
             # Server updates come via _handle_player_update() with green indicator
             if self.server_authenticated:
-                logger.debug(f"Skipping local balance UI update (server authenticated): {new_balance}")
+                logger.debug(
+                    f"Skipping local balance UI update (server authenticated): {new_balance}"
+                )
                 return
 
             # Marshal to UI thread via TkDispatcher (only update label when locked)
@@ -868,9 +951,9 @@ class MainWindow:
         This event fires once on connection when user is logged in with wallet.
         Updates the profile label to show authenticated username.
         """
-        data = event.get('data', {})
-        username = data.get('username')
-        player_id = data.get('player_id')
+        data = event.get("data", {})
+        username = data.get("username")
+        player_id = data.get("player_id")
 
         if username:
             self.server_username = username
@@ -881,7 +964,7 @@ class MainWindow:
             def update_profile_ui():
                 self.player_profile_label.config(
                     text=f"👤 {username}",
-                    fg='#00ff88'  # Green = authenticated
+                    fg="#00ff88",  # Green = authenticated
                 )
                 logger.info(f"Player authenticated: {username}")
 
@@ -894,12 +977,12 @@ class MainWindow:
         This event fires after server-side trades with the TRUE wallet state.
         Reconciles local GameState with server truth (Phase 11).
         """
-        data = event.get('data', {})
-        server_state = data.get('server_state')
+        data = event.get("data", {})
+        server_state = data.get("server_state")
 
         if server_state:
             # Extract server balance for UI
-            cash = getattr(server_state, 'cash', None)
+            cash = getattr(server_state, "cash", None)
             if cash is not None:
                 self.server_balance = Decimal(str(cash))
 
@@ -912,7 +995,7 @@ class MainWindow:
                 def update_wallet_ui():
                     self.balance_label.config(
                         text=f"WALLET: {self.server_balance:.4f} SOL",
-                        fg='#00ff88'  # Green = server-verified
+                        fg="#00ff88",  # Green = server-verified
                     )
                     logger.debug(f"Server balance updated: {self.server_balance}")
 
@@ -929,9 +1012,9 @@ class MainWindow:
         def reset_profile_ui():
             self.player_profile_label.config(
                 text="👤 Not Authenticated",
-                fg='#666666'  # Gray = not authenticated
+                fg="#666666",  # Gray = not authenticated
             )
-            self.balance_label.config(fg='#ffcc00')  # Yellow = local tracking
+            self.balance_label.config(fg="#ffcc00")  # Yellow = local tracking
 
         self.ui_dispatcher.submit(reset_profile_ui)
 
@@ -956,16 +1039,16 @@ class MainWindow:
             # Prompt unlock
             BalanceUnlockDialog(
                 parent=self.root,
-                current_balance=self.state.get('balance'),
-                on_confirm=self._unlock_balance
+                current_balance=self.state.get("balance"),
+                on_confirm=self._unlock_balance,
             )
         else:
             # Prompt relock choice (manual vs tracked)
             BalanceRelockDialog(
                 parent=self.root,
-                manual_balance=self.state.get('balance'),
+                manual_balance=self.state.get("balance"),
                 tracked_balance=self.tracked_balance,
-                on_choice=self._relock_balance
+                on_choice=self._relock_balance,
             )
 
     def _unlock_balance(self):
@@ -974,7 +1057,7 @@ class MainWindow:
         self.balance_lock_button.config(text="🔓")
         self._start_balance_edit()
 
-    def _relock_balance(self, choice: str, new_balance: Optional[Decimal] = None):
+    def _relock_balance(self, choice: str, new_balance: Decimal | None = None):
         """Re-lock balance, applying user's chosen balance.
 
         When user sets a custom balance, this becomes the NEW BASELINE for P&L tracking.
@@ -984,28 +1067,27 @@ class MainWindow:
             choice: 'custom' (user entered value) or 'keep_manual' (canceled)
             new_balance: The balance value to set (required for 'custom')
         """
-        if choice == 'custom' and new_balance is not None:
+        if choice == "custom" and new_balance is not None:
             # User entered a specific balance - apply it
-            current = self.state.get('balance')
+            current = self.state.get("balance")
             delta = new_balance - current
-            if delta != Decimal('0'):
+            if delta != Decimal("0"):
                 self.state.update_balance(delta, f"Manual balance set to {new_balance:.4f} SOL")
 
             # CRITICAL: Update the baseline for P&L tracking
             # This resets initial_balance, total_pnl, and peak_balance
             self.state.set_baseline_balance(
-                new_balance,
-                reason=f"User set balance to {new_balance:.4f} SOL"
+                new_balance, reason=f"User set balance to {new_balance:.4f} SOL"
             )
 
             # Update tracked balance to match the new baseline
             self.tracked_balance = new_balance
             logger.info(f"Balance baseline set to {new_balance:.4f} SOL (P&L tracking reset)")
 
-        elif choice == 'revert_to_pnl':
+        elif choice == "revert_to_pnl":
             # Legacy: Bring balance back to tracked P&L
-            delta = self.tracked_balance - self.state.get('balance')
-            if delta != Decimal('0'):
+            delta = self.tracked_balance - self.state.get("balance")
+            if delta != Decimal("0"):
                 self.state.update_balance(delta, "Relock to P&L balance")
 
         # If keep_manual, current state balance remains and P&L resumes from there
@@ -1023,15 +1105,15 @@ class MainWindow:
         # Create inline editor
         self.balance_edit_entry = BalanceEditEntry(
             parent=self.balance_label.master,
-            current_balance=self.state.get('balance'),
+            current_balance=self.state.get("balance"),
             on_save=self._apply_manual_balance,
-            on_cancel=self._cancel_balance_edit
+            on_cancel=self._cancel_balance_edit,
         )
         self.balance_edit_entry.pack(side=tk.RIGHT, padx=4)
 
     def _apply_manual_balance(self, new_balance: Decimal):
         """Apply user-entered manual balance and keep unlocked."""
-        current = self.state.get('balance')
+        current = self.state.get("balance")
         delta = new_balance - current
         if delta != 0:
             self.state.update_balance(delta, "Manual balance override")
@@ -1043,42 +1125,42 @@ class MainWindow:
 
     def _cancel_balance_edit(self):
         """Cancel manual edit and restore label."""
-        if hasattr(self, 'balance_edit_entry'):
+        if hasattr(self, "balance_edit_entry"):
             self.balance_edit_entry.destroy()
         self.balance_label.pack(side=tk.RIGHT, padx=4)
-    
+
     def _handle_position_opened(self, data):
         """Handle position opened (thread-safe via TkDispatcher)"""
-        entry_price = data.get('entry_price', 0)
+        entry_price = data.get("entry_price", 0)
         # Marshal to UI thread via TkDispatcher
-        self.ui_dispatcher.submit(
-            lambda: self.log(f"Position opened at {entry_price:.4f}")
-        )
-    
+        self.ui_dispatcher.submit(lambda: self.log(f"Position opened at {entry_price:.4f}"))
+
     def _handle_position_closed(self, data):
         """Handle position closed (thread-safe via TkDispatcher)"""
-        pnl = data.get('pnl_sol', 0)
+        pnl = data.get("pnl_sol", 0)
         # Marshal to UI thread via TkDispatcher
-        self.ui_dispatcher.submit(
-            lambda: self.log(f"Position closed - P&L: {pnl:+.4f} SOL")
-        )
+        self.ui_dispatcher.submit(lambda: self.log(f"Position closed - P&L: {pnl:+.4f} SOL"))
 
     def _handle_sell_percentage_changed(self, data):
         """Handle sell percentage changed (Phase 8.2, thread-safe via TkDispatcher)"""
-        new_percentage = data.get('new', 1.0)
+        new_percentage = data.get("new", 1.0)
         # Marshal to UI thread - update button highlighting
         self.ui_dispatcher.submit(
-            lambda: self.trading_controller.highlight_percentage_button(float(new_percentage)) if hasattr(self, 'trading_controller') else None
+            lambda: self.trading_controller.highlight_percentage_button(float(new_percentage))
+            if hasattr(self, "trading_controller")
+            else None
         )
 
     def _handle_position_reduced(self, data):
         """Handle partial position close (Phase 8.2, thread-safe via TkDispatcher)"""
-        percentage = data.get('percentage', 0)
-        pnl = data.get('pnl_sol', 0)
-        remaining = data.get('remaining_amount', 0)
+        percentage = data.get("percentage", 0)
+        pnl = data.get("pnl_sol", 0)
+        remaining = data.get("remaining_amount", 0)
         # Marshal to UI thread
         self.ui_dispatcher.submit(
-            lambda: self.log(f"Position reduced ({percentage*100:.0f}%) - P&L: {pnl:+.4f} SOL, Remaining: {remaining:.4f} SOL")
+            lambda: self.log(
+                f"Position reduced ({percentage * 100:.0f}%) - P&L: {pnl:+.4f} SOL, Remaining: {remaining:.4f} SOL"
+            )
         )
 
     # Phase 3.1: _check_bot_results moved to BotManager
@@ -1095,21 +1177,76 @@ class MainWindow:
 
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for common actions"""
-        self.root.bind('<space>', lambda e: self.replay_controller.toggle_playback() if hasattr(self, 'replay_controller') else None)
-        self.root.bind('b', lambda e: self.trading_controller.execute_buy() if self.buy_button['state'] != tk.DISABLED else None)
-        self.root.bind('B', lambda e: self.trading_controller.execute_buy() if self.buy_button['state'] != tk.DISABLED else None)
-        self.root.bind('s', lambda e: self.trading_controller.execute_sell() if self.sell_button['state'] != tk.DISABLED else None)
-        self.root.bind('S', lambda e: self.trading_controller.execute_sell() if self.sell_button['state'] != tk.DISABLED else None)
-        self.root.bind('d', lambda e: self.trading_controller.execute_sidebet() if self.sidebet_button['state'] != tk.DISABLED else None)
-        self.root.bind('D', lambda e: self.trading_controller.execute_sidebet() if self.sidebet_button['state'] != tk.DISABLED else None)
-        self.root.bind('r', lambda e: self.replay_controller.reset_game() if hasattr(self, 'replay_controller') else None)
-        self.root.bind('R', lambda e: self.replay_controller.reset_game() if hasattr(self, 'replay_controller') else None)
-        self.root.bind('<Left>', lambda e: self.replay_controller.step_backward() if hasattr(self, 'replay_controller') else None)
-        self.root.bind('<Right>', lambda e: self.replay_controller.step_forward() if hasattr(self, 'replay_controller') else None)
-        self.root.bind('<h>', lambda e: self.show_help())
-        self.root.bind('<H>', lambda e: self.show_help())
-        self.root.bind('l', lambda e: self.live_feed_controller.toggle_live_feed())
-        self.root.bind('L', lambda e: self.live_feed_controller.toggle_live_feed())
+        self.root.bind(
+            "<space>",
+            lambda e: self.replay_controller.toggle_playback()
+            if hasattr(self, "replay_controller")
+            else None,
+        )
+        self.root.bind(
+            "b",
+            lambda e: self.trading_controller.execute_buy()
+            if self.buy_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "B",
+            lambda e: self.trading_controller.execute_buy()
+            if self.buy_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "s",
+            lambda e: self.trading_controller.execute_sell()
+            if self.sell_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "S",
+            lambda e: self.trading_controller.execute_sell()
+            if self.sell_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "d",
+            lambda e: self.trading_controller.execute_sidebet()
+            if self.sidebet_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "D",
+            lambda e: self.trading_controller.execute_sidebet()
+            if self.sidebet_button["state"] != tk.DISABLED
+            else None,
+        )
+        self.root.bind(
+            "r",
+            lambda e: self.replay_controller.reset_game()
+            if hasattr(self, "replay_controller")
+            else None,
+        )
+        self.root.bind(
+            "R",
+            lambda e: self.replay_controller.reset_game()
+            if hasattr(self, "replay_controller")
+            else None,
+        )
+        self.root.bind(
+            "<Left>",
+            lambda e: self.replay_controller.step_backward()
+            if hasattr(self, "replay_controller")
+            else None,
+        )
+        self.root.bind(
+            "<Right>",
+            lambda e: self.replay_controller.step_forward()
+            if hasattr(self, "replay_controller")
+            else None,
+        )
+        self.root.bind("<h>", lambda e: self.show_help())
+        self.root.bind("<H>", lambda e: self.show_help())
+        self.root.bind("l", lambda e: self.live_feed_controller.toggle_live_feed())
+        self.root.bind("L", lambda e: self.live_feed_controller.toggle_live_feed())
 
         logger.info("Keyboard shortcuts configured (added 'L' for live feed)")
 
@@ -1156,7 +1293,6 @@ GAME RULES:
 
     # Phase 3.1: _show_timing_metrics moved to BotManager
 
-
     # Phase 3.1: _update_timing_metrics_display moved to BotManager
 
     # Phase 3.1: _update_timing_metrics_loop moved to BotManager
@@ -1175,7 +1311,7 @@ GAME RULES:
 
             # Get the style from the root window
             # Since root is now ttk.Window, we can use its style
-            if hasattr(self.root, 'style'):
+            if hasattr(self.root, "style"):
                 style = self.root.style
             else:
                 # Fallback: create style object
@@ -1185,7 +1321,7 @@ GAME RULES:
             style.theme_use(theme_name)
 
             # Phase 5: Update chart colors to match new theme
-            if hasattr(self, 'chart'):
+            if hasattr(self, "chart"):
                 self.chart.update_theme_colors()
 
             # Save preference
@@ -1194,37 +1330,33 @@ GAME RULES:
             logger.info(f"Theme changed to: {theme_name}")
 
             # Show toast notification
-            if hasattr(self, 'toast_notification'):
+            if hasattr(self, "toast_notification"):
                 self.toast_notification.show(
-                    f"Theme changed to: {theme_name.title()}",
-                    duration=2000
+                    f"Theme changed to: {theme_name.title()}", duration=2000
                 )
         except Exception as e:
             logger.error(f"Failed to change theme to {theme_name}: {e}")
-            messagebox.showerror(
-                "Theme Error",
-                f"Failed to change theme:\n{str(e)}"
-            )
+            messagebox.showerror("Theme Error", f"Failed to change theme:\n{e!s}")
 
     def _save_theme_preference(self, theme_name: str):
         """Save theme preference to config file"""
         try:
-            config_dir = Path.home() / '.config' / 'replayer'
+            config_dir = Path.home() / ".config" / "replayer"
             config_dir.mkdir(parents=True, exist_ok=True)
 
-            config_file = config_dir / 'ui_config.json'
+            config_file = config_dir / "ui_config.json"
 
             # Load existing config or create new
             config_data = {}
             if config_file.exists():
-                with open(config_file, 'r') as f:
+                with open(config_file) as f:
                     config_data = json.load(f)
 
             # Update theme
-            config_data['theme'] = theme_name
+            config_data["theme"] = theme_name
 
             # Save config
-            with open(config_file, 'w') as f:
+            with open(config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
 
             logger.debug(f"Saved theme preference: {theme_name}")
@@ -1235,52 +1367,52 @@ GAME RULES:
     def load_theme_preference() -> str:
         """Load saved theme preference, default to 'cyborg'"""
         try:
-            config_file = Path.home() / '.config' / 'replayer' / 'ui_config.json'
+            config_file = Path.home() / ".config" / "replayer" / "ui_config.json"
 
             if config_file.exists():
-                with open(config_file, 'r') as f:
+                with open(config_file) as f:
                     config_data = json.load(f)
-                    theme = config_data.get('theme', 'cyborg')
+                    theme = config_data.get("theme", "cyborg")
                     logger.debug(f"Loaded theme preference: {theme}")
                     return theme
         except Exception as e:
             logger.debug(f"Could not load theme preference: {e}")
 
         # Default theme
-        return 'cyborg'
+        return "cyborg"
 
     @staticmethod
     def load_ui_style_preference() -> str:
         """Load saved UI style preference, default to 'standard'"""
         try:
-            config_file = Path.home() / '.config' / 'replayer' / 'ui_config.json'
+            config_file = Path.home() / ".config" / "replayer" / "ui_config.json"
 
             if config_file.exists():
-                with open(config_file, 'r') as f:
+                with open(config_file) as f:
                     config_data = json.load(f)
-                    style = config_data.get('ui_style', 'standard')
+                    style = config_data.get("ui_style", "standard")
                     logger.debug(f"Loaded UI style preference: {style}")
                     return style
         except Exception as e:
             logger.debug(f"Could not load UI style preference: {e}")
 
-        return 'standard'
+        return "standard"
 
     def _set_ui_style(self, style: str):
         """Set UI style and auto-restart the application"""
         try:
-            config_dir = Path.home() / '.config' / 'replayer'
+            config_dir = Path.home() / ".config" / "replayer"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / 'ui_config.json'
+            config_file = config_dir / "ui_config.json"
 
             config_data = {}
             if config_file.exists():
-                with open(config_file, 'r') as f:
+                with open(config_file) as f:
                     config_data = json.load(f)
 
-            config_data['ui_style'] = style
+            config_data["ui_style"] = style
 
-            with open(config_file, 'w') as f:
+            with open(config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
 
             logger.info(f"Saved UI style preference: {style}")
@@ -1288,7 +1420,7 @@ GAME RULES:
             # Ask user to confirm restart
             result = messagebox.askyesno(
                 "Restart Application",
-                f"UI style changed to '{style}'.\n\nRestart now to apply changes?"
+                f"UI style changed to '{style}'.\n\nRestart now to apply changes?",
             )
 
             if result:
@@ -1300,8 +1432,8 @@ GAME RULES:
 
     def _restart_application(self):
         """Restart the application"""
-        import sys
         import os
+        import sys
 
         logger.info("Restarting application...")
 
@@ -1314,7 +1446,7 @@ GAME RULES:
         args = [python, script] + sys.argv[1:]
 
         # Remove --modern flag if present (let it load from preference)
-        args = [a for a in args if a != '--modern']
+        args = [a for a in args if a != "--modern"]
 
         logger.info(f"Restart command: {' '.join(args)}")
         logger.info(f"Working directory: {script_dir}")
@@ -1382,7 +1514,7 @@ Keyboard Shortcuts: Press 'H' for help
         try:
             session_id = self.demo_recorder.start_session()
             self.log(f"Demo session started: {session_id}")
-            self.toast.show(f"Demo session started", "success")
+            self.toast.show("Demo session started", "success")
             logger.info(f"Demo recording session started: {session_id}")
         except Exception as e:
             logger.error(f"Failed to start demo session: {e}")
@@ -1402,10 +1534,11 @@ Keyboard Shortcuts: Press 'H' for help
     def _start_demo_game(self):
         """Start recording a new game in the demo session."""
         # Use current game ID from state, or prompt user
-        game_id = self.state.get('game_id')
+        game_id = self.state.get("game_id")
         if not game_id:
             # Generate a placeholder game ID
             import time
+
             game_id = f"game_{int(time.time())}"
 
         try:
@@ -1434,13 +1567,13 @@ Keyboard Shortcuts: Press 'H' for help
             status = self.demo_recorder.get_status()
             status_text = f"""Demo Recording Status
 
-Session Active: {'Yes' if status['session_active'] else 'No'}
-Session ID: {status.get('session_id', 'N/A')}
-Session Start: {status.get('session_start', 'N/A')}
+Session Active: {"Yes" if status["session_active"] else "No"}
+Session ID: {status.get("session_id", "N/A")}
+Session Start: {status.get("session_start", "N/A")}
 
-Game Active: {'Yes' if status['game_active'] else 'No'}
-Game ID: {status.get('game_id', 'N/A')}
-Actions Recorded: {status.get('action_count', 0)}
+Game Active: {"Yes" if status["game_active"] else "No"}
+Game ID: {status.get("game_id", "N/A")}
+Actions Recorded: {status.get("action_count", 0)}
 
 Output Directory: {self.demo_recorder.base_dir}
 """
@@ -1456,7 +1589,7 @@ Output Directory: {self.demo_recorder.base_dir}
     def _show_recording_config(self):
         """Show the recording configuration dialog."""
         try:
-            if hasattr(self, 'recording_controller'):
+            if hasattr(self, "recording_controller"):
                 self.recording_controller.show_config_dialog()
             else:
                 logger.error("RecordingController not initialized")
@@ -1468,7 +1601,7 @@ Output Directory: {self.demo_recorder.base_dir}
     def _stop_recording_session(self):
         """Stop the current recording session."""
         try:
-            if hasattr(self, 'recording_controller'):
+            if hasattr(self, "recording_controller"):
                 if self.recording_controller.is_active:
                     self.recording_controller.stop_session()
                 else:
@@ -1482,16 +1615,16 @@ Output Directory: {self.demo_recorder.base_dir}
     def _show_recording_status(self):
         """Show current recording status in a dialog."""
         try:
-            if hasattr(self, 'recording_controller'):
+            if hasattr(self, "recording_controller"):
                 status = self.recording_controller.get_status()
                 status_text = f"""Recording Status
 
-State: {status.get('state', 'unknown').upper()}
-Games Recorded: {status.get('games_recorded', 0)}
-Capture Mode: {status.get('capture_mode', 'unknown')}
-Game Limit: {status.get('game_limit', 'infinite') or 'infinite'}
-Data Feed Healthy: {'Yes' if status.get('is_healthy', True) else 'No (Monitor Mode)'}
-Current Game: {status.get('current_game_id', 'None') or 'None'}
+State: {status.get("state", "unknown").upper()}
+Games Recorded: {status.get("games_recorded", 0)}
+Capture Mode: {status.get("capture_mode", "unknown")}
+Game Limit: {status.get("game_limit", "infinite") or "infinite"}
+Data Feed Healthy: {"Yes" if status.get("is_healthy", True) else "No (Monitor Mode)"}
+Current Game: {status.get("current_game_id", "None") or "None"}
 
 Recordings Directory: {self.recording_controller.recordings_path}
 """
@@ -1505,7 +1638,7 @@ Recordings Directory: {self.recording_controller.recordings_path}
     def _toggle_recording_from_button(self):
         """Toggle recording on/off from the status bar button."""
         try:
-            if not hasattr(self, 'recording_controller'):
+            if not hasattr(self, "recording_controller"):
                 logger.warning("RecordingController not initialized yet")
                 return
 
@@ -1524,20 +1657,20 @@ Recordings Directory: {self.recording_controller.recordings_path}
 
     def _update_recording_toggle_ui(self, is_recording: bool):
         """Update the recording toggle button appearance."""
-        if not hasattr(self, 'recording_toggle'):
+        if not hasattr(self, "recording_toggle"):
             return
 
         if is_recording:
             self.recording_toggle.config(
-                text="\u23FA REC ON",  # ⏺ REC ON
-                bg='#cc0000',
-                fg='white'
+                text="\u23fa REC ON",  # ⏺ REC ON
+                bg="#cc0000",
+                fg="white",
             )
         else:
             self.recording_toggle.config(
-                text="\u23FA REC OFF",  # ⏺ REC OFF
-                bg='#333333',
-                fg='#888888'
+                text="\u23fa REC OFF",  # ⏺ REC OFF
+                bg="#333333",
+                fg="#888888",
             )
 
     # ========================================================================
@@ -1565,23 +1698,21 @@ Recordings Directory: {self.recording_controller.recordings_path}
 
     def _on_raw_capture_started(self, capture_file):
         """Callback when raw capture starts."""
+
         def update_ui():
-            self.dev_menu.entryconfig(
-                self.dev_capture_item_index,
-                label="⏺ Stop Raw Capture"
-            )
+            self.dev_menu.entryconfig(self.dev_capture_item_index, label="⏺ Stop Raw Capture")
             self.toast.show(f"Capturing to: {capture_file.name}", "success")
+
         self.ui_dispatcher.submit(update_ui)
 
     def _on_raw_capture_stopped(self, capture_file, event_counts):
         """Callback when raw capture stops."""
+
         def update_ui():
-            self.dev_menu.entryconfig(
-                self.dev_capture_item_index,
-                label="Start Raw Capture"
-            )
+            self.dev_menu.entryconfig(self.dev_capture_item_index, label="Start Raw Capture")
             total = sum(event_counts.values())
             self.toast.show(f"Capture complete: {total} events", "info")
+
         self.ui_dispatcher.submit(update_ui)
 
     def _on_raw_event_captured(self, event_name, seq_num):
@@ -1593,6 +1724,7 @@ Recordings Directory: {self.recording_controller.recordings_path}
     def _analyze_last_capture(self):
         """Analyze the most recent capture file."""
         import subprocess
+
         try:
             capture_file = self.raw_capture_recorder.get_last_capture_file()
             if not capture_file:
@@ -1600,17 +1732,17 @@ Recordings Directory: {self.recording_controller.recordings_path}
                 return
 
             # Run analysis script
-            script_path = Path(__file__).parent.parent.parent / 'scripts' / 'analyze_raw_capture.py'
+            script_path = Path(__file__).parent.parent.parent / "scripts" / "analyze_raw_capture.py"
             if not script_path.exists():
                 self.toast.show("Analysis script not found", "error")
                 return
 
             # Run with --report flag to generate summary
             result = subprocess.run(
-                ['python3', str(script_path), str(capture_file), '--report'],
+                ["python3", str(script_path), str(capture_file), "--report"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
 
             if result.returncode == 0:
@@ -1628,12 +1760,13 @@ Recordings Directory: {self.recording_controller.recordings_path}
     def _open_captures_folder(self):
         """Open the raw captures folder in file manager."""
         import subprocess
+
         try:
             captures_dir = self.raw_capture_recorder.capture_dir
             captures_dir.mkdir(parents=True, exist_ok=True)
 
             # Open folder (Linux)
-            subprocess.Popen(['xdg-open', str(captures_dir)])
+            subprocess.Popen(["xdg-open", str(captures_dir)])
             self.toast.show(f"Opened: {captures_dir}", "info")
         except Exception as e:
             logger.error(f"Failed to open captures folder: {e}")
@@ -1646,19 +1779,22 @@ Recordings Directory: {self.recording_controller.recordings_path}
 
             # Build event counts display
             event_counts_str = "None"
-            if status['event_counts']:
-                lines = [f"  {k}: {v}" for k, v in sorted(status['event_counts'].items(), key=lambda x: -x[1])]
+            if status["event_counts"]:
+                lines = [
+                    f"  {k}: {v}"
+                    for k, v in sorted(status["event_counts"].items(), key=lambda x: -x[1])
+                ]
                 event_counts_str = "\n".join(lines[:10])  # Top 10
-                if len(status['event_counts']) > 10:
+                if len(status["event_counts"]) > 10:
                     event_counts_str += f"\n  ... and {len(status['event_counts']) - 10} more"
 
             status_text = f"""Raw Capture Status
 
-Capturing: {'Yes' if status['is_capturing'] else 'No'}
-Connected: {'Yes' if status['connected'] else 'No'}
-Total Events: {status['total_events']}
+Capturing: {"Yes" if status["is_capturing"] else "No"}
+Connected: {"Yes" if status["connected"] else "No"}
+Total Events: {status["total_events"]}
 
-Current File: {status['capture_file'] or 'None'}
+Current File: {status["capture_file"] or "None"}
 
 Event Counts (Top 10):
 {event_counts_str}
@@ -1672,14 +1808,20 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
 
     def _open_debug_terminal(self):
         """Open WebSocket debug terminal window."""
-        from ui.debug_terminal import DebugTerminal
         from services.event_bus import Events, event_bus
+        from ui.debug_terminal import DebugTerminal
 
-        if not hasattr(self, '_debug_terminal') or self._debug_terminal is None:
+        if not hasattr(self, "_debug_terminal") or self._debug_terminal is None:
+
             def on_close():
                 try:
-                    if hasattr(self, '_debug_terminal_event_handler') and self._debug_terminal_event_handler:
-                        event_bus.unsubscribe(Events.WS_RAW_EVENT, self._debug_terminal_event_handler)
+                    if (
+                        hasattr(self, "_debug_terminal_event_handler")
+                        and self._debug_terminal_event_handler
+                    ):
+                        event_bus.unsubscribe(
+                            Events.WS_RAW_EVENT, self._debug_terminal_event_handler
+                        )
                 finally:
                     self._debug_terminal_event_handler = None
                     self._debug_terminal = None
@@ -1687,26 +1829,31 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             self._debug_terminal = DebugTerminal(self.root, on_close=on_close)
 
             def handle_ws_raw_event(e):
-                payload = e.get('data', {}) if isinstance(e, dict) else {}
-                self.ui_dispatcher.submit(lambda: self._debug_terminal.log_event(payload) if self._debug_terminal else None)
+                payload = e.get("data", {}) if isinstance(e, dict) else {}
+                self.ui_dispatcher.submit(
+                    lambda: self._debug_terminal.log_event(payload)
+                    if self._debug_terminal
+                    else None
+                )
 
             self._debug_terminal_event_handler = handle_ws_raw_event
             event_bus.subscribe(Events.WS_RAW_EVENT, self._debug_terminal_event_handler)
         else:
             self._debug_terminal.show()
+
     def _update_source_indicator(self, source):
         """Update event source indicator."""
         from services.event_source_manager import EventSource
 
         if source == EventSource.CDP:
             text = "🟢 CDP: Authenticated"  # 🟢
-            color = '#00ff88'
+            color = "#00ff88"
         elif source == EventSource.FALLBACK:
             text = "🟡 Fallback: Public"  # 🟡
-            color = '#ffcc00'
+            color = "#ffcc00"
         else:
             text = "🔴 No Source"  # 🔴
-            color = '#ff4444'
+            color = "#ff4444"
 
         def update():
             self.source_label.config(text=text, foreground=color)
@@ -1721,6 +1868,7 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             try:
                 logger.info("Shutting down browser...")
                 import asyncio
+
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(self.browser_executor.stop_browser())

@@ -29,14 +29,14 @@ Usage:
 """
 
 import asyncio
-import subprocess
-import socket
 import logging
-from pathlib import Path
-from typing import Optional
+import socket
+import subprocess
 from enum import Enum
+from pathlib import Path
 
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 class CDPStatus(Enum):
     """CDP Browser Manager status states"""
+
     DISCONNECTED = "disconnected"
     LAUNCHING_CHROME = "launching_chrome"
     CONNECTING = "connecting"
@@ -90,24 +91,24 @@ class CDPBrowserManager:
             cdp_port: Port for Chrome DevTools Protocol (default: from config or 9222)
             profile_name: Name of Chrome profile directory (default: from config or "rugs_bot")
         """
-        self.cdp_port = cdp_port or config.BROWSER.get('cdp_port', 9222)
-        profile_name = profile_name or config.BROWSER.get('profile_name', "rugs_bot")
+        self.cdp_port = cdp_port or config.BROWSER.get("cdp_port", 9222)
+        profile_name = profile_name or config.BROWSER.get("profile_name", "rugs_bot")
         self.profile_path = Path.home() / ".gamebot" / "chrome_profiles" / profile_name
 
         # Playwright components
         self.playwright = None
-        self.browser: Optional[Browser] = None
-        self.context: Optional[BrowserContext] = None
-        self.page: Optional[Page] = None
+        self.browser: Browser | None = None
+        self.context: BrowserContext | None = None
+        self.page: Page | None = None
 
         # Status tracking
         self.status = CDPStatus.DISCONNECTED
-        self._chrome_process: Optional[subprocess.Popen] = None
+        self._chrome_process: subprocess.Popen | None = None
 
         # Ensure profile directory exists
         self.profile_path.mkdir(parents=True, exist_ok=True)
 
-    def _find_chrome_binary(self) -> Optional[str]:
+    def _find_chrome_binary(self) -> str | None:
         """
         Find Chrome binary on the system.
 
@@ -115,7 +116,7 @@ class CDPBrowserManager:
             Path to Chrome binary, or None if not found
         """
         # Check configured binary first
-        config_binary = config.BROWSER.get('chrome_binary')
+        config_binary = config.BROWSER.get("chrome_binary")
         if config_binary and Path(config_binary).exists():
             logger.info(f"Using configured Chrome binary: {config_binary}")
             return config_binary
@@ -138,7 +139,7 @@ class CDPBrowserManager:
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.connect(('localhost', port))
+                s.connect(("localhost", port))
                 return True
             except (ConnectionRefusedError, OSError):
                 return False
@@ -161,12 +162,10 @@ class CDPBrowserManager:
         """
         try:
             result = subprocess.run(
-                ["pgrep", "-f", "chrome|chromium"],
-                capture_output=True,
-                text=True
+                ["pgrep", "-f", "chrome|chromium"], capture_output=True, text=True
             )
             if result.returncode == 0 and result.stdout.strip():
-                pids = result.stdout.strip().split('\n')
+                pids = result.stdout.strip().split("\n")
                 logger.warning(f"Found {len(pids)} existing Chrome process(es): {pids[:5]}")
                 return True
             return False
@@ -223,8 +222,14 @@ class CDPBrowserManager:
 
                 # Check if process died
                 if self._chrome_process.poll() is not None:
-                    stderr = self._chrome_process.stderr.read().decode() if self._chrome_process.stderr else ""
-                    logger.error(f"Chrome process exited unexpectedly. Exit code: {self._chrome_process.returncode}")
+                    stderr = (
+                        self._chrome_process.stderr.read().decode()
+                        if self._chrome_process.stderr
+                        else ""
+                    )
+                    logger.error(
+                        f"Chrome process exited unexpectedly. Exit code: {self._chrome_process.returncode}"
+                    )
                     if stderr:
                         logger.error(f"Chrome stderr: {stderr[:500]}")
                     return False
@@ -233,7 +238,9 @@ class CDPBrowserManager:
                     logger.info(f"Still waiting for Chrome to start ({i * 0.5:.1f}s elapsed)...")
 
             logger.error("Chrome failed to start accepting CDP connections after 15 seconds")
-            logger.error("TIP: Try closing all Chrome windows and running again, or use a different profile")
+            logger.error(
+                "TIP: Try closing all Chrome windows and running again, or use a different profile"
+            )
             return False
 
         except Exception as e:
@@ -366,7 +373,7 @@ class CDPBrowserManager:
             self._chrome_process = None
             logger.info("Chrome process terminated")
 
-    async def get_screenshot(self) -> Optional[bytes]:
+    async def get_screenshot(self) -> bytes | None:
         """
         Capture screenshot of current page.
 
@@ -402,7 +409,7 @@ class CDPBrowserManager:
             dict with wallet availability status
         """
         if not self.page:
-            return {'phantom': False, 'solflare': False, 'solana': False, 'error': 'No page'}
+            return {"phantom": False, "solflare": False, "solana": False, "error": "No page"}
 
         try:
             result = await self.page.evaluate("""() => {
@@ -416,7 +423,7 @@ class CDPBrowserManager:
             return result
         except Exception as e:
             logger.error(f"Failed to check wallet injection: {e}")
-            return {'phantom': False, 'solflare': False, 'solana': False, 'error': str(e)}
+            return {"phantom": False, "solflare": False, "solana": False, "error": str(e)}
 
     async def ensure_wallet_ready(self, max_retries: int = 3) -> bool:
         """
@@ -460,7 +467,7 @@ class CDPBrowserManager:
             wallet_status = await self.check_wallet_injected()
             logger.info(f"Wallet status: {wallet_status}")
 
-            if wallet_status.get('phantom') or wallet_status.get('solflare'):
+            if wallet_status.get("phantom") or wallet_status.get("solflare"):
                 logger.info("✓ Wallet extensions detected!")
                 self.status = CDPStatus.READY
                 return True
@@ -476,7 +483,7 @@ class CDPBrowserManager:
             wallet_status = await self.check_wallet_injected()
             logger.info(f"Wallet status after reload: {wallet_status}")
 
-            if wallet_status.get('phantom') or wallet_status.get('solflare'):
+            if wallet_status.get("phantom") or wallet_status.get("solflare"):
                 logger.info("✓ Wallet extensions detected after reload!")
                 self.status = CDPStatus.READY
                 return True
@@ -517,7 +524,7 @@ class CDPBrowserManager:
             }""")
 
             logger.info(f"Wallet connection status: {result}")
-            return result.get('isConnected', False)
+            return result.get("isConnected", False)
 
         except Exception as e:
             logger.error(f"Failed to check wallet connection: {e}")

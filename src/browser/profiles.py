@@ -7,13 +7,13 @@ ported into the core project once validated.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import inspect
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional
 
 # Chromium arguments for light-weight ad blocking (mirrors existing controller)
-AD_BLOCK_ARGS: List[str] = [
+AD_BLOCK_ARGS: list[str] = [
     "--disable-background-networking",
     "--disable-background-timer-throttling",
     "--disable-renderer-backgrounding",
@@ -32,12 +32,12 @@ class PersistentProfileConfig:
     """
 
     user_data_dir: Path
-    extension_dirs: List[Path] = field(default_factory=list)
+    extension_dirs: list[Path] = field(default_factory=list)
     headless: bool = False
     block_ads: bool = False
-    extra_args: List[str] = field(default_factory=list)
-    channel: Optional[str] = None
-    executable_path: Optional[Path] = None
+    extra_args: list[str] = field(default_factory=list)
+    channel: str | None = None
+    executable_path: Path | None = None
 
     def validate(self) -> None:
         """
@@ -48,13 +48,11 @@ class PersistentProfileConfig:
         self.user_data_dir.mkdir(parents=True, exist_ok=True)
 
         # Normalise extension directories and ensure they exist
-        normalised_extensions: List[Path] = []
+        normalised_extensions: list[Path] = []
         for ext_dir in self.extension_dirs:
             path = Path(ext_dir).expanduser().resolve()
             if not path.exists():
-                raise FileNotFoundError(
-                    f"Extension directory not found: {path}"
-                )
+                raise FileNotFoundError(f"Extension directory not found: {path}")
             normalised_extensions.append(path)
         self.extension_dirs = normalised_extensions
 
@@ -64,17 +62,15 @@ class PersistentProfileConfig:
         if self.executable_path:
             self.executable_path = Path(self.executable_path).expanduser().resolve()
             if not self.executable_path.exists():
-                raise FileNotFoundError(
-                    f"Executable path not found: {self.executable_path}"
-                )
+                raise FileNotFoundError(f"Executable path not found: {self.executable_path}")
 
 
-def _merge_args(base: Iterable[str], extra: Iterable[str]) -> List[str]:
+def _merge_args(base: Iterable[str], extra: Iterable[str]) -> list[str]:
     """
     Merge argument lists while preserving order and avoiding duplicates.
     """
     seen = set()
-    merged: List[str] = []
+    merged: list[str] = []
     for arg in list(base) + list(extra):
         if arg in seen:
             continue
@@ -92,15 +88,17 @@ def build_launch_options(config: PersistentProfileConfig) -> dict:
     # Validation normalises directories
     config.validate()
 
-    args: List[str] = []
+    args: list[str] = []
 
     if config.extension_dirs:
         ext_paths = [str(path) for path in config.extension_dirs]
         ext_arg = ",".join(ext_paths)
-        args.extend([
-            f"--disable-extensions-except={ext_arg}",
-            f"--load-extension={ext_arg}",
-        ])
+        args.extend(
+            [
+                f"--disable-extensions-except={ext_arg}",
+                f"--load-extension={ext_arg}",
+            ]
+        )
 
     if config.block_ads:
         args = _merge_args(args, AD_BLOCK_ARGS)
@@ -117,12 +115,9 @@ def build_launch_options(config: PersistentProfileConfig) -> dict:
 
     # AUDIT FIX: Explicitly set PLAYWRIGHT_BROWSERS_PATH to avoid /root/.cache/ issue
     # Use per-user cache path unless overridden via environment variable
-    env['PLAYWRIGHT_BROWSERS_PATH'] = str(
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(
         Path(
-            os.getenv(
-                "PLAYWRIGHT_BROWSERS_PATH",
-                Path.home() / ".cache" / "ms-playwright"
-            )
+            os.getenv("PLAYWRIGHT_BROWSERS_PATH", Path.home() / ".cache" / "ms-playwright")
         ).expanduser()
     )
 
@@ -146,8 +141,8 @@ class PersistentBrowserSession:
     """
 
     context: object
-    browser: Optional[object]
-    page: Optional[object] = None
+    browser: object | None
+    page: object | None = None
 
     async def close(self) -> None:
         """

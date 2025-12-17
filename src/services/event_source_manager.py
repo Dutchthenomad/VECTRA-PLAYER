@@ -3,20 +3,23 @@ Event Source Manager
 
 Manages switching between CDP (authenticated) and fallback (public) event sources.
 """
+
 import logging
 import threading
-
-from services.event_bus import event_bus, Events
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any
+
+from services.event_bus import Events, event_bus
 
 logger = logging.getLogger(__name__)
 
 
 class EventSource(Enum):
     """Available event sources."""
+
     NONE = "none"
-    CDP = "cdp"           # Authenticated via CDP interception
+    CDP = "cdp"  # Authenticated via CDP interception
     FALLBACK = "fallback"  # Public WebSocketFeed
 
 
@@ -37,7 +40,7 @@ class EventSourceManager:
         self.is_cdp_available: bool = False
 
         # Callbacks
-        self.on_source_changed: Optional[Callable[[EventSource], None]] = None
+        self.on_source_changed: Callable[[EventSource], None] | None = None
 
         logger.info("EventSourceManager initialized")
 
@@ -70,7 +73,7 @@ class EventSourceManager:
 
                 # Publish for UI/monitoring
                 try:
-                    event_bus.publish(Events.WS_SOURCE_CHANGED, {'source': new_source.value})
+                    event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": new_source.value})
                 except Exception:
                     pass
 
@@ -80,10 +83,10 @@ class EventSourceManager:
                     except Exception as e:
                         logger.error(f"Error in source changed callback: {e}")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current status."""
         with self._lock:
             return {
-                'active_source': self.active_source.value,
-                'is_cdp_available': self.is_cdp_available
+                "active_source": self.active_source.value,
+                "is_cdp_available": self.is_cdp_available,
             }

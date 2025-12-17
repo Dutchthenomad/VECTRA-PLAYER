@@ -2,9 +2,11 @@
 Tests for LiveRingBuffer class
 """
 
-import pytest
 import threading
 from decimal import Decimal
+
+import pytest
+
 from core.live_ring_buffer import LiveRingBuffer
 from models import GameTick
 
@@ -51,7 +53,7 @@ class TestLiveRingBufferAppend:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=0
+            trade_count=0,
         )
 
     def test_append_adds_tick(self, sample_tick):
@@ -77,7 +79,7 @@ class TestLiveRingBufferAppend:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -98,7 +100,7 @@ class TestLiveRingBufferAppend:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -115,7 +117,7 @@ class TestLiveRingBufferAppend:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=0
+            trade_count=0,
         )
         buffer.append(tick4)
 
@@ -141,7 +143,7 @@ class TestLiveRingBufferRetrieve:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=i
+                trade_count=i,
             )
             buffer.append(tick)
         return buffer
@@ -236,7 +238,7 @@ class TestLiveRingBufferTickRange:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
         return buffer
@@ -289,7 +291,7 @@ class TestLiveRingBufferClear:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -335,7 +337,7 @@ class TestLiveRingBufferStatus:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -357,7 +359,7 @@ class TestLiveRingBufferStatus:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
             assert buffer.get_size() == i + 1
@@ -376,7 +378,7 @@ class TestLiveRingBufferStatus:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -400,7 +402,7 @@ class TestLiveRingBufferMagicMethods:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -425,7 +427,7 @@ class TestLiveRingBufferMagicMethods:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=0
+            trade_count=0,
         )
         buffer.append(tick)
 
@@ -445,7 +447,7 @@ class TestLiveRingBufferMagicMethods:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 
@@ -475,7 +477,7 @@ class TestLiveRingBufferThreadSafety:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 buffer.append(tick)
 
@@ -496,7 +498,7 @@ class TestLiveRingBufferThreadSafety:
     def test_concurrent_read_write(self):
         """Test concurrent reads and writes"""
         buffer = LiveRingBuffer(max_size=100)
-        results = {'reads': 0, 'writes': 0}
+        results = {"reads": 0, "writes": 0}
 
         def write_ticks():
             for i in range(50):
@@ -509,15 +511,15 @@ class TestLiveRingBufferThreadSafety:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 buffer.append(tick)
-                results['writes'] += 1
+                results["writes"] += 1
 
         def read_ticks():
             for _ in range(50):
                 buffer.get_all()
-                results['reads'] += 1
+                results["reads"] += 1
 
         # Launch writers and readers
         writer = threading.Thread(target=write_ticks)
@@ -530,8 +532,8 @@ class TestLiveRingBufferThreadSafety:
         reader.join()
 
         # Verify both completed
-        assert results['writes'] == 50
-        assert results['reads'] == 50
+        assert results["writes"] == 50
+        assert results["reads"] == 50
 
 
 class TestLiveRingBufferEdgeCases:
@@ -550,7 +552,7 @@ class TestLiveRingBufferEdgeCases:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=0
+            trade_count=0,
         )
         buffer.append(tick1)
 
@@ -567,7 +569,7 @@ class TestLiveRingBufferEdgeCases:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=0
+            trade_count=0,
         )
         buffer.append(tick2)
 
@@ -588,7 +590,7 @@ class TestLiveRingBufferEdgeCases:
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             buffer.append(tick)
 

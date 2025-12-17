@@ -9,8 +9,8 @@ Defines the interface for providing tick data to ReplayEngine from various sourc
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from pathlib import Path
+
 from models import GameTick
 
 
@@ -24,7 +24,7 @@ class ReplaySource(ABC):
     """
 
     @abstractmethod
-    def load(self, identifier: str) -> tuple[List[GameTick], str]:
+    def load(self, identifier: str) -> tuple[list[GameTick], str]:
         """
         Load game data from source
 
@@ -54,7 +54,7 @@ class ReplaySource(ABC):
         pass
 
     @abstractmethod
-    def list_available(self) -> List[str]:
+    def list_available(self) -> list[str]:
         """
         List all available sources
 
@@ -94,7 +94,7 @@ class FileDirectorySource(ReplaySource):
         if not self.directory.exists():
             raise FileNotFoundError(f"Directory not found: {directory}")
 
-    def load(self, identifier: str) -> tuple[List[GameTick], str]:
+    def load(self, identifier: str) -> tuple[list[GameTick], str]:
         """
         Load game from JSONL file
 
@@ -114,7 +114,7 @@ class FileDirectorySource(ReplaySource):
 
         import json
 
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -149,11 +149,9 @@ class FileDirectorySource(ReplaySource):
             # AUDIT FIX: Catch specific exceptions for path resolution
             return False
 
-    def list_available(self) -> List[str]:
+    def list_available(self) -> list[str]:
         """List all JSONL files in directory"""
-        return sorted([
-            f.name for f in self.directory.glob("*.jsonl")
-        ])
+        return sorted([f.name for f in self.directory.glob("*.jsonl")])
 
     def get_metadata(self, identifier: str) -> dict:
         """Get file metadata"""
@@ -164,16 +162,16 @@ class FileDirectorySource(ReplaySource):
 
         # Count lines without loading full file
         line_count = 0
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             for line in f:
                 if line.strip():
                     line_count += 1
 
         return {
-            'filepath': str(filepath),
-            'tick_count': line_count,
-            'file_size': filepath.stat().st_size,
-            'modified': filepath.stat().st_mtime
+            "filepath": str(filepath),
+            "tick_count": line_count,
+            "file_size": filepath.stat().st_size,
+            "modified": filepath.stat().st_mtime,
         }
 
     def _resolve_path(self, identifier: str) -> Path:

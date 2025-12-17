@@ -9,10 +9,10 @@ All producers publish to EventBus; EventStore subscribes and persists.
 """
 
 from .paths import EventStorePaths
-from .schema import EventEnvelope, DocType
+from .schema import DocType, EventEnvelope
 
 __all__ = [
-    'EventStorePaths',
-    'EventEnvelope',
-    'DocType',
+    "DocType",
+    "EventEnvelope",
+    "EventStorePaths",
 ]

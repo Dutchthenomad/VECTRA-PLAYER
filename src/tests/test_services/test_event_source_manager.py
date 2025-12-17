@@ -1,7 +1,8 @@
 """Tests for EventSourceManager."""
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from services.event_source_manager import EventSourceManager, EventSource
+
+from unittest.mock import Mock
+
+from services.event_source_manager import EventSource, EventSourceManager
 
 
 class TestEventSourceManager:
@@ -75,5 +76,5 @@ class TestEventSourceManager:
 
         status = manager.get_status()
 
-        assert status['active_source'] == 'cdp'
-        assert status['is_cdp_available'] is True
+        assert status["active_source"] == "cdp"
+        assert status["is_cdp_available"] is True

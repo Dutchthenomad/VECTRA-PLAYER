@@ -6,7 +6,6 @@ browser automation tasks specific to Rugs.fun.
 """
 
 import asyncio
-from typing import Optional
 
 # AUDIT FIX: Import TimeoutError for specific exception handling
 try:
@@ -71,9 +70,7 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
         for selector in connect_selectors:
             try:
                 connect_button = await page.wait_for_selector(
-                    selector,
-                    timeout=5000,
-                    state='visible'
+                    selector, timeout=5000, state="visible"
                 )
                 if connect_button:
                     print(f"   ✓ Found Connect button with selector: {selector}")
@@ -104,9 +101,7 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
         for selector in phantom_selectors:
             try:
                 phantom_option = await page.wait_for_selector(
-                    selector,
-                    timeout=3000,
-                    state='visible'
+                    selector, timeout=3000, state="visible"
                 )
                 if phantom_option:
                     print(f"   ✓ Found Phantom option with selector: {selector}")
@@ -131,7 +126,7 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
                 print("   ✓ Phantom popup detected")
 
                 # Wait for popup to load
-                await popup.wait_for_load_state('domcontentloaded')
+                await popup.wait_for_load_state("domcontentloaded")
                 await asyncio.sleep(1)
 
                 # Look for "Connect" or "Approve" button in Phantom popup
@@ -146,13 +141,11 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
                 for selector in approval_selectors:
                     try:
                         approve_button = await popup.wait_for_selector(
-                            selector,
-                            timeout=3000,
-                            state='visible'
+                            selector, timeout=3000, state="visible"
                         )
                         if approve_button:
                             await approve_button.click()
-                            print(f"   ✓ Clicked approval button in Phantom popup")
+                            print("   ✓ Clicked approval button in Phantom popup")
                             approved = True
                             break
                     except PlaywrightTimeout:
@@ -166,7 +159,7 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
                 # Wait for popup to close
                 await asyncio.sleep(2)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print("   ⚠️  Phantom popup did not appear")
             print("      (Wallet may already be connected)")
 

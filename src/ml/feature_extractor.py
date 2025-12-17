@@ -8,9 +8,9 @@ Extracts 14 strategic features organized in 4 groups:
 4. Strategic Context (4 features)
 """
 
-import numpy as np
 from collections import deque
-from typing import List, Dict, Optional
+
+import numpy as np
 
 
 class FeatureExtractor:
@@ -34,10 +34,7 @@ class FeatureExtractor:
         self.last_bet_tick = 0
 
     def extract_features(
-        self,
-        tick_num: int,
-        prices: List[float],
-        stats: Dict[str, float]
+        self, tick_num: int, prices: list[float], stats: dict[str, float]
     ) -> np.ndarray:
         """
         Extract 14-dimensional feature vector
@@ -59,44 +56,41 @@ class FeatureExtractor:
         volatility_features = self.calculate_volatility_features(prices)
 
         # Group 3: Spike Pattern (3 features)
-        spike_features = self.calculate_spike_features(
-            tick_num,
-            volatility_features['ratio']
-        )
+        spike_features = self.calculate_spike_features(tick_num, volatility_features["ratio"])
 
         # Group 4: Strategic Context (4 features)
         theta_factor = self.calculate_theta_factor(tick_num, stats)
         sequence_feasibility = self.calculate_sequence_feasibility(
             tick_num,
-            stats['mean'] + stats['std']  # Expected game length
+            stats["mean"] + stats["std"],  # Expected game length
         )
         cooldown_status = self.calculate_cooldown_status(tick_num)
         pattern_signal = 0.0  # Placeholder for future pattern detection
 
         # Assemble feature vector
-        features = np.array([
-            # Statistical Position
-            tick_percentile,
-            np.clip(z_score, -3, 3),
-            iqr_position,
-
-            # Volatility Evolution
-            np.clip(volatility_features['ratio'], 0, 10),
-            np.clip(volatility_features['momentum'], -1, 1),
-            volatility_features['intensity'],
-            np.clip(volatility_features['acceleration'], -1, 1),
-
-            # Spike Pattern
-            spike_features['frequency'],
-            np.clip(spike_features['spacing'], 0, 2),
-            spike_features['death_spike_score'],
-
-            # Strategic Context
-            theta_factor,
-            sequence_feasibility,
-            cooldown_status,
-            pattern_signal
-        ], dtype=np.float32)
+        features = np.array(
+            [
+                # Statistical Position
+                tick_percentile,
+                np.clip(z_score, -3, 3),
+                iqr_position,
+                # Volatility Evolution
+                np.clip(volatility_features["ratio"], 0, 10),
+                np.clip(volatility_features["momentum"], -1, 1),
+                volatility_features["intensity"],
+                np.clip(volatility_features["acceleration"], -1, 1),
+                # Spike Pattern
+                spike_features["frequency"],
+                np.clip(spike_features["spacing"], 0, 2),
+                spike_features["death_spike_score"],
+                # Strategic Context
+                theta_factor,
+                sequence_feasibility,
+                cooldown_status,
+                pattern_signal,
+            ],
+            dtype=np.float32,
+        )
 
         return features
 
@@ -104,40 +98,40 @@ class FeatureExtractor:
     # Group 1: Statistical Position
     # =========================================================================
 
-    def calculate_tick_percentile(self, tick_num: int, stats: Dict) -> float:
+    def calculate_tick_percentile(self, tick_num: int, stats: dict) -> float:
         """Where are we in typical game distribution?"""
-        return min(2.0, tick_num / max(stats['median'], 1))
+        return min(2.0, tick_num / max(stats["median"], 1))
 
-    def calculate_z_score(self, tick_num: int, stats: Dict) -> float:
+    def calculate_z_score(self, tick_num: int, stats: dict) -> float:
         """How many standard deviations from mean?"""
-        return (tick_num - stats['mean']) / max(stats['std'], 1)
+        return (tick_num - stats["mean"]) / max(stats["std"], 1)
 
-    def calculate_iqr_position(self, tick_num: int, stats: Dict) -> float:
+    def calculate_iqr_position(self, tick_num: int, stats: dict) -> float:
         """Position within interquartile range"""
-        if tick_num < stats['q1']:
+        if tick_num < stats["q1"]:
             return -1.0
-        elif tick_num > stats['q3']:
+        elif tick_num > stats["q3"]:
             return 1.0
         else:
             # Linear interpolation between Q1 and Q3
-            denominator = stats['q3'] - stats['q1']
+            denominator = stats["q3"] - stats["q1"]
             if denominator == 0:
                 return 0.0
-            return 2 * (tick_num - stats['q1']) / denominator - 1
+            return 2 * (tick_num - stats["q1"]) / denominator - 1
 
     # =========================================================================
     # Group 2: Volatility Evolution
     # =========================================================================
 
-    def calculate_volatility_features(self, prices: List[float]) -> Dict:
+    def calculate_volatility_features(self, prices: list[float]) -> dict:
         """Calculate volatility-based features"""
 
         # Baseline volatility (first 40 ticks)
-        baseline_prices = prices[:self.baseline_window]
+        baseline_prices = prices[: self.baseline_window]
         baseline_vol = self.calculate_volatility(baseline_prices)
 
         # Current volatility (last 10 ticks)
-        current_prices = prices[-self.current_window:]
+        current_prices = prices[-self.current_window :]
         current_vol = self.calculate_volatility(current_prices)
 
         # Ratio (handle zero volatility edge case)
@@ -164,29 +158,29 @@ class FeatureExtractor:
         # Acceleration (second derivative)
         if len(self.volatility_history) >= 3:
             acceleration = (
-                self.volatility_history[-1] -
-                2 * self.volatility_history[-2] +
-                self.volatility_history[-3]
+                self.volatility_history[-1]
+                - 2 * self.volatility_history[-2]
+                + self.volatility_history[-3]
             )
         else:
             acceleration = 0.0
 
         return {
-            'ratio': ratio,
-            'momentum': momentum,
-            'intensity': intensity,
-            'acceleration': acceleration
+            "ratio": ratio,
+            "momentum": momentum,
+            "intensity": intensity,
+            "acceleration": acceleration,
         }
 
-    def calculate_volatility(self, prices: List[float]) -> float:
+    def calculate_volatility(self, prices: list[float]) -> float:
         """Calculate volatility as mean absolute percentage change"""
         if len(prices) < 2:
             return 0.0
 
         changes = []
         for i in range(1, len(prices)):
-            if prices[i-1] > 0:
-                change = abs(prices[i] - prices[i-1]) / prices[i-1]
+            if prices[i - 1] > 0:
+                change = abs(prices[i] - prices[i - 1]) / prices[i - 1]
                 changes.append(change)
 
         return np.mean(changes) if changes else 0.0
@@ -195,17 +189,14 @@ class FeatureExtractor:
     # Group 3: Spike Pattern
     # =========================================================================
 
-    def calculate_spike_features(self, tick_num: int, current_ratio: float) -> Dict:
+    def calculate_spike_features(self, tick_num: int, current_ratio: float) -> dict:
         """Calculate spike pattern features"""
 
         # Track spikes (ratio >= 2.0x)
         if current_ratio >= self.spike_threshold:
             # Only add if not already added (avoid duplicates in same window)
-            if not self.spike_history or self.spike_history[-1]['tick'] < tick_num - 5:
-                self.spike_history.append({
-                    'tick': tick_num,
-                    'ratio': current_ratio
-                })
+            if not self.spike_history or self.spike_history[-1]["tick"] < tick_num - 5:
+                self.spike_history.append({"tick": tick_num, "ratio": current_ratio})
 
         # Frequency
         spike_frequency = len(self.spike_history) / max(tick_num, 1)
@@ -214,7 +205,7 @@ class FeatureExtractor:
         # Spacing
         if len(self.spike_history) >= 2:
             spacings = [
-                self.spike_history[i]['tick'] - self.spike_history[i-1]['tick']
+                self.spike_history[i]["tick"] - self.spike_history[i - 1]["tick"]
                 for i in range(1, len(self.spike_history))
             ]
             avg_spacing = np.mean(spacings)
@@ -224,22 +215,15 @@ class FeatureExtractor:
             spike_spacing = 1.0
 
         # Death spike score (KEY FEATURE)
-        death_spike_score = self.calculate_death_spike_score(
-            self.spike_history,
-            current_ratio
-        )
+        death_spike_score = self.calculate_death_spike_score(self.spike_history, current_ratio)
 
         return {
-            'frequency': spike_frequency,
-            'spacing': spike_spacing,
-            'death_spike_score': death_spike_score
+            "frequency": spike_frequency,
+            "spacing": spike_spacing,
+            "death_spike_score": death_spike_score,
         }
 
-    def calculate_death_spike_score(
-        self,
-        spike_history: List[Dict],
-        current_ratio: float
-    ) -> float:
+    def calculate_death_spike_score(self, spike_history: list[dict], current_ratio: float) -> float:
         """
         ⭐ KEY FEATURE: Distinguish death spike from normal spike
 
@@ -263,7 +247,7 @@ class FeatureExtractor:
         # Factor 2: Magnitude escalation (30% jump from last spike)
         # Weight: 0.3 (30% of score)
         if len(spike_history) >= 2:
-            if current_ratio > spike_history[-1]['ratio'] * 1.3:
+            if current_ratio > spike_history[-1]["ratio"] * 1.3:
                 score += 0.3
 
         # Factor 3: Absolute magnitude (5x+ is strong signal)
@@ -278,7 +262,7 @@ class FeatureExtractor:
     # Group 4: Strategic Context
     # =========================================================================
 
-    def calculate_theta_factor(self, tick_num: int, stats: Dict) -> float:
+    def calculate_theta_factor(self, tick_num: int, stats: dict) -> float:
         """
         Bayesian probability acceleration factor
 
@@ -289,22 +273,18 @@ class FeatureExtractor:
         - Q3: 2.5 (rapid)
         - >Q3: 4.0 (extreme)
         """
-        if tick_num < stats['q1']:
+        if tick_num < stats["q1"]:
             return 0.5
-        elif tick_num < stats['median']:
+        elif tick_num < stats["median"]:
             return 1.0
-        elif tick_num < stats['mean']:
+        elif tick_num < stats["mean"]:
             return 1.5
-        elif tick_num < stats['q3']:
+        elif tick_num < stats["q3"]:
             return 2.5
         else:  # Beyond Q3
             return 4.0
 
-    def calculate_sequence_feasibility(
-        self,
-        current_tick: int,
-        expected_total: float
-    ) -> float:
+    def calculate_sequence_feasibility(self, current_tick: int, expected_total: float) -> float:
         """
         Can we complete a 4-attempt martingale sequence?
 
@@ -340,18 +320,18 @@ class FeatureExtractor:
 
 # Feature names for interpretation
 FEATURE_NAMES = [
-    'tick_percentile',
-    'z_score',
-    'iqr_position',
-    'volatility_ratio',
-    'volatility_momentum',
-    'spike_intensity',
-    'volatility_acceleration',
-    'spike_frequency',
-    'spike_spacing',
-    'death_spike_score',      # ⭐ KEY FEATURE
-    'theta_factor',
-    'sequence_feasibility',
-    'cooldown_status',
-    'pattern_signal'
+    "tick_percentile",
+    "z_score",
+    "iqr_position",
+    "volatility_ratio",
+    "volatility_momentum",
+    "spike_intensity",
+    "volatility_acceleration",
+    "spike_frequency",
+    "spike_spacing",
+    "death_spike_score",  # ⭐ KEY FEATURE
+    "theta_factor",
+    "sequence_feasibility",
+    "cooldown_status",
+    "pattern_signal",
 ]

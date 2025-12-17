@@ -1,10 +1,9 @@
 """Tests for RAG event ingestion."""
-import pytest
-import json
-import tempfile
+
 import importlib
-from pathlib import Path
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import patch
+
 from services.rag_ingester import RAGIngester
 
 
@@ -17,7 +16,10 @@ class TestRAGIngester:
 
         with patch("pathlib.Path.home", return_value=tmp_path):
             reloaded = importlib.reload(rag_ingester)
-            assert reloaded.RAGIngester.DEFAULT_CAPTURE_DIR == tmp_path / "rugs_recordings" / "raw_captures"
+            assert (
+                tmp_path / "rugs_recordings" / "raw_captures"
+                == reloaded.RAGIngester.DEFAULT_CAPTURE_DIR
+            )
 
         # Restore module state for other tests
         importlib.reload(rag_ingester)
@@ -37,7 +39,7 @@ class TestRAGIngester:
 
         assert filepath is not None
         assert filepath.exists()
-        assert filepath.suffix == '.jsonl'
+        assert filepath.suffix == ".jsonl"
 
     def test_catalog_writes_event(self, tmp_path):
         """Cataloging event writes to file."""
@@ -45,10 +47,10 @@ class TestRAGIngester:
         ingester.start_session()
 
         event = {
-            'event': 'gameStateUpdate',
-            'data': {'price': 1.5},
-            'timestamp': '2025-12-14T12:00:00',
-            'direction': 'received'
+            "event": "gameStateUpdate",
+            "data": {"price": 1.5},
+            "timestamp": "2025-12-14T12:00:00",
+            "direction": "received",
         }
         ingester.catalog(event)
 
@@ -57,51 +59,51 @@ class TestRAGIngester:
             line = f.readline()
             record = json.loads(line)
 
-        assert record['event'] == 'gameStateUpdate'
-        assert record['data']['price'] == 1.5
-        assert record['source'] == 'cdp_intercept'
+        assert record["event"] == "gameStateUpdate"
+        assert record["data"]["price"] == 1.5
+        assert record["source"] == "cdp_intercept"
 
     def test_catalog_tracks_event_counts(self, tmp_path):
         """Cataloging tracks event type counts."""
         ingester = RAGIngester(capture_dir=tmp_path)
         ingester.start_session()
 
-        ingester.catalog({'event': 'gameStateUpdate', 'data': {}})
-        ingester.catalog({'event': 'gameStateUpdate', 'data': {}})
-        ingester.catalog({'event': 'usernameStatus', 'data': {}})
+        ingester.catalog({"event": "gameStateUpdate", "data": {}})
+        ingester.catalog({"event": "gameStateUpdate", "data": {}})
+        ingester.catalog({"event": "usernameStatus", "data": {}})
 
-        assert ingester.event_counts['gameStateUpdate'] == 2
-        assert ingester.event_counts['usernameStatus'] == 1
+        assert ingester.event_counts["gameStateUpdate"] == 2
+        assert ingester.event_counts["usernameStatus"] == 1
 
     def test_catalog_detects_novel_events(self, tmp_path):
         """Cataloging detects undocumented events."""
         ingester = RAGIngester(capture_dir=tmp_path)
         ingester.start_session()
 
-        ingester.catalog({'event': 'unknownNewEvent', 'data': {}})
+        ingester.catalog({"event": "unknownNewEvent", "data": {}})
 
-        assert 'unknownNewEvent' in ingester.novel_events
+        assert "unknownNewEvent" in ingester.novel_events
 
     def test_catalog_known_event_not_novel(self, tmp_path):
         """Known events not flagged as novel."""
         ingester = RAGIngester(capture_dir=tmp_path)
         ingester.start_session()
 
-        ingester.catalog({'event': 'gameStateUpdate', 'data': {}})
+        ingester.catalog({"event": "gameStateUpdate", "data": {}})
 
-        assert 'gameStateUpdate' not in ingester.novel_events
+        assert "gameStateUpdate" not in ingester.novel_events
 
     def test_stop_session_returns_summary(self, tmp_path):
         """Stopping session returns summary."""
         ingester = RAGIngester(capture_dir=tmp_path)
         ingester.start_session()
-        ingester.catalog({'event': 'gameStateUpdate', 'data': {}})
+        ingester.catalog({"event": "gameStateUpdate", "data": {}})
 
         summary = ingester.stop_session()
 
-        assert summary['total_events'] == 1
-        assert 'gameStateUpdate' in summary['event_counts']
-        assert summary['capture_file'] is not None
+        assert summary["total_events"] == 1
+        assert "gameStateUpdate" in summary["event_counts"]
+        assert summary["capture_file"] is not None
 
     def test_stop_session_closes_file(self, tmp_path):
         """Stopping session closes file handle."""

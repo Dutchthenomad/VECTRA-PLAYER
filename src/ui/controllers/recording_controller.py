@@ -11,25 +11,26 @@ Provides a clean interface for MainWindow to control recording sessions.
 """
 
 import logging
-from pathlib import Path
-from typing import Optional, TYPE_CHECKING
 from decimal import Decimal
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
-from models.recording_config import RecordingConfig, CaptureMode
+from models.recording_config import RecordingConfig
 from models.recording_models import (
-    PlayerAction,
-    ServerState,
     LocalStateSnapshot,
+    PlayerAction,
     RecordedAction,
+    ServerState,
 )
-from services.unified_recorder import UnifiedRecorder
 from services.recording_state_machine import RecordingState
+from services.unified_recorder import UnifiedRecorder
+from ui.audio_cue_player import AudioCuePlayer
 from ui.recording_config_dialog import RecordingConfigDialog
 from ui.toast_notification import RecordingToastManager
-from ui.audio_cue_player import AudioCuePlayer
 
 if TYPE_CHECKING:
     import tkinter as tk
+
     from core import GameState
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,8 @@ class RecordingController:
         root: "tk.Tk",
         recordings_path: str,
         game_state: Optional["GameState"] = None,
-        player_id: Optional[str] = None,
-        username: Optional[str] = None
+        player_id: str | None = None,
+        username: str | None = None,
     ):
         """
         Initialize the recording controller.
@@ -86,9 +87,9 @@ class RecordingController:
         self._config = RecordingConfig.load()
 
         # Components (initialized lazily)
-        self._recorder: Optional[UnifiedRecorder] = None
-        self._toast: Optional[RecordingToastManager] = None
-        self._audio: Optional[AudioCuePlayer] = None
+        self._recorder: UnifiedRecorder | None = None
+        self._toast: RecordingToastManager | None = None
+        self._audio: AudioCuePlayer | None = None
 
         # Initialize toast manager
         self._toast = RecordingToastManager(root)
@@ -114,7 +115,7 @@ class RecordingController:
         return 0
 
     @property
-    def current_state(self) -> Optional[RecordingState]:
+    def current_state(self) -> RecordingState | None:
         """Current recording state."""
         if self._recorder:
             return self._recorder.state_machine.state
@@ -131,7 +132,7 @@ class RecordingController:
             self.root,
             config=self._config,
             on_start=self._on_config_start,
-            on_cancel=self._on_config_cancel
+            on_cancel=self._on_config_cancel,
         )
 
         result = dialog.show()
@@ -141,7 +142,7 @@ class RecordingController:
             return True
         return False
 
-    def start_session(self, config: Optional[RecordingConfig] = None) -> None:
+    def start_session(self, config: RecordingConfig | None = None) -> None:
         """
         Start a recording session.
 
@@ -159,7 +160,7 @@ class RecordingController:
             base_path=str(self.recordings_path),
             config=config,
             player_id=self._player_id,
-            username=self._username
+            username=self._username,
         )
 
         # Wire up callbacks
@@ -225,10 +226,10 @@ class RecordingController:
     def on_game_end(
         self,
         game_id: str,
-        prices: Optional[list] = None,
-        peak: Optional[Decimal] = None,
+        prices: list | None = None,
+        peak: Decimal | None = None,
         clean: bool = True,
-        seed_data: Optional[dict] = None
+        seed_data: dict | None = None,
     ) -> None:
         """
         Handle game end event.
@@ -261,9 +262,9 @@ class RecordingController:
         self,
         button: str,
         local_state: LocalStateSnapshot,
-        amount: Optional[Decimal] = None,
-        server_state: Optional[ServerState] = None
-    ) -> Optional[RecordedAction]:
+        amount: Decimal | None = None,
+        server_state: ServerState | None = None,
+    ) -> RecordedAction | None:
         """
         Record a button press with dual-state validation.
 
@@ -280,10 +281,7 @@ class RecordingController:
         """
         if self._recorder:
             return self._recorder.record_button_press(
-                button=button,
-                local_state=local_state,
-                amount=amount,
-                server_state=server_state
+                button=button, local_state=local_state, amount=amount, server_state=server_state
             )
         return None
 
@@ -299,7 +297,7 @@ class RecordingController:
         if self._recorder:
             self._recorder.update_server_state(server_state)
 
-    def record_trade_confirmation(self, action_id: str, timestamp_ms: int) -> Optional[float]:
+    def record_trade_confirmation(self, action_id: str, timestamp_ms: int) -> float | None:
         """
         Record trade confirmation and calculate latency.
 
@@ -360,11 +358,7 @@ class RecordingController:
         """Handle config dialog Cancel button."""
         logger.debug("Recording config dialog cancelled")
 
-    def _on_state_change(
-        self,
-        old_state: RecordingState,
-        new_state: RecordingState
-    ) -> None:
+    def _on_state_change(self, old_state: RecordingState, new_state: RecordingState) -> None:
         """Handle recording state change."""
         logger.debug(f"Recording state: {old_state.value} -> {new_state.value}")
 

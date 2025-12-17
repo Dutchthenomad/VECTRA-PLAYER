@@ -13,16 +13,16 @@ Key components:
 - SidebetBacktester: Martingale sequence backtesting
 """
 
-from .feature_extractor import FeatureExtractor, FEATURE_NAMES
 from .data_processor import GameDataProcessor, RollingStats
+from .feature_extractor import FEATURE_NAMES, FeatureExtractor
 from .model import SidebetModel
 from .predictor import SidebetPredictor
 
 __all__ = [
-    'FeatureExtractor',
-    'FEATURE_NAMES',
-    'GameDataProcessor',
-    'RollingStats',
-    'SidebetModel',
-    'SidebetPredictor',
+    "FEATURE_NAMES",
+    "FeatureExtractor",
+    "GameDataProcessor",
+    "RollingStats",
+    "SidebetModel",
+    "SidebetPredictor",
 ]

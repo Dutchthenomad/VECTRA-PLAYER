@@ -1,7 +1,9 @@
 """Tests for PlaybackBuilder"""
 
-import pytest
 import tkinter as tk
+
+import pytest
+
 from ui.builders.playback_builder import PlaybackBuilder
 
 
@@ -18,11 +20,11 @@ def root():
 def callbacks():
     """Create mock callbacks"""
     return {
-        'load_game': lambda: None,
-        'toggle_playback': lambda: None,
-        'step_forward': lambda: None,
-        'reset_game': lambda: None,
-        'set_speed': lambda s: None,
+        "load_game": lambda: None,
+        "toggle_playback": lambda: None,
+        "step_forward": lambda: None,
+        "reset_game": lambda: None,
+        "set_speed": lambda s: None,
     }
 
 
@@ -39,53 +41,53 @@ class TestPlaybackBuilder:
         """build() should create playback_row frame"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'playback_row' in widgets
-        assert isinstance(widgets['playback_row'], tk.Frame)
+        assert "playback_row" in widgets
+        assert isinstance(widgets["playback_row"], tk.Frame)
 
     def test_build_creates_load_button(self, root, callbacks):
         """build() should create load_button"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'load_button' in widgets
-        assert isinstance(widgets['load_button'], tk.Button)
+        assert "load_button" in widgets
+        assert isinstance(widgets["load_button"], tk.Button)
 
     def test_build_creates_play_button(self, root, callbacks):
         """build() should create play_button"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'play_button' in widgets
-        assert isinstance(widgets['play_button'], tk.Button)
+        assert "play_button" in widgets
+        assert isinstance(widgets["play_button"], tk.Button)
 
     def test_build_creates_step_button(self, root, callbacks):
         """build() should create step_button"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'step_button' in widgets
-        assert isinstance(widgets['step_button'], tk.Button)
+        assert "step_button" in widgets
+        assert isinstance(widgets["step_button"], tk.Button)
 
     def test_build_creates_reset_button(self, root, callbacks):
         """build() should create reset_button"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'reset_button' in widgets
-        assert isinstance(widgets['reset_button'], tk.Button)
+        assert "reset_button" in widgets
+        assert isinstance(widgets["reset_button"], tk.Button)
 
     def test_build_creates_speed_label(self, root, callbacks):
         """build() should create speed_label"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'speed_label' in widgets
-        assert isinstance(widgets['speed_label'], tk.Label)
+        assert "speed_label" in widgets
+        assert isinstance(widgets["speed_label"], tk.Label)
 
     def test_play_button_initially_disabled(self, root, callbacks):
         """play_button should be initially disabled"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert widgets['play_button'].cget('state') == tk.DISABLED
+        assert widgets["play_button"].cget("state") == tk.DISABLED
 
     def test_speed_buttons_exist(self, root, callbacks):
         """Speed control buttons should exist"""
         builder = PlaybackBuilder(root, callbacks)
         widgets = builder.build()
-        assert 'speed_buttons' in widgets
-        assert len(widgets['speed_buttons']) == 5  # 0.25x, 0.5x, 1x, 2x, 5x
+        assert "speed_buttons" in widgets
+        assert len(widgets["speed_buttons"]) == 5  # 0.25x, 0.5x, 1x, 2x, 5x

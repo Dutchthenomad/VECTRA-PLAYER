@@ -3,21 +3,20 @@ Replay Engine - Game playback controller (PRODUCTION READY)
 Loads JSONL files, manages playback, and publishes tick events
 """
 
+import atexit
 import json
 import logging
 import threading
-import time
-import atexit
-from pathlib import Path
-from typing import List, Optional, Callable
-from decimal import Decimal
+from collections.abc import Callable
 from contextlib import contextmanager
+from pathlib import Path
 
 from models import GameTick
-from services import event_bus, Events
+from services import Events, event_bus
+
 from .game_state import GameState
-from .recorder_sink import RecorderSink
 from .live_ring_buffer import LiveRingBuffer
+from .recorder_sink import RecorderSink
 from .replay_playback_controller import PlaybackController
 
 logger = logging.getLogger(__name__)
@@ -36,37 +35,36 @@ class ReplayEngine:
     """
 
     def __init__(self, game_state: GameState, replay_source=None):
-        from core.replay_source import FileDirectorySource
         from config import config
+        from core.replay_source import FileDirectorySource
 
         self.state = game_state
 
         # Replay source (defaults to file directory)
         if replay_source is None:
-            replay_source = FileDirectorySource(config.FILES['recordings_dir'])
+            replay_source = FileDirectorySource(config.FILES["recordings_dir"])
         self.replay_source = replay_source
 
         # Game data - CRITICAL FIX: Remove unbounded ticks list for live mode
-        self.file_mode_ticks: List[GameTick] = []  # Only used in file playback mode
+        self.file_mode_ticks: list[GameTick] = []  # Only used in file playback mode
         self.is_live_mode = False  # Track current mode
         self.current_index = 0
-        self.game_id: Optional[str] = None
+        self.game_id: str | None = None
 
         # Multi-game mode flag
         self.multi_game_mode = False
 
         # Validate configuration before using
-        ring_buffer_size = max(1, config.LIVE_FEED.get('ring_buffer_size', 5000))
-        recording_buffer_size = max(1, config.LIVE_FEED.get('recording_buffer_size', 100))
+        ring_buffer_size = max(1, config.LIVE_FEED.get("ring_buffer_size", 5000))
+        recording_buffer_size = max(1, config.LIVE_FEED.get("recording_buffer_size", 100))
 
         # Live feed infrastructure with validated settings
         self.live_ring_buffer = LiveRingBuffer(max_size=ring_buffer_size)
         self.recorder_sink = RecorderSink(
-            recordings_dir=config.FILES['recordings_dir'],
-            buffer_size=recording_buffer_size
+            recordings_dir=config.FILES["recordings_dir"], buffer_size=recording_buffer_size
         )
         # Default to disabled - user must explicitly enable recording from menu
-        self.auto_recording = config.LIVE_FEED.get('auto_recording', False)
+        self.auto_recording = config.LIVE_FEED.get("auto_recording", False)
 
         # Thread safety with proper initialization
         self._lock = threading.RLock()
@@ -78,13 +76,15 @@ class ReplayEngine:
         self._playback = PlaybackController(self, self._lock, self._stop_event)
 
         # Callbacks for UI updates
-        self.on_tick_callback: Optional[Callable] = None
-        self.on_game_end_callback: Optional[Callable] = None
+        self.on_tick_callback: Callable | None = None
+        self.on_game_end_callback: Callable | None = None
 
         # Register cleanup handler
         self._register_cleanup()
 
-        logger.info(f"ReplayEngine initialized (ring_buffer={ring_buffer_size}, recording_buffer={recording_buffer_size})")
+        logger.info(
+            f"ReplayEngine initialized (ring_buffer={ring_buffer_size}, recording_buffer={recording_buffer_size})"
+        )
 
     def _register_cleanup(self):
         """Register cleanup handler to ensure resources are freed"""
@@ -128,20 +128,20 @@ class ReplayEngine:
             self._stop_event.set()
 
             # Phase 2: Clean up playback controller
-            if hasattr(self, '_playback'):
+            if hasattr(self, "_playback"):
                 self._playback.cleanup()
 
             # Stop recording if active
             if self.recorder_sink.is_recording():
                 summary = self.recorder_sink.stop_recording()
-                self._safe_log('info', f"Stopped recording on cleanup: {summary}")
+                self._safe_log("info", f"Stopped recording on cleanup: {summary}")
 
             # Clear buffers
             self.live_ring_buffer.clear()
 
-            self._safe_log('info', "ReplayEngine cleanup completed")
+            self._safe_log("info", "ReplayEngine cleanup completed")
         except Exception as e:
-            self._safe_log('error', f"Error during cleanup: {e}", exc_info=True)
+            self._safe_log("error", f"Error during cleanup: {e}", exc_info=True)
 
     @contextmanager
     def _acquire_lock(self, timeout=5.0):
@@ -155,7 +155,7 @@ class ReplayEngine:
             self._lock.release()
 
     @property
-    def ticks(self) -> List[GameTick]:
+    def ticks(self) -> list[GameTick]:
         """Get current tick list based on mode"""
         if self.is_live_mode:
             return self.live_ring_buffer.get_all()
@@ -183,7 +183,7 @@ class ReplayEngine:
         self._playback.playback_speed = value
 
     @property
-    def playback_thread(self) -> Optional[threading.Thread]:
+    def playback_thread(self) -> threading.Thread | None:
         """Get playback thread (delegates to PlaybackController)"""
         return self._playback.playback_thread
 
@@ -194,10 +194,10 @@ class ReplayEngine:
     def load_file(self, filepath: Path) -> bool:
         """
         Load game recording from JSONL file
-        
+
         Args:
             filepath: Path to .jsonl file
-            
+
         Returns:
             True if loaded successfully, False otherwise
         """
@@ -217,7 +217,7 @@ class ReplayEngine:
                 self.file_mode_ticks = loaded_ticks
                 self.current_index = 0
                 self.game_id = game_id
-                
+
                 # Clear live buffers when switching to file mode
                 self.live_ring_buffer.clear()
 
@@ -225,21 +225,27 @@ class ReplayEngine:
             self.state.reset()
             self.state.update(game_id=self.game_id, game_active=False)
 
-            event_bus.publish(Events.GAME_START, {
-                'game_id': self.game_id,
-                'tick_count': len(loaded_ticks),
-                'filepath': str(filepath),
-                'mode': 'file'
-            })
+            event_bus.publish(
+                Events.GAME_START,
+                {
+                    "game_id": self.game_id,
+                    "tick_count": len(loaded_ticks),
+                    "filepath": str(filepath),
+                    "mode": "file",
+                },
+            )
 
             logger.info(f"Loaded {len(loaded_ticks)} ticks from game {self.game_id}")
 
             # Publish file loaded event
-            event_bus.publish(Events.FILE_LOADED, {
-                'filepath': str(filepath),
-                'game_id': self.game_id,
-                'tick_count': len(loaded_ticks)
-            })
+            event_bus.publish(
+                Events.FILE_LOADED,
+                {
+                    "filepath": str(filepath),
+                    "game_id": self.game_id,
+                    "tick_count": len(loaded_ticks),
+                },
+            )
 
             # Display first tick
             self.display_tick(0)
@@ -256,7 +262,7 @@ class ReplayEngine:
             logger.error(f"Failed to load file: {e}", exc_info=True)
             return False
 
-    def load_game(self, ticks: List[GameTick], game_id: str) -> bool:
+    def load_game(self, ticks: list[GameTick], game_id: str) -> bool:
         """
         Load game data from a list of ticks (for testing)
         """
@@ -282,15 +288,14 @@ class ReplayEngine:
                         game_active=True,
                         current_tick=first_tick.tick,
                         current_price=first_tick.price,
-                        current_phase=first_tick.phase
+                        current_phase=first_tick.phase,
                     )
 
                 logger.info(f"Loaded game {game_id} with {len(ticks)} ticks")
-                event_bus.publish(Events.FILE_LOADED, {
-                    'game_id': game_id, 
-                    'tick_count': len(ticks),
-                    'mode': 'preloaded'
-                })
+                event_bus.publish(
+                    Events.FILE_LOADED,
+                    {"game_id": game_id, "tick_count": len(ticks), "mode": "preloaded"},
+                )
                 return True
 
             except Exception as e:
@@ -331,20 +336,21 @@ class ReplayEngine:
                         game_active=True,
                         current_tick=tick.tick,
                         current_price=tick.price,
-                        current_phase=tick.phase
+                        current_phase=tick.phase,
                     )
 
-                    event_bus.publish(Events.GAME_START, {
-                        'game_id': self.game_id,
-                        'tick_count': 0,
-                        'live_mode': True
-                    })
+                    event_bus.publish(
+                        Events.GAME_START,
+                        {"game_id": self.game_id, "tick_count": 0, "live_mode": True},
+                    )
 
                     # Start recording if auto-recording enabled
                     if self.auto_recording:
                         try:
                             recording_file = self.recorder_sink.start_recording(self.game_id)
-                            logger.info(f"Started live game: {self.game_id}, recording to {recording_file.name}")
+                            logger.info(
+                                f"Started live game: {self.game_id}, recording to {recording_file.name}"
+                            )
                         except Exception as e:
                             logger.error(f"Failed to start recording: {e}")
                             # Continue without recording
@@ -369,20 +375,21 @@ class ReplayEngine:
                         game_active=True,
                         current_tick=tick.tick,
                         current_price=tick.price,
-                        current_phase=tick.phase
+                        current_phase=tick.phase,
                     )
 
-                    event_bus.publish(Events.GAME_START, {
-                        'game_id': self.game_id,
-                        'tick_count': 0,
-                        'live_mode': True
-                    })
+                    event_bus.publish(
+                        Events.GAME_START,
+                        {"game_id": self.game_id, "tick_count": 0, "live_mode": True},
+                    )
 
                     # Start recording new game
                     if self.auto_recording:
                         try:
                             recording_file = self.recorder_sink.start_recording(self.game_id)
-                            logger.info(f"Started live game: {self.game_id}, recording to {recording_file.name}")
+                            logger.info(
+                                f"Started live game: {self.game_id}, recording to {recording_file.name}"
+                            )
                         except Exception as e:
                             logger.error(f"Failed to start recording: {e}")
                     else:
@@ -407,14 +414,16 @@ class ReplayEngine:
                 current_ticks = self.ticks  # Property call - gets current tick list based on mode
                 if current_ticks and 0 <= self.current_index < len(current_ticks):
                     display_data = {
-                        'tick': current_ticks[self.current_index],
-                        'index': self.current_index,
-                        'total': len(current_ticks)
+                        "tick": current_ticks[self.current_index],
+                        "index": self.current_index,
+                        "total": len(current_ticks),
                     }
 
             # AUDIT FIX: Display using captured tick data (safe - no race condition)
             if display_data is not None:
-                self._display_tick_direct(display_data['tick'], display_data['index'], display_data['total'])
+                self._display_tick_direct(
+                    display_data["tick"], display_data["index"], display_data["total"]
+                )
 
             logger.debug(f"Pushed tick {tick.tick} for game {tick.game_id}")
             return True
@@ -501,18 +510,21 @@ class ReplayEngine:
             current_phase=tick.phase,
             rugged=tick.rugged,
             game_active=tick.active,
-            game_id=tick.game_id
+            game_id=tick.game_id,
         )
 
         # Publish tick event
         # Use (index + 1) so progress reaches 100% at final tick
-        event_bus.publish(Events.GAME_TICK, {
-            'tick': tick,
-            'index': index,
-            'total': total,
-            'progress': ((index + 1) / total) * 100 if total else 0,
-            'mode': 'live' if self.is_live_mode else 'file'
-        })
+        event_bus.publish(
+            Events.GAME_TICK,
+            {
+                "tick": tick,
+                "index": index,
+                "total": total,
+                "progress": ((index + 1) / total) * 100 if total else 0,
+                "mode": "live" if self.is_live_mode else "file",
+            },
+        )
 
         # Call UI callback if set
         if self.on_tick_callback:
@@ -522,17 +534,16 @@ class ReplayEngine:
                 logger.error(f"Error in tick callback: {e}")
 
         # Check for rug event
-        if tick.rugged and not self.state.get('rug_detected'):
+        if tick.rugged and not self.state.get("rug_detected"):
             self._handle_rug_event(tick)
 
     def _handle_rug_event(self, tick: GameTick):
         """Handle rug event detection"""
         self.state.update(rug_detected=True)
-        event_bus.publish(Events.GAME_RUG, {
-            'tick': tick.tick,
-            'price': float(tick.price),
-            'game_id': tick.game_id
-        })
+        event_bus.publish(
+            Events.GAME_RUG,
+            {"tick": tick.tick, "price": float(tick.price), "game_id": tick.game_id},
+        )
         logger.warning(f"RUG EVENT detected at tick {tick.tick}")
 
     def _handle_game_end(self):
@@ -549,11 +560,14 @@ class ReplayEngine:
         # Calculate final metrics
         metrics = self.state.calculate_metrics()
 
-        event_bus.publish(Events.GAME_END, {
-            'game_id': self.game_id,
-            'metrics': metrics,
-            'mode': 'live' if self.is_live_mode else 'file'
-        })
+        event_bus.publish(
+            Events.GAME_END,
+            {
+                "game_id": self.game_id,
+                "metrics": metrics,
+                "mode": "live" if self.is_live_mode else "file",
+            },
+        )
         self.state.update(game_active=False)
 
         if self.on_game_end_callback:
@@ -583,7 +597,7 @@ class ReplayEngine:
         ticks = self.ticks
         return self.current_index >= len(ticks) - 1 if ticks else True
 
-    def get_current_tick(self) -> Optional[GameTick]:
+    def get_current_tick(self) -> GameTick | None:
         """Get current tick"""
         ticks = self.ticks
         if not ticks or self.current_index >= len(ticks):
@@ -602,15 +616,15 @@ class ReplayEngine:
         """Get replay info"""
         ticks = self.ticks
         return {
-            'loaded': self.is_loaded(),
-            'game_id': self.game_id,
-            'total_ticks': len(ticks),
-            'current_tick': self.current_index,
-            'is_playing': self.is_playing,
-            'speed': self.playback_speed,
-            'progress': self.get_progress() * 100,
-            'mode': 'live' if self.is_live_mode else 'file',
-            'ring_buffer_size': self.live_ring_buffer.get_size() if self.is_live_mode else 0
+            "loaded": self.is_loaded(),
+            "game_id": self.game_id,
+            "total_ticks": len(ticks),
+            "current_tick": self.current_index,
+            "is_playing": self.is_playing,
+            "speed": self.playback_speed,
+            "progress": self.get_progress() * 100,
+            "mode": "live" if self.is_live_mode else "file",
+            "ring_buffer_size": self.live_ring_buffer.get_size() if self.is_live_mode else 0,
         }
 
     # ========================================================================
@@ -627,7 +641,11 @@ class ReplayEngine:
             self.auto_recording = True
 
             # Start recording if live game is in progress
-            if self.is_live_mode and self.live_ring_buffer and not self.recorder_sink.is_recording():
+            if (
+                self.is_live_mode
+                and self.live_ring_buffer
+                and not self.recorder_sink.is_recording()
+            ):
                 try:
                     self.recorder_sink.start_recording(self.game_id)
                     logger.info("Recording enabled and started for current game")
@@ -669,25 +687,26 @@ class ReplayEngine:
         with self._acquire_lock():
             current_file = self.recorder_sink.get_current_file()
             return {
-                'enabled': self.auto_recording,
-                'active': self.recorder_sink.is_recording(),
-                'filepath': str(current_file) if current_file else None,
-                'tick_count': self.recorder_sink.get_tick_count(),
-                'mode': 'live' if self.is_live_mode else 'file'
+                "enabled": self.auto_recording,
+                "active": self.recorder_sink.is_recording(),
+                "filepath": str(current_file) if current_file else None,
+                "tick_count": self.recorder_sink.get_tick_count(),
+                "mode": "live" if self.is_live_mode else "file",
             }
 
     def get_ring_buffer_info(self) -> dict:
         """Get ring buffer status"""
         oldest = self.live_ring_buffer.get_oldest_tick()
         newest = self.live_ring_buffer.get_newest_tick()
-        
+
         return {
-            'size': self.live_ring_buffer.get_size(),
-            'max_size': self.live_ring_buffer.get_max_size(),
-            'is_full': self.live_ring_buffer.is_full(),
-            'oldest_tick': oldest.tick if oldest else None,
-            'newest_tick': newest.tick if newest else None,
-            'memory_usage_estimate': self.live_ring_buffer.get_size() * 1024  # Rough estimate in bytes
+            "size": self.live_ring_buffer.get_size(),
+            "max_size": self.live_ring_buffer.get_max_size(),
+            "is_full": self.live_ring_buffer.is_full(),
+            "oldest_tick": oldest.tick if oldest else None,
+            "newest_tick": newest.tick if newest else None,
+            "memory_usage_estimate": self.live_ring_buffer.get_size()
+            * 1024,  # Rough estimate in bytes
         }
 
     def __del__(self):
@@ -696,4 +715,4 @@ class ReplayEngine:
             self.cleanup()
         except Exception as e:
             # AUDIT FIX: Log error safely instead of silent pass
-            self._safe_log('error', f"Error in destructor: {e}")
+            self._safe_log("error", f"Error in destructor: {e}")

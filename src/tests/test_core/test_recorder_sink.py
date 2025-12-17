@@ -2,16 +2,17 @@
 Tests for RecorderSink class
 """
 
-import pytest
-import tempfile
 import json
-import time
 import os
-from pathlib import Path
+import tempfile
+import time
 from datetime import datetime
 from decimal import Decimal
-from core.recorder_sink import RecorderSink
-from core.recorder_sink import RecordingError
+from pathlib import Path
+
+import pytest
+
+from core.recorder_sink import RecorderSink, RecordingError
 from models import GameTick
 
 
@@ -80,6 +81,7 @@ class TestRecorderSinkFileNaming:
 
             # Verify timestamp is within test execution window (allow 1 second tolerance)
             from datetime import timedelta
+
             time_tolerance = timedelta(seconds=1)
             assert (before_time - time_tolerance) <= file_time <= (after_time + time_tolerance)
 
@@ -112,7 +114,7 @@ class TestRecorderSinkTickRecording:
             active=True,
             rugged=False,
             cooldown_timer=0,
-            trade_count=10
+            trade_count=10,
         )
 
     def test_record_tick_writes_to_file(self, sample_tick):
@@ -150,16 +152,16 @@ class TestRecorderSinkTickRecording:
             recorder.stop_recording()  # Ensure buffer is flushed
 
             # Read back the recorded file (skip metadata header and end metadata)
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 lines = f.readlines()
                 # Line 0: start metadata, Line 1: tick, Line 2: end metadata
                 assert len(lines) >= 2
                 tick_line = lines[1].strip()
                 data = json.loads(tick_line)
 
-            assert data['game_id'] == sample_tick.game_id
-            assert data['tick'] == sample_tick.tick
-            assert data['phase'] == sample_tick.phase
+            assert data["game_id"] == sample_tick.game_id
+            assert data["tick"] == sample_tick.tick
+            assert data["phase"] == sample_tick.phase
 
     def test_multiple_ticks_recorded(self, sample_tick):
         """Test recording multiple ticks"""
@@ -178,7 +180,7 @@ class TestRecorderSinkTickRecording:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=i
+                    trade_count=i,
                 )
                 recorder.record_tick(tick)
 
@@ -205,12 +207,12 @@ class TestRecorderSinkBuffering:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 recorder.record_tick(tick)
 
             # File should only have metadata header (ticks not flushed yet)
-            with open(recorder.current_file, 'r') as f:
+            with open(recorder.current_file) as f:
                 lines = f.readlines()
             assert len(lines) == 1  # Only metadata header
 
@@ -231,12 +233,12 @@ class TestRecorderSinkBuffering:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 recorder.record_tick(tick)
 
             # File should have 4 lines (metadata header + 3 ticks)
-            with open(recorder.current_file, 'r') as f:
+            with open(recorder.current_file) as f:
                 lines = f.readlines()
             assert len(lines) == 4  # 1 metadata header + 3 ticks
 
@@ -257,7 +259,7 @@ class TestRecorderSinkBuffering:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 recorder.record_tick(tick)
 
@@ -266,7 +268,7 @@ class TestRecorderSinkBuffering:
 
             # File should have 4 lines (start metadata + 2 ticks + end metadata)
             filepath = Path(tmpdir) / [f for f in Path(tmpdir).glob("*.jsonl")][0].name
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 lines = f.readlines()
             assert len(lines) == 4  # Start metadata + 2 ticks + end metadata
 
@@ -304,18 +306,18 @@ class TestRecorderSinkStopRecording:
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 recorder.record_tick(tick)
 
             summary = recorder.stop_recording()
 
             assert summary is not None
-            assert 'filepath' in summary
-            assert 'tick_count' in summary
-            assert 'file_size' in summary
-            assert summary['tick_count'] == 3
-            assert summary['file_size'] > 0
+            assert "filepath" in summary
+            assert "tick_count" in summary
+            assert "file_size" in summary
+            assert summary["tick_count"] == 3
+            assert summary["file_size"] > 0
 
     def test_stop_recording_without_start_returns_none(self):
         """Test stop_recording without active recording returns None"""
@@ -333,17 +335,19 @@ class TestRecorderSinkStopRecording:
 
             # Start first recording
             file1 = recorder.start_recording("game1")
-            recorder.record_tick(GameTick(
-                game_id="game1",
-                tick=0,
-                timestamp="2025-11-15T10:00:00",
-                price=Decimal("1.0"),
-                phase="ACTIVE",
-                active=True,
-                rugged=False,
-                cooldown_timer=0,
-                trade_count=0
-            ))
+            recorder.record_tick(
+                GameTick(
+                    game_id="game1",
+                    tick=0,
+                    timestamp="2025-11-15T10:00:00",
+                    price=Decimal("1.0"),
+                    phase="ACTIVE",
+                    active=True,
+                    rugged=False,
+                    cooldown_timer=0,
+                    trade_count=0,
+                )
+            )
 
             # Start second recording (should stop first)
             time.sleep(1.1)
@@ -354,7 +358,7 @@ class TestRecorderSinkStopRecording:
             assert file1 != file2
 
             # First file should have 3 lines (start metadata + 1 tick + end metadata)
-            with open(file1, 'r') as f:
+            with open(file1) as f:
                 assert len(f.readlines()) == 3
 
 
@@ -393,17 +397,19 @@ class TestRecorderSinkStatus:
             assert recorder.get_tick_count() == 0
 
             for i in range(5):
-                recorder.record_tick(GameTick(
-                    game_id="test-game",
-                    tick=i,
-                    timestamp=f"2025-11-15T10:00:{i:02d}",
-                    price=Decimal("1.0"),
-                    phase="ACTIVE",
-                    active=True,
-                    rugged=False,
-                    cooldown_timer=0,
-                    trade_count=0
-                ))
+                recorder.record_tick(
+                    GameTick(
+                        game_id="test-game",
+                        tick=i,
+                        timestamp=f"2025-11-15T10:00:{i:02d}",
+                        price=Decimal("1.0"),
+                        phase="ACTIVE",
+                        active=True,
+                        rugged=False,
+                        cooldown_timer=0,
+                        trade_count=0,
+                    )
+                )
 
             assert recorder.get_tick_count() == 5
 
@@ -430,7 +436,7 @@ class TestRecorderSinkThreadSafety:
                         active=True,
                         rugged=False,
                         cooldown_timer=0,
-                        trade_count=0
+                        trade_count=0,
                     )
                     recorder.record_tick(tick)
 

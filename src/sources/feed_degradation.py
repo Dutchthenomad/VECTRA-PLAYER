@@ -9,10 +9,11 @@ These classes handle graceful degradation logic for the WebSocket feed
 without containing any Socket.IO-specific code.
 """
 
-import time
 import threading
-from typing import Dict, Any, Optional, Callable
+import time
 from collections import deque
+from collections.abc import Callable
+from typing import Any
 
 
 class OperatingMode:
@@ -21,10 +22,11 @@ class OperatingMode:
 
     PHASE 3.6 AUDIT FIX: Defines system operating states.
     """
-    NORMAL = "NORMAL"              # Full functionality
-    DEGRADED = "DEGRADED"          # Reduced functionality (high latency/errors)
-    MINIMAL = "MINIMAL"            # Minimal functionality (severe issues)
-    OFFLINE = "OFFLINE"            # No connection
+
+    NORMAL = "NORMAL"  # Full functionality
+    DEGRADED = "DEGRADED"  # Reduced functionality (high latency/errors)
+    MINIMAL = "MINIMAL"  # Minimal functionality (severe issues)
+    OFFLINE = "OFFLINE"  # No connection
 
 
 class GracefulDegradationManager:
@@ -41,10 +43,7 @@ class GracefulDegradationManager:
     """
 
     def __init__(
-        self,
-        error_threshold: int = 10,
-        spike_threshold: int = 5,
-        recovery_window_sec: float = 60.0
+        self, error_threshold: int = 10, spike_threshold: int = 5, recovery_window_sec: float = 60.0
     ):
         """
         Initialize degradation manager.
@@ -64,12 +63,12 @@ class GracefulDegradationManager:
         # Tracking
         self.errors_in_window = 0
         self.spikes_in_window = 0
-        self.last_issue_time: Optional[float] = None
-        self.degradation_start_time: Optional[float] = None
+        self.last_issue_time: float | None = None
+        self.degradation_start_time: float | None = None
         self._lock = threading.Lock()
 
         # Callbacks
-        self.on_mode_change: Optional[Callable] = None
+        self.on_mode_change: Callable | None = None
 
     def record_error(self):
         """Record an error occurrence"""
@@ -127,8 +126,10 @@ class GracefulDegradationManager:
             return
 
         # Check for DEGRADED conditions
-        if (self.errors_in_window >= self.error_threshold or
-            self.spikes_in_window >= self.spike_threshold):
+        if (
+            self.errors_in_window >= self.error_threshold
+            or self.spikes_in_window >= self.spike_threshold
+        ):
             self._set_mode(OperatingMode.DEGRADED)
             return
 
@@ -141,13 +142,15 @@ class GracefulDegradationManager:
         self.current_mode = new_mode
 
         # Record in history
-        self.mode_history.append({
-            'from': old_mode,
-            'to': new_mode,
-            'timestamp': time.time(),
-            'errors': self.errors_in_window,
-            'spikes': self.spikes_in_window
-        })
+        self.mode_history.append(
+            {
+                "from": old_mode,
+                "to": new_mode,
+                "timestamp": time.time(),
+                "errors": self.errors_in_window,
+                "spikes": self.spikes_in_window,
+            }
+        )
 
         # Track degradation start
         if new_mode != OperatingMode.NORMAL and old_mode == OperatingMode.NORMAL:
@@ -170,7 +173,7 @@ class GracefulDegradationManager:
         """Check if aggressive buffering is needed"""
         return self.current_mode == OperatingMode.MINIMAL
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current degradation status"""
         with self._lock:
             degradation_duration = None
@@ -178,10 +181,10 @@ class GracefulDegradationManager:
                 degradation_duration = time.time() - self.degradation_start_time
 
             return {
-                'mode': self.current_mode,
-                'errors_in_window': self.errors_in_window,
-                'spikes_in_window': self.spikes_in_window,
-                'last_issue_time': self.last_issue_time,
-                'degradation_duration_sec': degradation_duration,
-                'recent_transitions': list(self.mode_history)[-5:]
+                "mode": self.current_mode,
+                "errors_in_window": self.errors_in_window,
+                "spikes_in_window": self.spikes_in_window,
+                "last_issue_time": self.last_issue_time,
+                "degradation_duration_sec": degradation_duration,
+                "recent_transitions": list(self.mode_history)[-5:],
             }

@@ -8,26 +8,26 @@ Tests cover:
 - GracefulDegradationManager: mode transitions, recovery, callbacks
 """
 
-import pytest
 import time
-from unittest.mock import MagicMock
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
-from sources.feed_degradation import (
-    OperatingMode,
-    GracefulDegradationManager
-)
+from sources.feed_degradation import GracefulDegradationManager, OperatingMode
 
 
 class TestOperatingMode:
     """Tests for OperatingMode enum-like class"""
 
-    @pytest.mark.parametrize("mode,expected", [
-        (OperatingMode.NORMAL, "NORMAL"),
-        (OperatingMode.DEGRADED, "DEGRADED"),
-        (OperatingMode.MINIMAL, "MINIMAL"),
-        (OperatingMode.OFFLINE, "OFFLINE"),
-    ])
+    @pytest.mark.parametrize(
+        "mode,expected",
+        [
+            (OperatingMode.NORMAL, "NORMAL"),
+            (OperatingMode.DEGRADED, "DEGRADED"),
+            (OperatingMode.MINIMAL, "MINIMAL"),
+            (OperatingMode.OFFLINE, "OFFLINE"),
+        ],
+    )
     def test_mode_values(self, mode, expected):
         """Test all mode values are correct strings"""
         assert mode == expected
@@ -36,14 +36,17 @@ class TestOperatingMode:
 class TestGracefulDegradationManager:
     """Tests for GracefulDegradationManager"""
 
-    @pytest.mark.parametrize("attr,expected", [
-        ("error_threshold", 10),
-        ("spike_threshold", 5),
-        ("recovery_window_sec", 60.0),
-        ("current_mode", OperatingMode.NORMAL),
-        ("errors_in_window", 0),
-        ("spikes_in_window", 0),
-    ])
+    @pytest.mark.parametrize(
+        "attr,expected",
+        [
+            ("error_threshold", 10),
+            ("spike_threshold", 5),
+            ("recovery_window_sec", 60.0),
+            ("current_mode", OperatingMode.NORMAL),
+            ("errors_in_window", 0),
+            ("spikes_in_window", 0),
+        ],
+    )
     def test_initialization_defaults(self, attr, expected):
         """Test all default values are correct"""
         manager = GracefulDegradationManager()
@@ -52,9 +55,7 @@ class TestGracefulDegradationManager:
     def test_initialization_custom(self):
         """Test custom initialization"""
         manager = GracefulDegradationManager(
-            error_threshold=5,
-            spike_threshold=3,
-            recovery_window_sec=30.0
+            error_threshold=5, spike_threshold=3, recovery_window_sec=30.0
         )
         assert manager.error_threshold == 5
         assert manager.spike_threshold == 3
@@ -129,10 +130,7 @@ class TestGracefulDegradationManager:
     def test_check_recovery_from_degraded(self):
         """Test recovery from DEGRADED to NORMAL"""
         # Set low error threshold so we can trigger degradation
-        manager = GracefulDegradationManager(
-            error_threshold=3,
-            recovery_window_sec=0.1
-        )
+        manager = GracefulDegradationManager(error_threshold=3, recovery_window_sec=0.1)
 
         # Degrade by exceeding error threshold
         manager.record_error()
@@ -216,13 +214,13 @@ class TestGracefulDegradationManager:
 
         status = manager.get_status()
 
-        assert 'mode' in status
-        assert 'errors_in_window' in status
-        assert 'spikes_in_window' in status
-        assert 'last_issue_time' in status
-        assert 'degradation_duration_sec' in status
-        assert 'recent_transitions' in status
-        assert status['mode'] == OperatingMode.NORMAL
+        assert "mode" in status
+        assert "errors_in_window" in status
+        assert "spikes_in_window" in status
+        assert "last_issue_time" in status
+        assert "degradation_duration_sec" in status
+        assert "recent_transitions" in status
+        assert status["mode"] == OperatingMode.NORMAL
 
     def test_mode_history_tracked(self):
         """Test mode transitions are tracked in history"""
@@ -234,9 +232,9 @@ class TestGracefulDegradationManager:
         assert len(manager.mode_history) >= 1
 
         last_transition = manager.mode_history[-1]
-        assert last_transition['from'] == OperatingMode.NORMAL
-        assert last_transition['to'] == OperatingMode.DEGRADED
-        assert 'timestamp' in last_transition
+        assert last_transition["from"] == OperatingMode.NORMAL
+        assert last_transition["to"] == OperatingMode.DEGRADED
+        assert "timestamp" in last_transition
 
     def test_mode_history_bounded(self):
         """Test mode history is limited to 20 entries"""
@@ -251,5 +249,5 @@ class TestGracefulDegradationManager:
         assert len(manager.mode_history) <= 20
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

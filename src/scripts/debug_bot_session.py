@@ -20,21 +20,16 @@ Output:
       - metrics.json (performance data)
 """
 
-import sys
-import logging
-import threading
-import time
 import json
-from pathlib import Path
+import logging
+import sys
+import time
 from datetime import datetime
-from decimal import Decimal
-import tkinter as tk
+from pathlib import Path
 
 # Add parent directory to Python path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from core import GameState, ReplayEngine
-from bot import BotInterface, BotController, ExecutionMode
 
 # Setup debug logging
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -47,22 +42,19 @@ screenshot_dir.mkdir(exist_ok=True)
 log_file = debug_dir / "bot_decisions.log"
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
 # Metrics tracking
 metrics = {
-    'session_start': timestamp,
-    'decisions': [],
-    'trades': [],
-    'errors': [],
-    'timing': [],
-    'screenshots': []
+    "session_start": timestamp,
+    "decisions": [],
+    "trades": [],
+    "errors": [],
+    "timing": [],
+    "screenshots": [],
 }
 
 screenshot_counter = 0
@@ -85,19 +77,18 @@ def take_screenshot(root, reason: str):
 
         # Use scrot or gnome-screenshot if available
         import subprocess
-        try:
-            subprocess.run([
-                'gnome-screenshot',
-                '-w',
-                '-f', str(filepath)
-            ], check=True, timeout=2)
 
-            metrics['screenshots'].append({
-                'number': screenshot_counter,
-                'reason': reason,
-                'filename': filename,
-                'timestamp': datetime.now().isoformat()
-            })
+        try:
+            subprocess.run(["gnome-screenshot", "-w", "-f", str(filepath)], check=True, timeout=2)
+
+            metrics["screenshots"].append(
+                {
+                    "number": screenshot_counter,
+                    "reason": reason,
+                    "filename": filename,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             logger.info(f"📸 Screenshot {screenshot_counter}: {reason}")
         except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
             logger.debug(f"Screenshot tool not available, skipping {reason}")
@@ -122,60 +113,66 @@ class DebugBotMonitor:
 
     def _on_bot_decision(self, data):
         """Log bot decision and take screenshot if important"""
-        decision = data.get('decision')
-        reasoning = data.get('reasoning', 'No reasoning provided')
+        decision = data.get("decision")
+        reasoning = data.get("reasoning", "No reasoning provided")
 
         logger.info(f"🤖 BOT DECISION: {decision}")
         logger.info(f"   Reasoning: {reasoning}")
 
         # Record decision
-        metrics['decisions'].append({
-            'timestamp': datetime.now().isoformat(),
-            'decision': decision,
-            'reasoning': reasoning,
-            'game_state': {
-                'tick': self.game_state.get('current_tick'),
-                'price': float(self.game_state.get('current_price', 0)),
-                'balance': float(self.game_state.get('balance', 0)),
-                'has_position': self.game_state.get('position') is not None
+        metrics["decisions"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "decision": decision,
+                "reasoning": reasoning,
+                "game_state": {
+                    "tick": self.game_state.get("current_tick"),
+                    "price": float(self.game_state.get("current_price", 0)),
+                    "balance": float(self.game_state.get("balance", 0)),
+                    "has_position": self.game_state.get("position") is not None,
+                },
             }
-        })
+        )
 
         # Take screenshot for BUY/SELL decisions
-        if decision in ['BUY', 'SELL', 'SIDEBET']:
+        if decision in ["BUY", "SELL", "SIDEBET"]:
             take_screenshot(self.root, f"decision_{decision.lower()}")
 
     def _on_trade(self, data):
         """Log successful trade execution"""
-        trade_type = data.get('type', 'UNKNOWN')
-        amount = data.get('amount', 0)
+        trade_type = data.get("type", "UNKNOWN")
+        amount = data.get("amount", 0)
 
         logger.info(f"✅ TRADE EXECUTED: {trade_type} {amount} SOL")
 
-        metrics['trades'].append({
-            'timestamp': datetime.now().isoformat(),
-            'type': trade_type,
-            'amount': float(amount),
-            'success': True
-        })
+        metrics["trades"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "type": trade_type,
+                "amount": float(amount),
+                "success": True,
+            }
+        )
 
         take_screenshot(self.root, f"trade_{trade_type.lower()}")
 
     def _on_trade_failed(self, data):
         """Log failed trade and capture error"""
-        trade_type = data.get('type', 'UNKNOWN')
-        error = data.get('error', 'Unknown error')
+        trade_type = data.get("type", "UNKNOWN")
+        error = data.get("error", "Unknown error")
 
         logger.error(f"❌ TRADE FAILED: {trade_type} - {error}")
 
-        metrics['errors'].append({
-            'timestamp': datetime.now().isoformat(),
-            'type': 'TRADE_FAILED',
-            'trade_type': trade_type,
-            'error': str(error)
-        })
+        metrics["errors"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "type": "TRADE_FAILED",
+                "trade_type": trade_type,
+                "error": str(error),
+            }
+        )
 
-        take_screenshot(self.root, f"error_trade_failed")
+        take_screenshot(self.root, "error_trade_failed")
 
     def _on_game_start(self, data):
         """Log game start"""
@@ -184,7 +181,7 @@ class DebugBotMonitor:
 
     def _on_game_end(self, data):
         """Log game end with final metrics"""
-        result = data.get('result', {})
+        result = data.get("result", {})
         logger.info(f"🏁 GAME ENDED - Result: {result}")
         take_screenshot(self.root, "game_end")
 
@@ -205,6 +202,7 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
     try:
         # Import UI components (needs to be after logging setup)
         import tkinter as tk
+
         from ui.main_window import MainWindow
 
         # Create tkinter root
@@ -241,9 +239,9 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
 
         # Enable bot with foundational strategy
         logger.info("Enabling bot with foundational strategy...")
-        main_window.bot_config_panel.config['strategy'] = 'foundational'
-        main_window.bot_config_panel.config['execution_mode'] = 'ui_layer'
-        main_window.bot_config_panel.config['bot_enabled'] = True
+        main_window.bot_config_panel.config["strategy"] = "foundational"
+        main_window.bot_config_panel.config["execution_mode"] = "ui_layer"
+        main_window.bot_config_panel.config["bot_enabled"] = True
 
         # Take initial screenshot
         root.update()
@@ -275,16 +273,14 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
 
     except Exception as e:
         logger.error(f"Debug session error: {e}", exc_info=True)
-        metrics['errors'].append({
-            'timestamp': datetime.now().isoformat(),
-            'type': 'SESSION_ERROR',
-            'error': str(e)
-        })
+        metrics["errors"].append(
+            {"timestamp": datetime.now().isoformat(), "type": "SESSION_ERROR", "error": str(e)}
+        )
     finally:
         # Save metrics
         logger.info("Saving metrics...")
         metrics_file = debug_dir / "metrics.json"
-        with open(metrics_file, 'w') as f:
+        with open(metrics_file, "w") as f:
             json.dump(metrics, f, indent=2, default=str)
 
         logger.info("=" * 80)
@@ -297,12 +293,12 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
         logger.info("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Debug bot session with screenshots')
-    parser.add_argument('--game', type=str, help='Specific game file to load')
-    parser.add_argument('--duration', type=int, default=60, help='Duration in seconds')
+    parser = argparse.ArgumentParser(description="Debug bot session with screenshots")
+    parser.add_argument("--game", type=str, help="Specific game file to load")
+    parser.add_argument("--duration", type=int, default=60, help="Duration in seconds")
 
     args = parser.parse_args()
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import patch
 
 from ui.audio_cue_player import AudioCuePlayer
@@ -37,9 +38,7 @@ class TestAudioCuePlayer:
             player = AudioCuePlayer(enabled=True)
             player.play_recording_started()
 
-        play_calls = [
-            call for call in mock_run.call_args_list if call.args[0][0] == "paplay"
-        ]
+        play_calls = [call for call in mock_run.call_args_list if call.args[0][0] == "paplay"]
         assert play_calls, "expected a paplay playback call"
         assert play_calls[-1].args[0][1].endswith("recording_start.wav")
 
@@ -51,8 +50,6 @@ class TestAudioCuePlayer:
             player = AudioCuePlayer(enabled=True)
             player.play_game_recorded()
 
-        play_calls = [
-            call for call in mock_run.call_args_list if call.args[0][0] == "paplay"
-        ]
+        play_calls = [call for call in mock_run.call_args_list if call.args[0][0] == "paplay"]
         assert play_calls, "expected a paplay playback call"
         assert play_calls[-1].args[0][1].endswith("game_recorded.wav")

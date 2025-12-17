@@ -9,13 +9,13 @@ Handles:
 - Recording control
 """
 
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from pathlib import Path
-from typing import Callable
-import subprocess
-import platform
 import logging
+import platform
+import subprocess
+import tkinter as tk
+from collections.abc import Callable
+from pathlib import Path
+from tkinter import filedialog, messagebox
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ReplayController:
         # Callbacks
         log_callback: Callable[[str], None],
         # Issue #18 fix: Use RecordingController for state consistency
-        recording_controller=None
+        recording_controller=None,
     ):
         """
         Initialize ReplayController with dependencies.
@@ -103,7 +103,7 @@ class ReplayController:
         """Load a game file via file dialog"""
         filepath = filedialog.askopenfilename(
             title="Select Game Recording",
-            filetypes=[("JSONL files", "*.jsonl"), ("All files", "*.*")]
+            filetypes=[("JSONL files", "*.jsonl"), ("All files", "*.*")],
         )
 
         if filepath:
@@ -209,6 +209,7 @@ class ReplayController:
         Issue #18 Fix: Uses RecordingController instead of ReplayEngine
         for consistent state management.
         """
+
         def do_toggle():
             # Issue #18: Use RecordingController as source of truth
             if self.recording_controller:
@@ -242,17 +243,17 @@ class ReplayController:
 
     def open_recordings_folder(self):
         """Open recordings folder in system file manager"""
-        recordings_dir = self.config.FILES['recordings_dir']
+        recordings_dir = self.config.FILES["recordings_dir"]
 
         try:
             system = platform.system()
-            if system == 'Linux':
+            if system == "Linux":
                 # Try xdg-open first (most Linux distros)
-                subprocess.run(['xdg-open', str(recordings_dir)], check=True)
-            elif system == 'Darwin':  # macOS
-                subprocess.run(['open', str(recordings_dir)], check=True)
-            elif system == 'Windows':
-                subprocess.run(['explorer', str(recordings_dir)], check=True)
+                subprocess.run(["xdg-open", str(recordings_dir)], check=True)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(recordings_dir)], check=True)
+            elif system == "Windows":
+                subprocess.run(["explorer", str(recordings_dir)], check=True)
             else:
                 raise OSError(f"Unsupported platform: {system}")
 

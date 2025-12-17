@@ -5,8 +5,8 @@ Extracted from MainWindow._create_ui() (Phase 1)
 Handles construction of chart container, ChartWidget, and zoom overlay.
 """
 
-import tkinter as tk
 import logging
+import tkinter as tk
 
 from ui.widgets import ChartWidget
 
@@ -43,7 +43,7 @@ class ChartBuilder:
                 - zoom_overlay: The zoom controls frame
         """
         # Chart container
-        chart_container = tk.Frame(self.parent, bg='#0a0a0a')
+        chart_container = tk.Frame(self.parent, bg="#0a0a0a")
         chart_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
         # Chart widget (MAXIMIZED - no fixed dimensions)
@@ -51,46 +51,46 @@ class ChartBuilder:
         chart.pack(fill=tk.BOTH, expand=True)
 
         # Zoom controls (overlaid at bottom-left of chart)
-        zoom_overlay = tk.Frame(chart_container, bg='#2a2a2a')
-        zoom_overlay.place(x=10, y=10, anchor='nw')
+        zoom_overlay = tk.Frame(chart_container, bg="#2a2a2a")
+        zoom_overlay.place(x=10, y=10, anchor="nw")
 
         tk.Button(
             zoom_overlay,
             text="+ ZOOM IN",
             command=chart.zoom_in,
-            bg='#333333',
-            fg='white',
-            font=('Arial', 9),
+            bg="#333333",
+            fg="white",
+            font=("Arial", 9),
             bd=1,
-            relief=tk.RAISED
+            relief=tk.RAISED,
         ).pack(side=tk.LEFT, padx=2)
 
         tk.Button(
             zoom_overlay,
             text="+ ZOOM OUT",
             command=chart.zoom_out,
-            bg='#333333',
-            fg='white',
-            font=('Arial', 9),
+            bg="#333333",
+            fg="white",
+            font=("Arial", 9),
             bd=1,
-            relief=tk.RAISED
+            relief=tk.RAISED,
         ).pack(side=tk.LEFT, padx=2)
 
         tk.Button(
             zoom_overlay,
             text="RESET ZOOM",
             command=chart.reset_zoom,
-            bg='#333333',
-            fg='white',
-            font=('Arial', 9),
+            bg="#333333",
+            fg="white",
+            font=("Arial", 9),
             bd=1,
-            relief=tk.RAISED
+            relief=tk.RAISED,
         ).pack(side=tk.LEFT, padx=2)
 
         logger.debug("ChartBuilder: Chart area built")
 
         return {
-            'chart_container': chart_container,
-            'chart': chart,
-            'zoom_overlay': zoom_overlay,
+            "chart_container": chart_container,
+            "chart": chart,
+            "zoom_overlay": zoom_overlay,
         }

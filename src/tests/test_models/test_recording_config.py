@@ -15,10 +15,11 @@ Tests cover:
 
 import json
 import os
-import pytest
 import tempfile
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 # These imports will FAIL until we create the module (TDD RED phase)
 from models.recording_config import (
@@ -31,20 +32,26 @@ from models.recording_config import (
 class TestEnums:
     """Tests for recording config enums"""
 
-    @pytest.mark.parametrize("enum_val,expected", [
-        (CaptureMode.GAME_STATE_ONLY, "game_state_only"),
-        (CaptureMode.GAME_AND_PLAYER, "game_and_player"),
-        (MonitorThresholdType.TICKS, "ticks"),
-        (MonitorThresholdType.GAMES, "games"),
-    ])
+    @pytest.mark.parametrize(
+        "enum_val,expected",
+        [
+            (CaptureMode.GAME_STATE_ONLY, "game_state_only"),
+            (CaptureMode.GAME_AND_PLAYER, "game_and_player"),
+            (MonitorThresholdType.TICKS, "ticks"),
+            (MonitorThresholdType.GAMES, "games"),
+        ],
+    )
     def test_enum_values(self, enum_val, expected):
         """Test all enum values are correct"""
         assert enum_val.value == expected
 
-    @pytest.mark.parametrize("str_val,expected_enum", [
-        ("game_state_only", CaptureMode.GAME_STATE_ONLY),
-        ("game_and_player", CaptureMode.GAME_AND_PLAYER),
-    ])
+    @pytest.mark.parametrize(
+        "str_val,expected_enum",
+        [
+            ("game_state_only", CaptureMode.GAME_STATE_ONLY),
+            ("game_and_player", CaptureMode.GAME_AND_PLAYER),
+        ],
+    )
     def test_capture_mode_from_string(self, str_val, expected_enum):
         """Test creating CaptureMode from string value"""
         assert CaptureMode(str_val) == expected_enum
@@ -53,16 +60,19 @@ class TestEnums:
 class TestRecordingConfigDefaults:
     """Tests for RecordingConfig default values"""
 
-    @pytest.mark.parametrize("attr,expected", [
-        ("capture_mode", CaptureMode.GAME_STATE_ONLY),
-        ("game_count", None),
-        ("time_limit_minutes", None),
-        ("monitor_threshold_type", MonitorThresholdType.TICKS),
-        ("monitor_threshold_value", 20),
-        ("audio_cues", True),
-        ("auto_start_on_launch", False),
-        ("last_modified", None),
-    ])
+    @pytest.mark.parametrize(
+        "attr,expected",
+        [
+            ("capture_mode", CaptureMode.GAME_STATE_ONLY),
+            ("game_count", None),
+            ("time_limit_minutes", None),
+            ("monitor_threshold_type", MonitorThresholdType.TICKS),
+            ("monitor_threshold_value", 20),
+            ("audio_cues", True),
+            ("auto_start_on_launch", False),
+            ("last_modified", None),
+        ],
+    )
     def test_default_values(self, attr, expected):
         """Test all default values are correct"""
         config = RecordingConfig()
@@ -90,8 +100,7 @@ class TestRecordingConfigCreation:
     def test_creation_with_monitor_by_games(self):
         """Test creating config with monitor threshold by games"""
         config = RecordingConfig(
-            monitor_threshold_type=MonitorThresholdType.GAMES,
-            monitor_threshold_value=3
+            monitor_threshold_type=MonitorThresholdType.GAMES, monitor_threshold_value=3
         )
         assert config.monitor_threshold_type == MonitorThresholdType.GAMES
         assert config.monitor_threshold_value == 3
@@ -117,7 +126,7 @@ class TestRecordingConfigCreation:
             monitor_threshold_value=5,
             audio_cues=False,
             auto_start_on_launch=True,
-            last_modified=timestamp
+            last_modified=timestamp,
         )
         assert config.capture_mode == CaptureMode.GAME_AND_PLAYER
         assert config.game_count == 50
@@ -157,7 +166,7 @@ class TestRecordingConfigSerialization:
             monitor_threshold_value=3,
             audio_cues=False,
             auto_start_on_launch=True,
-            last_modified=timestamp
+            last_modified=timestamp,
         )
         result = config.to_dict()
 
@@ -180,7 +189,7 @@ class TestRecordingConfigSerialization:
             "monitor_threshold_value": 20,
             "audio_cues": True,
             "auto_start_on_launch": False,
-            "last_modified": None
+            "last_modified": None,
         }
         config = RecordingConfig.from_dict(data)
 
@@ -203,7 +212,7 @@ class TestRecordingConfigSerialization:
             "monitor_threshold_value": 5,
             "audio_cues": False,
             "auto_start_on_launch": True,
-            "last_modified": "2025-12-07T14:30:00"
+            "last_modified": "2025-12-07T14:30:00",
         }
         config = RecordingConfig.from_dict(data)
 
@@ -226,7 +235,7 @@ class TestRecordingConfigSerialization:
             monitor_threshold_value=3,
             audio_cues=False,
             auto_start_on_launch=True,
-            last_modified=datetime(2025, 12, 7, 14, 30, 0)
+            last_modified=datetime(2025, 12, 7, 14, 30, 0),
         )
 
         serialized = original.to_dict()
@@ -248,12 +257,10 @@ class TestRecordingConfigFilePersistence:
     def test_save_to_file(self):
         """Test saving config to JSON file"""
         config = RecordingConfig(
-            capture_mode=CaptureMode.GAME_AND_PLAYER,
-            game_count=25,
-            audio_cues=False
+            capture_mode=CaptureMode.GAME_AND_PLAYER, game_count=25, audio_cues=False
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             filepath = f.name
 
         try:
@@ -261,7 +268,7 @@ class TestRecordingConfigFilePersistence:
 
             # Verify file exists and contains valid JSON
             assert os.path.exists(filepath)
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
             assert data["capture_mode"] == "game_and_player"
             assert data["game_count"] == 25
@@ -279,10 +286,10 @@ class TestRecordingConfigFilePersistence:
             "monitor_threshold_value": 15,
             "audio_cues": True,
             "auto_start_on_launch": True,
-            "last_modified": "2025-12-07T14:30:00"
+            "last_modified": "2025-12-07T14:30:00",
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             filepath = f.name
 
@@ -308,7 +315,7 @@ class TestRecordingConfigFilePersistence:
 
     def test_load_returns_default_if_file_invalid(self):
         """Test load returns default config if file contains invalid JSON"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("not valid json {{{")
             filepath = f.name
 
@@ -330,7 +337,7 @@ class TestRecordingConfigFilePersistence:
             config.save(filepath)
 
             assert os.path.exists(filepath)
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
             assert data["capture_mode"] == "game_state_only"
 
@@ -344,10 +351,10 @@ class TestRecordingConfigFilePersistence:
             monitor_threshold_value=2,
             audio_cues=False,
             auto_start_on_launch=True,
-            last_modified=datetime(2025, 12, 7, 15, 45, 30)
+            last_modified=datetime(2025, 12, 7, 15, 45, 30),
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             filepath = f.name
 
         try:

@@ -11,19 +11,18 @@ Tests verify:
 - Data integrity maintained under concurrent access
 """
 
-import pytest
-import time
-import threading
 import tempfile
-from pathlib import Path
+import threading
+import time
 from decimal import Decimal
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import Mock, patch
+from pathlib import Path
+
+import pytest
 
 from core.game_state import GameState, StateEvents
 from core.recorder_sink import RecorderSink
-from services.event_bus import EventBus, Events
 from models import GameTick
+from services.event_bus import EventBus, Events
 
 
 class TestGameStateThreadSafety:
@@ -31,12 +30,12 @@ class TestGameStateThreadSafety:
 
     def test_concurrent_balance_updates(self):
         """Test concurrent balance updates maintain data integrity"""
-        state = GameState(Decimal('1.000'))
+        state = GameState(Decimal("1.000"))
 
         def update_balance():
             for _ in range(100):
-                current = state.get('balance')
-                state.update(balance=current + Decimal('0.001'))
+                current = state.get("balance")
+                state.update(balance=current + Decimal("0.001"))
 
         threads = [threading.Thread(target=update_balance) for _ in range(10)]
 
@@ -46,15 +45,15 @@ class TestGameStateThreadSafety:
             t.join()
 
         # Should have initial + (100 updates * 10 threads * 0.001)
-        final = state.get('balance')
+        final = state.get("balance")
         # Due to race conditions in the test itself (read-modify-write),
         # we just verify no crash and balance is reasonable
-        assert final >= Decimal('1.000')
+        assert final >= Decimal("1.000")
 
     def test_concurrent_state_reads(self):
         """Test concurrent state reads don't block"""
-        state = GameState(Decimal('1.000'))
-        state.update(current_tick=100, current_price=Decimal('1.5'))
+        state = GameState(Decimal("1.000"))
+        state.update(current_tick=100, current_price=Decimal("1.5"))
 
         read_results = []
 
@@ -78,22 +77,21 @@ class TestGameStateThreadSafety:
 
     def test_concurrent_position_operations(self):
         """Test concurrent position open/close operations"""
-        state = GameState(Decimal('1.000'))
+        state = GameState(Decimal("1.000"))
         errors = []
 
         def position_cycle():
             try:
                 for i in range(20):
-                    state.open_position({
-                        'entry_price': Decimal(f'1.{i:02d}'),
-                        'amount': Decimal('0.001'),
-                        'entry_tick': i
-                    })
-                    time.sleep(0.001)  # Small delay
-                    state.close_position(
-                        exit_price=Decimal(f'1.{i+1:02d}'),
-                        exit_tick=i + 1
+                    state.open_position(
+                        {
+                            "entry_price": Decimal(f"1.{i:02d}"),
+                            "amount": Decimal("0.001"),
+                            "entry_tick": i,
+                        }
                     )
+                    time.sleep(0.001)  # Small delay
+                    state.close_position(exit_price=Decimal(f"1.{i + 1:02d}"), exit_tick=i + 1)
             except Exception as e:
                 errors.append(str(e))
 
@@ -110,17 +108,15 @@ class TestGameStateThreadSafety:
 
     def test_concurrent_sidebet_operations(self):
         """Test concurrent sidebet operations"""
-        state = GameState(Decimal('1.000'))
+        state = GameState(Decimal("1.000"))
         operations_count = [0]
 
         def sidebet_cycle():
             for i in range(10):
                 try:
-                    state.place_sidebet({
-                        'amount': Decimal('0.001'),
-                        'start_tick': i,
-                        'target_ticks': 40
-                    })
+                    state.place_sidebet(
+                        {"amount": Decimal("0.001"), "start_tick": i, "target_ticks": 40}
+                    )
                     operations_count[0] += 1
                     time.sleep(0.002)
                     state.resolve_sidebet(i + 40, won=i % 2 == 0)
@@ -139,14 +135,14 @@ class TestGameStateThreadSafety:
 
     def test_concurrent_subscription_and_updates(self):
         """Test concurrent event subscription and state updates"""
-        state = GameState(Decimal('1.000'))
-        callback_counts = {'count': 0}
+        state = GameState(Decimal("1.000"))
+        callback_counts = {"count": 0}
         lock = threading.Lock()
 
         # Subscribe to TICK_UPDATED (which is actually emitted by _notify_changes)
         def callback(data):
             with lock:
-                callback_counts['count'] += 1
+                callback_counts["count"] += 1
 
         state.subscribe(StateEvents.TICK_UPDATED, callback)
 
@@ -164,23 +160,21 @@ class TestGameStateThreadSafety:
             t.join()
 
         # Should have received callbacks (some tick updates will emit events)
-        assert callback_counts['count'] > 0
+        assert callback_counts["count"] > 0
 
     def test_no_deadlock_under_heavy_load(self):
         """Test no deadlock occurs under heavy concurrent load"""
-        state = GameState(Decimal('1.000'))
+        state = GameState(Decimal("1.000"))
         completed = [0]
         timeout = 10.0
 
         def heavy_operation():
             for i in range(100):
                 state.update(
-                    current_tick=i,
-                    current_price=Decimal(f'1.{i:03d}'),
-                    balance=Decimal(f'{i}.000')
+                    current_tick=i, current_price=Decimal(f"1.{i:03d}"), balance=Decimal(f"{i}.000")
                 )
                 _ = state.get_snapshot()
-                _ = state.get('balance')
+                _ = state.get("balance")
             completed[0] += 1
 
         threads = [threading.Thread(target=heavy_operation) for _ in range(20)]
@@ -211,8 +205,9 @@ class TestRecorderSinkThreadSafety:
     def test_concurrent_tick_recording(self, temp_recordings_dir):
         """Test concurrent tick recording maintains data integrity"""
         from datetime import datetime
+
         recorder = RecorderSink(temp_recordings_dir, buffer_size=10)
-        recorder.start_recording('test-game')
+        recorder.start_recording("test-game")
 
         tick_ids = []
         lock = threading.Lock()
@@ -220,15 +215,15 @@ class TestRecorderSinkThreadSafety:
         def record_ticks():
             for i in range(50):
                 tick = GameTick(
-                    game_id='test-game',
+                    game_id="test-game",
                     tick=i,
                     timestamp=datetime.now().isoformat(),
-                    price=Decimal('1.5'),
-                    phase='ACTIVE',
+                    price=Decimal("1.5"),
+                    phase="ACTIVE",
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 recorder.record_tick(tick)
                 with lock:
@@ -245,28 +240,29 @@ class TestRecorderSinkThreadSafety:
 
         # Should have recorded all ticks
         assert summary is not None
-        assert summary['tick_count'] == 250  # 50 * 5 threads
+        assert summary["tick_count"] == 250  # 50 * 5 threads
 
     def test_concurrent_start_stop_recording(self, temp_recordings_dir):
         """Test concurrent start/stop doesn't corrupt state"""
         from datetime import datetime
+
         recorder = RecorderSink(temp_recordings_dir)
         errors = []
 
         def start_stop_cycle():
             try:
                 for i in range(10):
-                    recorder.start_recording(f'game-{i}')
+                    recorder.start_recording(f"game-{i}")
                     tick = GameTick(
-                        game_id=f'game-{i}',
+                        game_id=f"game-{i}",
                         tick=0,
                         timestamp=datetime.now().isoformat(),
-                        price=Decimal('1.0'),
-                        phase='ACTIVE',
+                        price=Decimal("1.0"),
+                        phase="ACTIVE",
                         active=True,
                         rugged=False,
                         cooldown_timer=0,
-                        trade_count=0
+                        trade_count=0,
                     )
                     recorder.record_tick(tick)
                     recorder.stop_recording()
@@ -286,8 +282,9 @@ class TestRecorderSinkThreadSafety:
     def test_high_throughput_recording(self, temp_recordings_dir):
         """Test high-throughput recording performance"""
         from datetime import datetime
+
         recorder = RecorderSink(temp_recordings_dir, buffer_size=100)
-        recorder.start_recording('high-throughput-test')
+        recorder.start_recording("high-throughput-test")
 
         total_ticks = [0]
         lock = threading.Lock()
@@ -297,15 +294,15 @@ class TestRecorderSinkThreadSafety:
             local_count = 0
             for i in range(1000):
                 tick = GameTick(
-                    game_id='test',
+                    game_id="test",
                     tick=i,
                     timestamp=datetime.now().isoformat(),
-                    price=Decimal('1.5'),
-                    phase='ACTIVE',
+                    price=Decimal("1.5"),
+                    phase="ACTIVE",
                     active=True,
                     rugged=False,
                     cooldown_timer=0,
-                    trade_count=0
+                    trade_count=0,
                 )
                 if recorder.record_tick(tick):
                     local_count += 1
@@ -341,11 +338,14 @@ class TestEventBusThreadSafety:
         # Create unique callbacks for each subscriber
         callbacks = []
         for i in range(20):
+
             def make_callback(idx):
                 def cb(data):
                     with lock:
                         received.append((idx, data))
+
                 return cb
+
             callbacks.append(make_callback(i))
 
         def subscribe_many(start_idx):
@@ -355,10 +355,10 @@ class TestEventBusThreadSafety:
 
         def publish_many():
             for i in range(50):
-                bus.publish(Events.GAME_TICK, {'tick': i})
+                bus.publish(Events.GAME_TICK, {"tick": i})
                 time.sleep(0.001)
 
-        sub_threads = [threading.Thread(target=subscribe_many, args=(i*7,)) for i in range(3)]
+        sub_threads = [threading.Thread(target=subscribe_many, args=(i * 7,)) for i in range(3)]
         pub_threads = [threading.Thread(target=publish_many) for _ in range(3)]
 
         for t in sub_threads + pub_threads:
@@ -379,8 +379,10 @@ class TestEventBusThreadSafety:
         callbacks = []
 
         for i in range(20):
+
             def cb(data, idx=i):
                 pass
+
             callbacks.append(cb)
             bus.subscribe(Events.GAME_TICK, cb)
 
@@ -394,7 +396,7 @@ class TestEventBusThreadSafety:
 
         def publish_continuously():
             for i in range(100):
-                bus.publish(Events.GAME_TICK, {'tick': i})
+                bus.publish(Events.GAME_TICK, {"tick": i})
                 time.sleep(0.001)
 
         unsub_threads = [threading.Thread(target=unsubscribe_random) for _ in range(3)]
@@ -421,7 +423,7 @@ class TestEventBusThreadSafety:
 
         def publish_burst():
             for i in range(1000):
-                bus.publish(Events.GAME_TICK, {'tick': i})
+                bus.publish(Events.GAME_TICK, {"tick": i})
 
         threads = [threading.Thread(target=publish_burst) for _ in range(10)]
 
@@ -448,27 +450,28 @@ class TestCrossComponentThreadSafety:
     def test_full_pipeline_concurrent(self, temp_recordings_dir):
         """Test full data pipeline under concurrent load"""
         from datetime import datetime
-        state = GameState(Decimal('1.000'))
+
+        state = GameState(Decimal("1.000"))
         bus = EventBus()
         bus.start()  # Start event processing
         recorder = RecorderSink(temp_recordings_dir)
-        recorder.start_recording('pipeline-test')
+        recorder.start_recording("pipeline-test")
 
         ticks_recorded = [0]
         lock = threading.Lock()
 
         def on_tick(data):
-            tick_data = data.get('data', data)  # Handle event wrapper
+            tick_data = data.get("data", data)  # Handle event wrapper
             tick = GameTick(
-                game_id='pipeline-test',
-                tick=tick_data.get('tick', 0),
+                game_id="pipeline-test",
+                tick=tick_data.get("tick", 0),
                 timestamp=datetime.now().isoformat(),
-                price=Decimal(str(tick_data.get('price', 1.0))),
-                phase='ACTIVE',
+                price=Decimal(str(tick_data.get("price", 1.0))),
+                phase="ACTIVE",
                 active=True,
                 rugged=False,
                 cooldown_timer=0,
-                trade_count=0
+                trade_count=0,
             )
             if recorder.record_tick(tick):
                 with lock:
@@ -478,14 +481,8 @@ class TestCrossComponentThreadSafety:
 
         def update_state_and_publish():
             for i in range(100):
-                state.update(
-                    current_tick=i,
-                    current_price=Decimal(f'1.{i:03d}')
-                )
-                bus.publish(Events.GAME_TICK, {
-                    'tick': i,
-                    'price': 1.0 + i * 0.001
-                })
+                state.update(current_tick=i, current_price=Decimal(f"1.{i:03d}"))
+                bus.publish(Events.GAME_TICK, {"tick": i, "price": 1.0 + i * 0.001})
 
         threads = [threading.Thread(target=update_state_and_publish) for _ in range(5)]
 
@@ -506,9 +503,9 @@ class TestCrossComponentThreadSafety:
 
     def test_producer_consumer_pattern(self, temp_recordings_dir):
         """Test producer-consumer pattern with GameState as shared state"""
-        state = GameState(Decimal('1.000'))
+        state = GameState(Decimal("1.000"))
         # Initialize state with current_tick so consumers can see updates
-        state.update(current_tick=0, current_price=Decimal('1.000'))
+        state.update(current_tick=0, current_price=Decimal("1.000"))
 
         produced = [0]
         consumed = [0]
@@ -519,7 +516,7 @@ class TestCrossComponentThreadSafety:
             for i in range(1, 201):  # Start from 1 since we initialized with 0
                 if stop_flag.is_set():
                     break
-                state.update(current_tick=i, current_price=Decimal(f'1.{i:03d}'))
+                state.update(current_tick=i, current_price=Decimal(f"1.{i:03d}"))
                 with lock:
                     produced[0] += 1
                 time.sleep(0.001)
@@ -555,5 +552,5 @@ class TestCrossComponentThreadSafety:
         assert consumed[0] > 0
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

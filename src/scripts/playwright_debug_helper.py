@@ -15,18 +15,16 @@ Usage:
 This will launch a browser and monitor bot actions with visual validation.
 """
 
-import sys
-import os
-from pathlib import Path
 import asyncio
-import logging
-from datetime import datetime
 import json
+import logging
+import sys
+from datetime import datetime
+from pathlib import Path
 
 # Add parent directory to Python path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from playwright.async_api import async_playwright, Page
 
 # Setup logging
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -37,21 +35,21 @@ screenshot_dir.mkdir(exist_ok=True)
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(debug_dir / "playwright_debug.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 logger = logging.getLogger(__name__)
 
 # Metrics
 metrics = {
-    'session_start': timestamp,
-    'screenshots': [],
-    'console_logs': [],
-    'actions': [],
-    'errors': []
+    "session_start": timestamp,
+    "screenshots": [],
+    "console_logs": [],
+    "actions": [],
+    "errors": [],
 }
 
 screenshot_counter = 0
@@ -91,40 +89,39 @@ class PlaywrightDebugger:
 
         await self.page.screenshot(path=str(filepath), full_page=True)
 
-        metrics['screenshots'].append({
-            'number': screenshot_counter,
-            'reason': reason,
-            'filename': filename,
-            'timestamp': datetime.now().isoformat()
-        })
+        metrics["screenshots"].append(
+            {
+                "number": screenshot_counter,
+                "reason": reason,
+                "filename": filename,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         logger.info(f"📸 Screenshot {screenshot_counter}: {reason}")
 
     def _on_console_message(self, msg):
         """Capture console logs from browser"""
         log_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'type': msg.type,
-            'text': msg.text,
-            'location': msg.location
+            "timestamp": datetime.now().isoformat(),
+            "type": msg.type,
+            "text": msg.text,
+            "location": msg.location,
         }
 
-        metrics['console_logs'].append(log_entry)
+        metrics["console_logs"].append(log_entry)
 
         # Log important messages
-        if msg.type in ['error', 'warning']:
+        if msg.type in ["error", "warning"]:
             logger.warning(f"Browser {msg.type}: {msg.text}")
         else:
             logger.debug(f"Browser console: {msg.text}")
 
     def _on_page_error(self, error):
         """Capture page errors"""
-        error_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'error': str(error)
-        }
+        error_entry = {"timestamp": datetime.now().isoformat(), "error": str(error)}
 
-        metrics['errors'].append(error_entry)
+        metrics["errors"].append(error_entry)
         logger.error(f"Browser error: {error}")
 
     async def monitor_bot_action(self, action_name: str, action_func):
@@ -150,13 +147,15 @@ class PlaywrightDebugger:
             await self.take_screenshot(f"after_{action_name}")
 
             # Record action
-            metrics['actions'].append({
-                'timestamp': start_time.isoformat(),
-                'name': action_name,
-                'duration_ms': (datetime.now() - start_time).total_seconds() * 1000,
-                'success': True,
-                'result': str(result) if result else None
-            })
+            metrics["actions"].append(
+                {
+                    "timestamp": start_time.isoformat(),
+                    "name": action_name,
+                    "duration_ms": (datetime.now() - start_time).total_seconds() * 1000,
+                    "success": True,
+                    "result": str(result) if result else None,
+                }
+            )
 
             logger.info(f"✅ Action completed: {action_name}")
             return result
@@ -166,13 +165,15 @@ class PlaywrightDebugger:
             await self.take_screenshot(f"error_{action_name}")
 
             # Record error
-            metrics['actions'].append({
-                'timestamp': start_time.isoformat(),
-                'name': action_name,
-                'duration_ms': (datetime.now() - start_time).total_seconds() * 1000,
-                'success': False,
-                'error': str(e)
-            })
+            metrics["actions"].append(
+                {
+                    "timestamp": start_time.isoformat(),
+                    "name": action_name,
+                    "duration_ms": (datetime.now() - start_time).total_seconds() * 1000,
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
             logger.error(f"❌ Action failed: {action_name} - {e}")
             raise
@@ -191,14 +192,14 @@ class PlaywrightDebugger:
 
         try:
             # Balance
-            if 'balance' in expected_state:
+            if "balance" in expected_state:
                 balance_text = await self.page.locator('[data-testid="balance"]').text_content()
-                actual_state['balance'] = float(balance_text.strip())
+                actual_state["balance"] = float(balance_text.strip())
 
             # Price
-            if 'price' in expected_state:
+            if "price" in expected_state:
                 price_text = await self.page.locator('[data-testid="price"]').text_content()
-                actual_state['price'] = float(price_text.replace('x', '').strip())
+                actual_state["price"] = float(price_text.replace("x", "").strip())
 
             # Compare
             for key, expected_value in expected_state.items():
@@ -206,7 +207,9 @@ class PlaywrightDebugger:
                 if actual_value is None:
                     logger.warning(f"⚠️ Could not read {key} from UI")
                 elif abs(actual_value - expected_value) > 0.0001:
-                    logger.error(f"❌ State mismatch - {key}: expected {expected_value}, got {actual_value}")
+                    logger.error(
+                        f"❌ State mismatch - {key}: expected {expected_value}, got {actual_value}"
+                    )
                     await self.take_screenshot(f"state_mismatch_{key}")
                 else:
                     logger.info(f"✅ State match - {key}: {actual_value}")
@@ -224,7 +227,7 @@ class PlaywrightDebugger:
 
         # Save metrics
         metrics_file = debug_dir / "metrics.json"
-        with open(metrics_file, 'w') as f:
+        with open(metrics_file, "w") as f:
             json.dump(metrics, f, indent=2)
 
         logger.info("=" * 80)
@@ -247,8 +250,7 @@ async def demo_debug_session():
         # Navigate to game
         logger.info("Navigating to Rugs.fun...")
         await debugger.monitor_bot_action(
-            "navigate_to_game",
-            lambda: debugger.page.goto("https://rugs.fun")
+            "navigate_to_game", lambda: debugger.page.goto("https://rugs.fun")
         )
 
         # Wait for game to load
@@ -267,6 +269,6 @@ async def demo_debug_session():
         await debugger.cleanup()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run demo
     asyncio.run(demo_debug_session())
