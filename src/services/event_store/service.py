@@ -7,6 +7,7 @@ Subscribes to EventBus events and persists them to Parquet storage.
 """
 
 import logging
+import threading
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -56,6 +57,7 @@ class EventStoreService:
         self._paths = paths or EventStorePaths()
         self._session_id = session_id or str(uuid.uuid4())
         self._seq = 0
+        self._seq_lock = threading.Lock()  # Thread-safe sequence numbers
 
         self._writer = ParquetWriter(
             paths=self._paths,
@@ -124,9 +126,10 @@ class EventStoreService:
         return self._writer.flush()
 
     def _next_seq(self) -> int:
-        """Get next sequence number"""
-        self._seq += 1
-        return self._seq
+        """Get next sequence number (thread-safe)"""
+        with self._seq_lock:
+            self._seq += 1
+            return self._seq
 
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
         """Handle raw WebSocket event"""

@@ -670,3 +670,82 @@ class TestEdgeCases:
         for doc_type in DocType:
             partition_dir = parquet_dir / f"doc_type={doc_type.value}"
             assert partition_dir.exists(), f"Missing partition for {doc_type}"
+
+
+# =============================================================================
+# DuckDB Integration Tests
+# =============================================================================
+
+
+class TestDuckDBIntegration:
+    """Tests for DuckDB queryability of Parquet files"""
+
+    def test_duckdb_can_query_parquet_files(self, paths, temp_data_dir):
+        """DuckDB can query the Parquet files written by ParquetWriter"""
+        import duckdb
+
+        writer = ParquetWriter(paths, buffer_size=100, flush_interval=3600)
+        session_id = str(uuid.uuid4())
+
+        # Write multiple events of different types
+        for i in range(5):
+            writer.write(make_event(DocType.WS_EVENT, session_id, i, game_id="game-abc"))
+            writer.write(make_event(DocType.GAME_TICK, session_id, i + 10, game_id="game-abc"))
+
+        writer.close()
+
+        # Query with DuckDB
+        parquet_pattern = str(temp_data_dir / "events_parquet/**/*.parquet")
+        conn = duckdb.connect()
+        result = conn.execute(f"SELECT COUNT(*) FROM '{parquet_pattern}'").fetchone()
+
+        assert result[0] == 10  # 5 WS_EVENT + 5 GAME_TICK
+
+    def test_duckdb_can_filter_by_doc_type(self, paths, temp_data_dir):
+        """DuckDB can filter by doc_type partition"""
+        import duckdb
+
+        writer = ParquetWriter(paths, buffer_size=100, flush_interval=3600)
+        session_id = str(uuid.uuid4())
+
+        # Write mixed events
+        for i in range(3):
+            writer.write(make_event(DocType.WS_EVENT, session_id, i))
+            writer.write(make_event(DocType.GAME_TICK, session_id, i + 10))
+            writer.write(make_event(DocType.PLAYER_ACTION, session_id, i + 20))
+
+        writer.close()
+
+        # Query only WS_EVENT
+        parquet_pattern = str(temp_data_dir / "events_parquet/**/*.parquet")
+        conn = duckdb.connect()
+        result = conn.execute(
+            f"SELECT COUNT(*) FROM '{parquet_pattern}' WHERE doc_type = 'ws_event'"
+        ).fetchone()
+
+        assert result[0] == 3
+
+    def test_duckdb_can_select_specific_fields(self, paths, temp_data_dir):
+        """DuckDB can select specific fields from Parquet"""
+        import duckdb
+
+        writer = ParquetWriter(paths, buffer_size=100, flush_interval=3600)
+        session_id = str(uuid.uuid4())
+
+        # Write events with specific game_id
+        for i in range(3):
+            writer.write(make_event(DocType.WS_EVENT, session_id, i, game_id="test-game-xyz"))
+
+        writer.close()
+
+        # Query specific fields
+        parquet_pattern = str(temp_data_dir / "events_parquet/**/*.parquet")
+        conn = duckdb.connect()
+        result = conn.execute(
+            f"SELECT session_id, seq, game_id FROM '{parquet_pattern}' ORDER BY seq"
+        ).fetchall()
+
+        assert len(result) == 3
+        assert result[0][0] == session_id
+        assert result[0][1] == 0
+        assert result[0][2] == "test-game-xyz"
