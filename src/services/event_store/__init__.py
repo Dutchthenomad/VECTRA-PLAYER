@@ -10,6 +10,7 @@ All producers publish to EventBus; EventStore subscribes and persists.
 
 from .paths import EventStorePaths
 from .schema import Direction, DocType, EventEnvelope, EventSource
+from .service import EventStoreService
 from .writer import ParquetWriter
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "EventEnvelope",
     "EventSource",
     "EventStorePaths",
+    "EventStoreService",
     "ParquetWriter",
 ]
