@@ -8,6 +8,7 @@ Single writer for all persistence:
 All producers publish to EventBus; EventStore subscribes and persists.
 """
 
+from .duckdb import EventStoreQuery
 from .paths import EventStorePaths
 from .schema import Direction, DocType, EventEnvelope, EventSource
 from .service import EventStoreService
@@ -19,6 +20,7 @@ __all__ = [
     "EventEnvelope",
     "EventSource",
     "EventStorePaths",
+    "EventStoreQuery",
     "EventStoreService",
     "ParquetWriter",
 ]
