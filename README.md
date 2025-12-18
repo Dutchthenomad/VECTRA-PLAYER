@@ -20,7 +20,6 @@
 - **📈 Live Trading**: Monitor and interact with live game sessions
 - **🧪 Testing & Quality**: Comprehensive test suite with 60%+ coverage
 - **🔒 Security**: CodeQL scanning, Dependabot, and automated security reviews
-- **💎 Qodo RAG**: Context-aware AI code reviews with repository pattern matching
 
 ---
 

@@ -224,39 +224,6 @@ Once all checks pass and reviews are approved:
 
 ## Code Review Automation
 
-### Qodo RAG Context Enrichment 💎
-
-**Tool:** Qodo PR Agent with RAG (Retrieval-Augmented Generation)
-**Status:** Enabled for enterprise users
-
-**What it does:**
-- Enhances AI analysis by retrieving relevant code patterns from the project
-- Provides context-aware insights during code reviews
-- References similar code from your codebase when making suggestions
-
-**Available Commands:**
-- `/ask` - Answer questions with broader repository context
-- `/compliance` - Check compliance with repository patterns
-- `/implement` - Implement features following existing patterns
-- `/review` - Code review with context-aware insights
-
-**Configuration:** `.pr-agent.toml`
-
-```toml
-[rag_arguments]
-enable_rag=true
-```
-
-**How it works:**
-1. Qodo indexes your repository's codebase
-2. During PR review, it searches for relevant code patterns
-3. AI uses these patterns to provide context-aware suggestions
-4. References section shows the code consulted
-
-**Prerequisites:**
-- Qodo enterprise plan with single tenant or on-premises setup
-- Database setup and codebase indexing (contact Qodo support)
-
 ### Complexity Analysis
 
 **Tool:** Radon + Lizard
