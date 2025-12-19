@@ -11,24 +11,24 @@ from decimal import Decimal
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-# Phase 3: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
+# Toggle legacy recorders via environment (set RUGS_LEGACY_RECORDERS=false to disable)
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from bot import BotController, BotInterface, list_strategies
 from bot.async_executor import AsyncBotExecutor
-from bot.execution_mode import ExecutionMode  # Phase 8.4
-from bot.ui_controller import BotUIController  # Phase 8.4
-from browser.bridge import get_browser_bridge  # Phase 2: Browser consolidation
+from bot.execution_mode import ExecutionMode
+from bot.ui_controller import BotUIController
+from browser.bridge import get_browser_bridge
 from core import ReplayEngine, TradeManager
-from core.demo_recorder import DemoRecorderSink  # Phase 10
+from core.demo_recorder import DemoRecorderSink
 from core.game_queue import GameQueue
-from debug.raw_capture_recorder import RawCaptureRecorder  # Raw capture debug tool
+from debug.raw_capture_recorder import RawCaptureRecorder
 from models import GameTick
-from services.event_store import EventStoreService  # Phase 3: Parquet persistence
-from services.ui_dispatcher import TkDispatcher  # Phase 1: Moved to services
+from services.event_store import EventStoreService
+from services.ui_dispatcher import TkDispatcher
 from ui.balance_edit_dialog import BalanceEditEntry, BalanceRelockDialog, BalanceUnlockDialog
-from ui.bot_config_panel import BotConfigPanel  # Phase 8.4
-from ui.builders import (  # Phase Issue-4: Extracted builders
+from ui.bot_config_panel import BotConfigPanel
+from ui.builders import (
     BettingBuilder,
     ChartBuilder,
     MenuBarBuilder,
@@ -42,39 +42,42 @@ logger = logging.getLogger(__name__)
 
 class MainWindow:
     """
-    Main application window with integrated ReplayEngine
-    Phase 8.5: Added browser automation support
+    Main application window with integrated ReplayEngine.
+
+    Supports two modes:
+    - Replay mode: Playback recorded game sessions
+    - Live mode: Real-time WebSocket feed with optional browser automation
     """
 
     def __init__(self, root: tk.Tk, state, event_bus, config, live_mode: bool = False):
         """
-        Initialize main window
+        Initialize main window.
 
         Args:
             root: Tkinter root window
             state: GameState instance
             event_bus: EventBus instance
             config: Configuration object
-            live_mode: If True, enable live browser automation (Phase 8.5)
+            live_mode: If True, enable live browser automation
         """
         self.root = root
         self.state = state
         self.event_bus = event_bus
         self.config = config
-        self.live_mode = live_mode  # Phase 8.5
+        self.live_mode = live_mode
 
         # Balance editing state (lock/unlock sync to rugs.fun)
         self.balance_locked = True
         self.manual_balance: Decimal | None = None
         self.tracked_balance: Decimal = self.state.get("balance")
 
-        # Phase 10.8: Server state tracking (from WebSocket)
+        # Server state tracking from WebSocket (authoritative in live mode)
         self.server_username: str | None = None
         self.server_player_id: str | None = None
         self.server_balance: Decimal | None = None
         self.server_authenticated = False
 
-        # Phase 8.5: Initialize browser executor (user controls connection via menu)
+        # Browser executor for live trading (user connects via Browser menu)
         self.browser_executor = None
         self.browser_connected = False
 
@@ -87,17 +90,15 @@ class MainWindow:
             logger.warning(f"BrowserExecutor not available: {e}")
             # Graceful degradation - Browser menu will show "Not Available"
 
-        # Phase 9.3: Initialize browser bridge for UI button -> browser sync
+        # Browser bridge syncs UI button clicks to browser DOM
         self.browser_bridge = get_browser_bridge()
-        # Phase 3.5: Callback registration moved to after BrowserBridgeController initialization
         logger.info("BrowserBridge initialized for UI-to-browser button sync")
 
         # Initialize replay engine and trade manager
         self.replay_engine = ReplayEngine(state)
         self.trade_manager = TradeManager(state)
 
-        # Phase 10: Initialize demo recorder for human demonstration recording
-        # Phase 3: Conditional on RUGS_LEGACY_RECORDERS env var
+        # Legacy recorders (disabled when RUGS_LEGACY_RECORDERS=false)
         if LEGACY_RECORDERS_ENABLED:
             demo_dir = (
                 Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
@@ -116,8 +117,7 @@ class MainWindow:
             self.raw_capture_recorder = None
             logger.info("Legacy recorders DISABLED (RUGS_LEGACY_RECORDERS=false)")
 
-        # Phase 3: Initialize EventStore for Parquet persistence (dual-write)
-        # EventStoreService subscribes to EventBus and writes to Parquet
+        # EventStore persists all events to Parquet (canonical data store)
         self.event_store_service = EventStoreService(event_bus)
         self.event_store_service.start()
         logger.info("EventStoreService started for Parquet persistence")
@@ -127,23 +127,18 @@ class MainWindow:
         self.game_queue = GameQueue(recordings_dir)
         self.multi_game_mode = False  # Programmatically controlled, not via UI
 
-        # Phase 8.4: Initialize bot configuration panel
+        # Bot configuration and interface
         self.bot_config_panel = BotConfigPanel(root, config_file="bot_config.json")
         bot_config = self.bot_config_panel.get_config()
-
-        # Phase 8.4: Initialize bot with config settings
         self.bot_interface = BotInterface(state, self.trade_manager)
 
-        # Phase A.2: Bot components will be initialized AFTER UI is built (line ~640)
-        # to avoid AttributeError when accessing button references
-        self.bot_ui_controller = None  # Placeholder, will be set later
-        self.bot_controller = None  # Placeholder, will be set later
-        self.bot_executor = None  # Placeholder, will be set later
-
-        # Phase 8.4: Set bot enabled state from config
+        # Bot components initialized after UI build to avoid AttributeError on button refs
+        self.bot_ui_controller = None
+        self.bot_controller = None
+        self.bot_executor = None
         self.bot_enabled = self.bot_config_panel.is_bot_enabled()
 
-        # Initialize live feed (Phase 6)
+        # Live WebSocket feed
         self.live_feed = None
         self.live_feed_connected = False
 
@@ -173,13 +168,12 @@ class MainWindow:
         if self.config.LIVE_FEED.get("auto_connect", False):
             self.root.after(1000, self._auto_connect_live_feed)
 
-        # Phase 3.1: Monitoring loops now handled by BotManager
-        # (removed _check_bot_results() and _update_timing_metrics_loop() calls)
+        # Bot monitoring is handled by BotManager controller
 
         logger.info("MainWindow initialized with ReplayEngine and async bot executor")
 
     def _create_menu_bar(self):
-        """Create menu bar using MenuBarBuilder (Phase Issue-4: Extracted)"""
+        """Create menu bar using MenuBarBuilder."""
         # Callbacks dictionary - uses lambdas to defer controller access
         callbacks = {
             "load_file": lambda: self.replay_controller.load_file_dialog()
@@ -405,8 +399,7 @@ class MainWindow:
         )
         self.sell_button.pack(side=tk.LEFT, padx=5)
 
-        # Phase 8.2: Percentage selector buttons (radio-button style)
-        # Separator between action buttons and percentage selectors
+        # Percentage selector buttons (radio-button style)
         separator = tk.Frame(action_left, bg="#444444", width=2)
         separator.pack(side=tk.LEFT, padx=10, fill=tk.Y, pady=15)
 
@@ -514,18 +507,15 @@ class MainWindow:
         )
         self.sidebet_status_label.pack(side=tk.LEFT, padx=10)
 
-        # Phase 8.6: Draggable timing overlay (replaces inline labels)
-        # Create overlay widget (hidden initially, shown in UI_LAYER mode)
+        # Draggable timing overlay (shown in UI_LAYER mode)
         from ui.timing_overlay import TimingOverlay
 
         self.timing_overlay = TimingOverlay(self.root, config_file="timing_overlay.json")
 
-        # Initialize toast notifications
+        # Toast notifications
         self.toast = ToastNotification(self.root)
 
-        # Phase A.2: Initialize BotUIController AFTER all UI widgets are created
-        # (moved from line 82 to avoid AttributeError accessing button references)
-        # Phase A.7: Pass timing configuration from bot_config.json
+        # Bot UI controller must be initialized AFTER UI widgets are created
         bot_config = self.bot_config_panel.get_config()
         self.bot_ui_controller = BotUIController(
             self,
@@ -533,7 +523,7 @@ class MainWindow:
             inter_click_pause_ms=bot_config.get("inter_click_pause_ms", 100),
         )
 
-        # Phase A.2: Create BotController now that ui_controller is ready
+        # Bot controller with configured strategy and execution mode
         execution_mode = self.bot_config_panel.get_execution_mode()
         strategy = self.bot_config_panel.get_strategy()
 
@@ -546,10 +536,10 @@ class MainWindow:
             else None,
         )
 
-        # Phase A.2: Initialize async bot executor (prevents deadlock)
+        # Async executor prevents deadlock during bot decision-making
         self.bot_executor = AsyncBotExecutor(self.bot_controller)
 
-        # Phase 3.1: Initialize BotManager controller
+        # Initialize controllers
         from ui.controllers import (
             BotManager,
             BrowserBridgeController,
@@ -581,7 +571,6 @@ class MainWindow:
             log_callback=self.log,
         )
 
-        # Phase 3.2: Initialize ReplayController
         self.replay_controller = ReplayController(
             root=self.root,
             parent_window=self,
@@ -602,41 +591,31 @@ class MainWindow:
             log_callback=self.log,
         )
 
-        # Phase 3.3: Initialize TradingController
         self.trading_controller = TradingController(
             parent_window=self,
             trade_manager=self.trade_manager,
             state=self.state,
             config=self.config,
             browser_bridge=self.browser_bridge,
-            # UI widgets
             bet_entry=self.bet_entry,
             percentage_buttons=self.percentage_buttons,
-            # UI dispatcher
             ui_dispatcher=self.ui_dispatcher,
-            # Notifications
             toast=self.toast,
-            # Callbacks
             log_callback=self.log,
-            # Phase 10: Demo recording
             demo_recorder=self.demo_recorder,
         )
 
-        # Phase 3.4: Initialize LiveFeedController
         self.live_feed_controller = LiveFeedController(
             root=self.root,
             parent_window=self,
             replay_engine=self.replay_engine,
             event_bus=self.event_bus,
-            # UI variables
             live_feed_var=self.live_feed_var,
-            # Notifications
             toast=self.toast,
-            # Callbacks
             log_callback=self.log,
         )
 
-        # Phase 10.5H: Initialize RecordingController
+        # Recording controller for session recording
         from ui.controllers import RecordingController
 
         recordings_dir = self.config.FILES.get("recordings_dir", "rugs_recordings")
@@ -644,19 +623,16 @@ class MainWindow:
             root=self.root, recordings_path=recordings_dir, game_state=self.state
         )
 
-        # Phase 10.6: Wire RecordingController to TradingController
+        # Wire recording to trading and live feed controllers
         self.trading_controller.recording_controller = self.recording_controller
-
-        # Phase 10.6: Wire RecordingController to LiveFeedController for auto-start/stop
         self.live_feed_controller.set_recording_controller(self.recording_controller)
 
-        # Issue #18 Fix: Wire RecordingController to ReplayController for state consistency
         self.replay_controller.recording_controller = self.recording_controller
 
-        # Create menu bar now (after controllers are initialized, before BrowserBridgeController needs it)
+        # Menu bar must be created after controllers but before BrowserBridgeController
         self._create_menu_bar()
 
-        # Phase 3.5: Initialize BrowserBridgeController
+        # Browser bridge controller syncs UI actions with browser DOM
         self.browser_bridge_controller = BrowserBridgeController(
             root=self.root,
             parent_window=self,
@@ -670,7 +646,6 @@ class MainWindow:
             log_callback=self.log,
         )
 
-        # Phase 3.5: Register browser bridge status change callback
         self.browser_bridge.on_status_change = (
             self.browser_bridge_controller.on_bridge_status_change
         )
@@ -688,21 +663,20 @@ class MainWindow:
         # Source switching (CDP vs fallback)
         self.event_bus.subscribe(Events.WS_SOURCE_CHANGED, self._handle_ws_source_changed)
 
-        # Phase 10.5: Subscribe to game events for recording
+        # Game lifecycle for recording
         self.event_bus.subscribe(Events.GAME_START, self._handle_game_start_for_recording)
         self.event_bus.subscribe(Events.GAME_END, self._handle_game_end_for_recording)
 
-        # Phase 10.8: Subscribe to player events (server state)
+        # Player events (server-authoritative state)
         self.event_bus.subscribe(Events.PLAYER_IDENTITY, self._handle_player_identity)
         self.event_bus.subscribe(Events.PLAYER_UPDATE, self._handle_player_update)
 
-        # Subscribe to state events
+        # State events
         from core.game_state import StateEvents
 
         self.state.subscribe(StateEvents.BALANCE_CHANGED, self._handle_balance_changed)
         self.state.subscribe(StateEvents.POSITION_OPENED, self._handle_position_opened)
         self.state.subscribe(StateEvents.POSITION_CLOSED, self._handle_position_closed)
-        # Phase 8.2: Partial sell events
         self.state.subscribe(
             StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed
         )
@@ -874,8 +848,8 @@ class MainWindow:
     # ========================================================================
 
     def _handle_game_tick(self, event):
-        """Handle game tick event"""
-        # Phase 10.5: Forward tick to recording controller
+        """Handle game tick event."""
+        # Forward tick to recording controller if active
         if hasattr(self, "recording_controller") and self.recording_controller.is_active:
             data = event.get("data", {})
             game_tick = data.get("tick")  # This is a GameTick object
@@ -927,7 +901,7 @@ class MainWindow:
             # Track P&L balance for later re-lock decision
             self.tracked_balance = new_balance
 
-            # Phase 11: Skip UI update when authenticated - server state is truth
+            # Skip local update when authenticated - server state is truth
             # Server updates come via _handle_player_update() with green indicator
             if self.server_authenticated:
                 logger.debug(
@@ -942,7 +916,7 @@ class MainWindow:
                 )
 
     # ========================================================================
-    # PHASE 10.8: PLAYER IDENTITY / SERVER STATE
+    # PLAYER IDENTITY / SERVER STATE
     # ========================================================================
 
     def _handle_player_identity(self, event):
@@ -987,7 +961,7 @@ class MainWindow:
             if cash is not None:
                 self.server_balance = Decimal(str(cash))
 
-                # Phase 11: Reconcile local state with server truth
+                # Reconcile local state with server truth
                 drifts = self.state.reconcile_with_server(server_state)
                 if drifts:
                     logger.info(f"State reconciled with server: {list(drifts.keys())}")
@@ -1294,7 +1268,7 @@ GAME RULES:
             # Apply the theme
             style.theme_use(theme_name)
 
-            # Phase 5: Update chart colors to match new theme
+            # Update chart colors to match new theme
             if hasattr(self, "chart"):
                 self.chart.update_theme_colors()
 
@@ -1836,7 +1810,7 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
 
     def shutdown(self):
         """Cleanup dispatcher resources during application shutdown."""
-        # Phase 8.5: Stop browser if connected
+        # Stop browser if connected
         if self.browser_connected and self.browser_executor:
             loop = None
             try:
@@ -1850,12 +1824,12 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             except Exception as e:
                 logger.error(f"Error stopping browser during shutdown: {e}", exc_info=True)
             finally:
-                # AUDIT FIX: Always close event loop to prevent resource leak
+                # Always close event loop to prevent resource leak
                 if loop:
                     loop.close()
                     asyncio.set_event_loop(None)
 
-        # Phase 10: Close demo recorder (flushes any pending data)
+        # Close demo recorder (flushes pending data)
         if self.demo_recorder:
             try:
                 self.demo_recorder.close()
@@ -1871,7 +1845,7 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             except Exception as e:
                 logger.error(f"Error stopping raw capture: {e}")
 
-        # Phase 3: Stop EventStoreService (flushes remaining Parquet data)
+        # Stop EventStoreService (flushes remaining Parquet data)
         if hasattr(self, "event_store_service") and self.event_store_service:
             try:
                 self.event_store_service.stop()
@@ -1879,7 +1853,7 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             except Exception as e:
                 logger.error(f"Error stopping EventStoreService: {e}")
 
-        # Phase 3.4: Delegate live feed cleanup to LiveFeedController
+        # Clean up live feed connection
         self.live_feed_controller.cleanup()
 
         # Stop bot executor
