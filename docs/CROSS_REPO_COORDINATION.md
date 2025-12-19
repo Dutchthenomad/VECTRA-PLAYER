@@ -1,7 +1,7 @@
 # Cross-Repository Coordination
 
 **Status:** Active
-**Updated:** December 18, 2025
+**Updated:** December 19, 2025
 
 This document describes how VECTRA-PLAYER integrates with other repositories in the Rugs.fun ecosystem.
 
@@ -9,12 +9,63 @@ This document describes how VECTRA-PLAYER integrates with other repositories in 
 
 ## Repository Overview
 
-| Repository | Location | Role |
-|------------|----------|------|
-| **VECTRA-PLAYER** | `/home/nomad/Desktop/VECTRA-PLAYER/` | Data capture, replay, and UI |
-| **claude-flow** | `/home/nomad/Desktop/claude-flow/` | Development orchestration, RAG agents |
-| **rugs-rl-bot** | `/home/nomad/Desktop/rugs-rl-bot/` | ML training, RL bot |
-| **Data Directory** | `~/rugs_data/` | Canonical storage (Parquet) |
+| Repository | Role | Authority |
+|------------|------|-----------|
+| **VECTRA-PLAYER** | Data capture, replay, and UI | Event schemas, Parquet storage |
+| **claude-flow** | Development orchestration, RAG agents | **Canonical rugs.fun backend authority** |
+| **rugs-rl-bot** | ML training, RL bot | ML models, training pipelines |
+| **Data Directory** (`~/rugs_data/`) | Canonical storage (Parquet) | Single source of truth for captured data |
+
+> **Note:** `claude-flow/rugs-expert` agent is the canonical authority on rugs.fun backend behavior.
+> Open research questions should be documented in `docs/issues/RUGS_BACKEND_RESEARCH_QUESTIONS.md`
+> and filed as GitHub issues in claude-flow.
+
+---
+
+## Data Source Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       RUGS.FUN DATA SOURCE HIERARCHY                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  TIER 1: Public WebSocket (Unauthenticated)                    [AVAILABLE] │
+│  ├── gameStateUpdate.gameHistory[]  → Historical games (~10)               │
+│  │   └── Full tick-by-tick price arrays for ML training                    │
+│  │   └── Used for Provably Fair verification system                        │
+│  ├── gameStateUpdate.leaderboard[]  → All player positions/PnL             │
+│  ├── gameStateUpdate (live ticks)   → Current game state (303+ fields)     │
+│  └── partialPrices                  → Backfill for missed ticks            │
+│                                                                             │
+│  TIER 2: CDP/Authenticated (When Profile Connected)            [REQUIRES AUTH]│
+│  ├── playerUpdate                   → Server-authoritative balance         │
+│  │   └── cash, positionQty, avgCost, cumulativePnL, totalInvested         │
+│  │   └── Fires ~250ms intervals when profile connected                     │
+│  ├── gameStatePlayerUpdate          → Rugpool lottery details              │
+│  └── Trade responses                → Latency/execution metrics            │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  RESEARCH STATUS: See docs/issues/RUGS_BACKEND_RESEARCH_QUESTIONS.md       │
+│  - gameHistory count/timing: NEEDS VERIFICATION                            │
+│  - Field completeness: NEEDS RAW DATA ANALYSIS                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Provenance Warning
+
+Current RAG agent analysis is based on **normalized/parsed data**, not raw server frames:
+
+```
+Raw rugs.fun WebSocket → Parser Layer → Normalized JSONL → Analysis
+                              ↑
+                     PARSING ARTIFACTS POSSIBLE
+```
+
+**Reliable:** Direct field copies (`prices[]`, `rugged`, `peakMultiplier`)
+**Uncertain:** Phase classifications, trade counts, temporal metrics
+
+Raw captures exist at `~/rugs_recordings/raw_captures/` but require proper chunking
+and vector DB ingestion before LLM analysis (too large for brute force).
 
 ---
 
@@ -204,4 +255,14 @@ rugs-rl-bot and claude-flow should check schema version before processing.
 
 ---
 
-*Last updated: December 18, 2025*
+## Open Research
+
+See `docs/issues/RUGS_BACKEND_RESEARCH_QUESTIONS.md` for:
+- gameHistory count and broadcast timing verification
+- playerUpdate trigger conditions
+- Field completeness analysis
+- Raw data ingestion plan
+
+---
+
+*Last updated: December 19, 2025*
