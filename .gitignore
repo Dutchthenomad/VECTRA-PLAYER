@@ -55,6 +55,9 @@ logs/
 # Analysis outputs (large files - can be regenerated)
 *.pyc
 
+# DuckDB files (derived - rebuild from JSONL source)
+*.duckdb
+
 # OS
 Thumbs.db
 .DS_Store
