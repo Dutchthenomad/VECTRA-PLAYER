@@ -116,7 +116,7 @@ class MainWindow:
             self.raw_capture_recorder = None
             logger.info("Legacy recorders DISABLED (RUGS_LEGACY_RECORDERS=false)")
 
-        # Phase 12: Initialize EventStore for Parquet persistence (dual-write)
+        # Phase 3: Initialize EventStore for Parquet persistence (dual-write)
         # EventStoreService subscribes to EventBus and writes to Parquet
         self.event_store_service = EventStoreService(event_bus)
         self.event_store_service.start()
