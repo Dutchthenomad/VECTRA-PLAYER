@@ -72,7 +72,7 @@ class ReplayEngine:
         self._cleanup_registered = False
         self._shutting_down = False  # PHASE 3.3: Track shutdown state for logging safety
 
-        # Phase 2 Refactoring: Delegate playback control to PlaybackController
+        # Delegate playback control to dedicated controller
         self._playback = PlaybackController(self, self._lock, self._stop_event)
 
         # Callbacks for UI updates
@@ -127,7 +127,7 @@ class ReplayEngine:
             # Signal threads to stop
             self._stop_event.set()
 
-            # Phase 2: Clean up playback controller
+            # Clean up playback controller
             if hasattr(self, "_playback"):
                 self._playback.cleanup()
 
@@ -161,7 +161,7 @@ class ReplayEngine:
             return self.live_ring_buffer.get_all()
         return self.file_mode_ticks
 
-    # Phase 2 Refactoring: Properties for backwards compatibility
+    # Properties for backwards compatibility with legacy callers
     @property
     def is_playing(self) -> bool:
         """Check if playback is active (delegates to PlaybackController)"""

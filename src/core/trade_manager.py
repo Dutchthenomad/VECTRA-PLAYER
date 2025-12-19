@@ -114,7 +114,7 @@ class TradeManager:
         entry_price = position["entry_price"]
         original_amount = position["amount"]
 
-        # Phase 8.1: Get current sell percentage
+        # Get current sell percentage (UI partial sell: 10/25/50/100%)
         sell_percentage = self.state.get_sell_percentage()
 
         # Calculate amount being sold
@@ -127,7 +127,7 @@ class TradeManager:
         # Adjust P&L for partial sell
         pnl_sol = pnl_sol * sell_percentage
 
-        # Phase 8.1: Use partial_close_position or close_position based on percentage
+        # Use partial_close_position or close_position based on percentage
         if sell_percentage < Decimal("1.0"):
             # Partial sell
             result = self.state.partial_close_position(

@@ -13,7 +13,7 @@ STRATEGIES = {
     "conservative": ConservativeStrategy,
     "aggressive": AggressiveStrategy,
     "sidebet": SidebetStrategy,
-    "foundational": FoundationalStrategy,  # Phase B: Evidence-based strategy
+    "foundational": FoundationalStrategy,  # Evidence-based strategy from empirical analysis
 }
 
 
@@ -46,7 +46,7 @@ def list_strategies() -> list:
 __all__ = [
     "AggressiveStrategy",
     "ConservativeStrategy",
-    "FoundationalStrategy",  # Phase B
+    "FoundationalStrategy",
     "SidebetStrategy",
     "TradingStrategy",
     "get_strategy",

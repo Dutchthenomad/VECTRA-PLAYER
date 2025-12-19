@@ -17,17 +17,17 @@ __all__ = ["Events", "event_bus", "get_logger", "setup_logging"]
 
 
 _LAZY_EXPORTS = {
-    # Phase 10.4E: State verifier
+    # State verifier (local vs playerUpdate server truth comparison)
     "StateVerifier": ("services.state_verifier", "StateVerifier"),
     "BALANCE_TOLERANCE": ("services.state_verifier", "BALANCE_TOLERANCE"),
     "POSITION_TOLERANCE": ("services.state_verifier", "POSITION_TOLERANCE"),
-    # Phase 10.4F: Recorders
+    # Game and session recorders (legacy - see EventStore for Phase 12)
     "GameStateRecorder": ("services.recorders", "GameStateRecorder"),
     "PlayerSessionRecorder": ("services.recorders", "PlayerSessionRecorder"),
-    # Phase 10.5B: Recording state machine
+    # Recording state machine
     "RecordingState": ("services.recording_state_machine", "RecordingState"),
     "RecordingStateMachine": ("services.recording_state_machine", "RecordingStateMachine"),
-    # Phase 10.5D: Unified recorder
+    # Unified recorder (legacy - see EventStore for Phase 12)
     "UnifiedRecorder": ("services.unified_recorder", "UnifiedRecorder"),
 }
 

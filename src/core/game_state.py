@@ -29,7 +29,7 @@ class StateEvents(Enum):
     BALANCE_CHANGED = "balance_changed"
     POSITION_OPENED = "position_opened"
     POSITION_CLOSED = "position_closed"
-    POSITION_REDUCED = "position_reduced"  # Phase 8.1
+    POSITION_REDUCED = "position_reduced"  # UI partial sell: position partially closed
     SIDEBET_PLACED = "sidebet_placed"
     SIDEBET_RESOLVED = "sidebet_resolved"
     TICK_UPDATED = "tick_updated"
@@ -38,8 +38,10 @@ class StateEvents(Enum):
     RUG_EVENT = "rug_event"
     PHASE_CHANGED = "phase_changed"
     BOT_ACTION = "bot_action"
-    SELL_PERCENTAGE_CHANGED = "sell_percentage_changed"  # Phase 8.1
-    STATE_RECONCILED = "state_reconciled"  # Phase 11: Server state sync
+    SELL_PERCENTAGE_CHANGED = (
+        "sell_percentage_changed"  # UI partial sell percentage (10/25/50/100%)
+    )
+    STATE_RECONCILED = "state_reconciled"  # Local state reconciled with playerUpdate server truth
 
 
 @dataclass
@@ -120,7 +122,7 @@ class GameState:
             "bot_enabled": False if bot_enabled is None else bot_enabled,
             "bot_strategy": bot_strategy,
             "last_sidebet_resolved_tick": None,
-            "sell_percentage": Decimal("1.0"),  # Phase 8.1: Default 100%
+            "sell_percentage": Decimal("1.0"),  # UI default: 100% (full position close)
         }
 
     # ========== State Access Methods ==========

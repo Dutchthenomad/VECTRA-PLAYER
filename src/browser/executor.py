@@ -1,8 +1,8 @@
 """
-Browser Executor - Phase 9.1 (CDP Update)
+Browser Executor - CDP-Based Browser Automation
 
-Bridges REPLAYER bot to live browser automation via Playwright CDP.
-Uses CDP (Chrome DevTools Protocol) for reliable wallet persistence.
+Bridges REPLAYER bot to live browser automation via Chrome DevTools Protocol.
+Uses CDP for reliable wallet persistence across sessions.
 
 Key Features:
 - CDP connection to running Chrome (not Playwright's Chromium)
@@ -28,10 +28,10 @@ from browser.dom.selectors import (
     SIDEBET_BUTTON_SELECTORS,
 )
 
-# Phase 2 Refactoring: Browser module consolidation
+# Browser timing utilities
 from browser.dom.timing import TimingMetrics
 
-# Phase 2: Browser consolidation - Use CDP Browser Manager for reliable wallet persistence
+# CDP Browser Manager - Reliable wallet persistence via Chrome DevTools Protocol
 try:
     from browser.manager import CDPBrowserManager, CDPStatus
 
@@ -57,28 +57,26 @@ BROWSER_MANAGER_AVAILABLE = CDP_MANAGER_AVAILABLE or LEGACY_MANAGER_AVAILABLE
 logger = logging.getLogger(__name__)
 
 
-# Note: ExecutionTiming and TimingMetrics moved to browser_timing.py (Phase 1 refactoring)
+# Note: ExecutionTiming and TimingMetrics moved to browser/dom/timing.py
 
 
 class BrowserExecutor:
     """
-    Browser execution controller for live trading
+    Browser execution controller for live trading.
 
-    Phase 8.5: Connects REPLAYER bot to live browser via Playwright
+    Connects REPLAYER bot to live browser via Playwright CDP:
     - Manages browser lifecycle (start, stop, reconnect)
     - Executes trades via DOM interaction (click buttons)
     - Reads game state from browser (balance, position, price)
     - Validates execution (checks state changed)
     - Handles errors and retries
 
-    Phase 1 Refactoring:
-    - Selectors moved to browser_selectors.py
-    - Timing classes moved to browser_timing.py
-    - Action methods implemented inline (click_buy, click_sell, click_sidebet)
-    - State reader methods implemented inline (read_balance, read_position)
+    Architecture:
+    - Selectors: browser/dom/selectors.py
+    - Timing: browser/dom/timing.py
+    - Action methods: click_buy, click_sell, click_sidebet
+    - State readers: read_balance, read_position
     """
-
-    # Note: Selectors moved to browser_selectors.py (Phase 1 refactoring)
 
     def __init__(self, profile_name: str = "rugs_bot", use_cdp: bool = True):
         """
@@ -96,7 +94,7 @@ class BrowserExecutor:
         self.profile_name = profile_name
         self.use_cdp = use_cdp and CDP_MANAGER_AVAILABLE
 
-        # Phase 9.1: CDP is the default and recommended approach
+        # CDP is the default and recommended approach for wallet persistence
         self.cdp_manager: CDPBrowserManager | None = None if self.use_cdp else None
         self.browser_manager: RugsBrowserManager | None = None  # Legacy fallback
 
@@ -105,7 +103,7 @@ class BrowserExecutor:
         self.last_action_time = None
         self.retry_count = 0
 
-        # Phase 8.6: Timing metrics tracking
+        # Timing metrics for bot decision → execution latency tracking
         self.timing_metrics = TimingMetrics()
         self.current_decision_time = None  # Set when bot decides to act
 

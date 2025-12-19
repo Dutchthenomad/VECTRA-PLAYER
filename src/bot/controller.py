@@ -49,7 +49,7 @@ class BotController:
         self.strategy_name = strategy_name
         self.strategy: TradingStrategy = get_strategy(strategy_name)
 
-        # Phase 8.3: Execution mode
+        # Execution mode: BACKEND (fast, training) or UI_LAYER (realistic, live)
         self.execution_mode = execution_mode
         self.ui_controller = ui_controller
 
@@ -268,7 +268,7 @@ class BotController:
 
         return {
             "strategy": self.strategy_name,
-            "execution_mode": self.execution_mode.value,  # Phase 8.3
+            "execution_mode": self.execution_mode.value,
             "actions_taken": self.actions_taken,
             "successful_actions": self.successful_actions,
             "failed_actions": self.failed_actions,

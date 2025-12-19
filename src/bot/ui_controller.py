@@ -58,7 +58,7 @@ class BotUIController:
         self.main_window = main_window
         self.root = main_window.root
 
-        # Phase A.7: Configurable timing (from bot_config.json)
+        # Configurable timing (from bot_config.json) for realistic UI interaction
         self.button_depress_duration_ms = button_depress_duration_ms  # Visual feedback duration
         self.inter_click_pause_ms = inter_click_pause_ms  # Pause between clicks
         # AUDIT FIX: Configurable clear pause (was hardcoded 500ms)
@@ -267,7 +267,7 @@ class BotUIController:
 
                 self._schedule_ui_action(_click_button_with_visual_feedback)
 
-                # Phase A.7: Configurable delay AFTER EVERY click
+                # Configurable delay AFTER EVERY click for realistic timing
                 # Wait for button depression animation + pause before next click
                 # Typical: 60-100ms for realistic play, 500ms for slow demo
                 time.sleep(self.inter_click_pause_ms / 1000.0)  # Convert ms to seconds
