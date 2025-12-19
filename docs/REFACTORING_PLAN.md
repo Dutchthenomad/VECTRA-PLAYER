@@ -16,6 +16,7 @@
 | 3A Dual-Write to EventStore | ✅ DONE | Dec 18 | EventStoreService started in MainWindow |
 | 3.2 Migration Path | ✅ DONE | Dec 18 | RUGS_LEGACY_RECORDERS env var added |
 | 3.3 Cross-Repo Coordination | ✅ DONE | Dec 18 | docs/CROSS_REPO_COORDINATION.md created |
+| 4.1 Phase Marker Cleanup | 🔄 IN PROGRESS | Dec 18 | 135→63 (-72 comments) |
 
 ---
 
@@ -30,7 +31,7 @@ VECTRA-PLAYER has accumulated significant technical debt from iterative developm
 | Hardcoded `/home/nomad/` paths | 11 | **0** ✅ | **FIXED** |
 | `sys.path.insert` anti-patterns | 3 | **0** ✅ | **FIXED** |
 | Commented-out code blocks | 7 files | **2** ✅ | LOW |
-| Phase markers (incomplete refactors) | 125 | 125 | MEDIUM |
+| Phase markers (incomplete refactors) | 135 | **63** | MEDIUM |
 | AUDIT FIX/PRODUCTION FIX patches | 183 | 183 | MEDIUM |
 | Legacy/deprecated code | 4 instances | 4 | MEDIUM |
 | **EventStore dual-write** | Not active | **Active** ✅ | **DONE** |

@@ -1,20 +1,19 @@
 """
-Sources module for REPLAYER - Live feed integrations
+Sources module for REPLAYER - Live feed integrations.
 
-Phase 10.4A: Modular refactor - extracted classes to separate modules
-for maintainability (<400 lines per file).
+Extracted classes to separate modules for maintainability (<400 lines per file).
 """
 
-# Phase 10.5C: Data integrity monitor
+# Data integrity monitor
 from sources.data_integrity_monitor import DataIntegrityMonitor, IntegrityIssue, ThresholdType
 from sources.feed_degradation import GracefulDegradationManager, OperatingMode
 
-# Phase 10.4A: Extracted modules
+# Feed monitors
 from sources.feed_monitors import ConnectionHealth, ConnectionHealthMonitor, LatencySpikeDetector
 from sources.feed_rate_limiter import PriorityRateLimiter, TokenBucketRateLimiter
 from sources.game_state_machine import GameSignal, GameStateMachine
 
-# Phase 10.4D: Price history handler
+# Price history handler
 from sources.price_history_handler import PriceHistoryHandler
 from sources.websocket_feed import WebSocketFeed
 
@@ -22,19 +21,19 @@ __all__ = [
     "WebSocketFeed",
     "GameSignal",
     "GameStateMachine",
-    # Phase 10.4A: Extracted monitors
+    # Monitors
     "LatencySpikeDetector",
     "ConnectionHealth",
     "ConnectionHealthMonitor",
-    # Phase 10.4A: Extracted rate limiters
+    # Rate limiters
     "TokenBucketRateLimiter",
     "PriorityRateLimiter",
-    # Phase 10.4A: Extracted degradation
+    # Degradation
     "OperatingMode",
     "GracefulDegradationManager",
-    # Phase 10.4D: Price history handler
+    # Price history handler
     "PriceHistoryHandler",
-    # Phase 10.5C: Data integrity monitor
+    # Data integrity monitor
     "DataIntegrityMonitor",
     "ThresholdType",
     "IntegrityIssue",
