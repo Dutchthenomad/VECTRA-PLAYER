@@ -11,7 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-# Phase 12: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
+# Phase 3: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from bot import BotController, BotInterface, list_strategies
@@ -24,7 +24,7 @@ from core.demo_recorder import DemoRecorderSink  # Phase 10
 from core.game_queue import GameQueue
 from debug.raw_capture_recorder import RawCaptureRecorder  # Raw capture debug tool
 from models import GameTick
-from services.event_store import EventStoreService  # Phase 12: Parquet persistence
+from services.event_store import EventStoreService  # Phase 3: Parquet persistence
 from services.ui_dispatcher import TkDispatcher  # Phase 1: Moved to services
 from ui.balance_edit_dialog import BalanceEditEntry, BalanceRelockDialog, BalanceUnlockDialog
 from ui.bot_config_panel import BotConfigPanel  # Phase 8.4
@@ -97,7 +97,7 @@ class MainWindow:
         self.trade_manager = TradeManager(state)
 
         # Phase 10: Initialize demo recorder for human demonstration recording
-        # Phase 12: Conditional on RUGS_LEGACY_RECORDERS env var
+        # Phase 3: Conditional on RUGS_LEGACY_RECORDERS env var
         if LEGACY_RECORDERS_ENABLED:
             demo_dir = (
                 Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
@@ -1871,7 +1871,7 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             except Exception as e:
                 logger.error(f"Error stopping raw capture: {e}")
 
-        # Phase 12: Stop EventStoreService (flushes remaining Parquet data)
+        # Phase 3: Stop EventStoreService (flushes remaining Parquet data)
         if hasattr(self, "event_store_service") and self.event_store_service:
             try:
                 self.event_store_service.stop()
