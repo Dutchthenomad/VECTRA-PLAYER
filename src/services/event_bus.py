@@ -1,6 +1,12 @@
 """
 Event Bus Service - Thread-safe with deadlock prevention
-AUDIT FIX: Added weak references and lock-free callback execution
+
+Key behaviors (tested in test_characterization/test_event_bus_behavior.py):
+- Weak references for automatic subscriber cleanup
+- No locks held during callback execution (deadlock prevention)
+- Callback ID tracking for proper unsubscribe
+- Queue capacity warnings at 80%
+- Graceful shutdown with retry loop
 """
 
 import logging
@@ -72,33 +78,25 @@ class Events(Enum):
 
 class EventBus:
     """
-    Thread-safe event bus with deadlock prevention
+    Thread-safe event bus with deadlock prevention.
 
-    AUDIT FIX: Key improvements:
-    - No locks held during callback execution
-    - Weak references for automatic cleanup
-    - Error isolation
-    - Larger queue (5000 vs 1000)
+    See test_characterization/test_event_bus_behavior.py for edge case tests.
     """
 
     def __init__(self, max_queue_size: int = 5000):
-        # AUDIT FIX: Use weak references to prevent memory leaks
+        # Subscribers stored as (callback_id, weak_ref_or_callback) tuples
         self._subscribers: dict[Events, list[tuple[int, Any]]] = {}
 
-        # AUDIT FIX 2: Track original callbacks by id for proper unsubscribe
-        # Important: do not store strong refs for weak subscriptions.
+        # Track callbacks by ID for proper unsubscribe (no strong refs for weak subscriptions)
         self._callback_ids: dict[Events, dict[int, Any]] = {}
 
-        # AUDIT FIX: Increased queue size from 1000 to 5000
         self._queue = queue.Queue(maxsize=max_queue_size)
-
         self._processing = False
         self._thread = None
 
-        # AUDIT FIX: Lock only for subscription management, not event dispatch
+        # Lock only for subscription management, not during callback execution
         self._sub_lock = threading.RLock()
 
-        # AUDIT FIX: Add statistics tracking
         self._stats = {
             "events_published": 0,
             "events_processed": 0,
@@ -118,18 +116,16 @@ class EventBus:
 
     def stop(self):
         """
-        Stop event processing
+        Stop event processing.
 
-        AUDIT FIX: Improved shutdown with retry loop to prevent hangs.
-        Uses multiple attempts with queue draining to ensure sentinel delivery.
+        Uses retry loop with queue draining to ensure sentinel delivery.
         """
         if not self._processing:
             return
 
-        # Signal processing to stop (allows _process_events to exit on timeout)
         self._processing = False
 
-        # AUDIT FIX: Retry loop with timeout for reliable sentinel insertion
+        # Retry loop for reliable sentinel insertion (see test_event_bus_behavior.py)
         max_attempts = 10
         sentinel_sent = False
 
@@ -161,15 +157,12 @@ class EventBus:
 
     def subscribe(self, event: Events, callback: Callable, weak: bool = True):
         """
-        Subscribe to an event
-
-        AUDIT FIX: Added weak reference support to prevent memory leaks
-        AUDIT FIX 2: Track callback IDs for proper unsubscribe
+        Subscribe to an event.
 
         Args:
             event: Event to subscribe to
             callback: Callback function
-            weak: Use weak reference (default True)
+            weak: Use weak reference for automatic cleanup (default True)
         """
         with self._sub_lock:
             if event not in self._subscribers:
@@ -193,7 +186,7 @@ class EventBus:
                     (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_id
                 ]
 
-            # AUDIT FIX: Store as weak reference by default
+            # Store as weak reference by default (auto GC when subscriber goes out of scope)
             if weak:
                 try:
                     ref = weakref.ref(callback)
@@ -211,11 +204,7 @@ class EventBus:
             logger.debug(f"Subscribed to {event.value}")
 
     def unsubscribe(self, event: Events, callback: Callable):
-        """
-        Unsubscribe from an event
-
-        AUDIT FIX 2: Use callback ID for proper matching (fixes broken unsubscribe)
-        """
+        """Unsubscribe from an event using callback ID matching."""
         with self._sub_lock:
             if event not in self._subscribers:
                 logger.debug(f"No subscribers for {event.value}, nothing to unsubscribe")
@@ -237,16 +226,12 @@ class EventBus:
             logger.debug(f"Unsubscribed from {event.value}")
 
     def publish(self, event: Events, data: Any = None):
-        """
-        Publish an event
-
-        AUDIT FIX: Track statistics and queue capacity monitoring
-        """
+        """Publish an event to all subscribers."""
         try:
             self._queue.put_nowait((event, data))
             self._stats["events_published"] += 1
 
-            # AUDIT FIX: Warn at 80% capacity
+            # Warn at 80% capacity
             qsize = self._queue.qsize()
             max_size = self._queue.maxsize
             if max_size > 0 and qsize > max_size * 0.8:
@@ -275,11 +260,9 @@ class EventBus:
 
     def _dispatch(self, event: Events, data: Any):
         """
-        Dispatch event to subscribers
+        Dispatch event to subscribers.
 
-        AUDIT FIX: CRITICAL - DO NOT hold lock during callback execution!
-        This prevents deadlocks when callbacks publish events.
-        AUDIT FIX 2: Updated to work with (cb_id, ref) tuple format
+        CRITICAL: Lock released before callback execution to prevent deadlocks.
         """
         callbacks_to_call = []
         with self._sub_lock:
@@ -315,11 +298,7 @@ class EventBus:
         return None
 
     def get_stats(self) -> dict[str, Any]:
-        """
-        Get event bus statistics
-
-        AUDIT FIX: Include processing stats
-        """
+        """Get event bus statistics including processing counters."""
         with self._sub_lock:
             stats = {
                 "subscriber_count": sum(len(entries) for entries in self._subscribers.values()),
@@ -356,11 +335,7 @@ class EventBus:
             return False
 
     def clear_all(self):
-        """
-        Clear all subscribers (for testing/cleanup).
-
-        AUDIT FIX 2: Added for proper cleanup
-        """
+        """Clear all subscribers (for testing/cleanup)."""
         with self._sub_lock:
             self._subscribers.clear()
             self._callback_ids.clear()
