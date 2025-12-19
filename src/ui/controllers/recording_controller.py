@@ -16,7 +16,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-# Phase 12: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
+# Phase 3: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from models.recording_config import RecordingConfig
@@ -153,7 +153,7 @@ class RecordingController:
         Args:
             config: Configuration to use (defaults to saved config)
         """
-        # Phase 12: Check if legacy recorders are enabled
+        # Phase 3: Check if legacy recorders are enabled
         if not LEGACY_RECORDERS_ENABLED:
             logger.info("Legacy recorders disabled (RUGS_LEGACY_RECORDERS=false)")
             self._toast.show("Recording disabled (EventStore only mode)", "info")
