@@ -63,8 +63,8 @@ class Events(Enum):
     REPLAY_STOPPED = "replay.stopped"  # Alias for REPLAY_STOP
 
     # WebSocket Events: Server-authoritative player state (auth-required)
-    PLAYER_IDENTITY = "player.identity"  # From usernameStatus WebSocket event (P1)
-    PLAYER_UPDATE = "player.update"  # From playerUpdate WebSocket event (P0, server truth)
+    PLAYER_IDENTITY = "player.identity"  # From usernameStatus WebSocket event
+    PLAYER_UPDATE = "player.update"  # From playerUpdate WebSocket event (server truth)
 
     # WebSocket interception events (CDP capture layer)
     WS_RAW_EVENT = "ws.raw_event"  # Every frame, unfiltered

@@ -16,8 +16,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-# Phase 12 migration: Legacy recorders disabled when EventStore is sole writer
-# TODO: Remove after Phase 12D (legacy recorder deletion)
+# Migration note: legacy recorders are disabled when EventStore is the sole writer
+# TODO: Remove once legacy recorders and their configuration paths are fully deleted
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from models.recording_config import RecordingConfig
@@ -154,7 +154,7 @@ class RecordingController:
         Args:
             config: Configuration to use (defaults to saved config)
         """
-        # Phase 12 migration: Skip legacy recording when EventStore is sole writer
+        # Migration note: Skip legacy recording when EventStore is sole writer
         if not LEGACY_RECORDERS_ENABLED:
             logger.info("Legacy recorders disabled (RUGS_LEGACY_RECORDERS=false)")
             self._toast.show("Recording disabled (EventStore only mode)", "info")

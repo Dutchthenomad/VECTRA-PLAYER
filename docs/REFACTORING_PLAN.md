@@ -16,7 +16,7 @@
 | 3A Dual-Write to EventStore | ✅ DONE | Dec 18 | EventStoreService started in MainWindow |
 | 3.2 Migration Path | ✅ DONE | Dec 18 | RUGS_LEGACY_RECORDERS env var added |
 | 3.3 Cross-Repo Coordination | ✅ DONE | Dec 18 | docs/CROSS_REPO_COORDINATION.md created |
-| 4.1 Phase Marker Cleanup | ✅ DONE | Dec 19 | 135→3 semantic only (rugs-expert validated) |
+| 4.1 Phase Marker Cleanup | ✅ DONE | Dec 19 | 135→3 semantic only (automated review) |
 
 ---
 
