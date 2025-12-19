@@ -6,9 +6,11 @@ Schema Version: 1.0.0
 """
 
 # Issue #1: gameStateUpdate
+# Issue #23: gameStatePlayerUpdate (Phase 0 Schema Validation)
 from .game_state_update import (
     AvailableShitcoin,
     GameHistoryEntry,
+    GameStatePlayerUpdate,
     GameStateUpdate,
     LeaderboardEntry,
     PartialPrices,
@@ -54,6 +56,8 @@ from .username_status import UsernameStatus
 __all__ = [
     # Issue #1: gameStateUpdate
     "GameStateUpdate",
+    # Issue #23: gameStatePlayerUpdate
+    "GameStatePlayerUpdate",
     "LeaderboardEntry",
     "PartialPrices",
     "GameHistoryEntry",

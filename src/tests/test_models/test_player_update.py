@@ -5,10 +5,7 @@ GitHub Issue: #2
 TDD: Tests written FIRST to validate schema design
 """
 
-import sys
 from decimal import Decimal
-
-sys.path.insert(0, "/home/nomad/Desktop/VECTRA-PLAYER/src")
 
 from models.events.player_update import PlayerUpdate
 

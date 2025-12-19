@@ -9,8 +9,8 @@ This script helps debug browser automation by:
 - Validating UI state changes
 
 Usage:
-    cd /home/nomad/Desktop/REPLAYER/src
-    /home/nomad/Desktop/rugs-rl-bot/.venv/bin/python3 playwright_debug_helper.py
+    cd <project_root>/src
+    python3 playwright_debug_helper.py
 
 This will launch a browser and monitor bot actions with visual validation.
 """

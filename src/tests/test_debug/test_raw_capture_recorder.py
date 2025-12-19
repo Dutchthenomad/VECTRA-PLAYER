@@ -17,8 +17,11 @@ class TestRawCaptureRecorderInit:
 
     def test_default_capture_dir(self):
         """Test default capture directory is set"""
+        from config import Config
+
         recorder = RawCaptureRecorder()
-        assert recorder.capture_dir == Path("/home/nomad/rugs_recordings/raw_captures")
+        expected = Config.get_files_config()["recordings_dir"] / "raw_captures"
+        assert recorder.capture_dir == expected
 
     def test_custom_capture_dir(self):
         """Test custom capture directory"""

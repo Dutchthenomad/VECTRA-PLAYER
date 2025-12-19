@@ -10,8 +10,8 @@ This script runs the bot in REPLAYER and captures:
 - Any errors or unexpected behavior
 
 Usage:
-    cd /home/nomad/Desktop/REPLAYER/src
-    /home/nomad/Desktop/rugs-rl-bot/.venv/bin/python3 debug_bot_session.py
+    cd <project_root>/src
+    python3 debug_bot_session.py
 
 Output:
     - debug_session_TIMESTAMP/ directory with:
@@ -223,7 +223,9 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
 
         # Load a game
         logger.info("Loading game recording...")
-        recordings_dir = Path("/home/nomad/rugs_recordings")
+        from config import Config
+
+        recordings_dir = Config.get_files_config()["recordings_dir"]
         if game_file:
             game_path = Path(game_file)
         else:

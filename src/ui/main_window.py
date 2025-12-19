@@ -5,10 +5,14 @@ This gets your app running with basic UI
 
 import json
 import logging
+import os
 import tkinter as tk
 from decimal import Decimal
 from pathlib import Path
 from tkinter import messagebox, ttk
+
+# Phase 12: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
+LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from bot import BotController, BotInterface, list_strategies
 from bot.async_executor import AsyncBotExecutor
@@ -20,6 +24,7 @@ from core.demo_recorder import DemoRecorderSink  # Phase 10
 from core.game_queue import GameQueue
 from debug.raw_capture_recorder import RawCaptureRecorder  # Raw capture debug tool
 from models import GameTick
+from services.event_store import EventStoreService  # Phase 12: Parquet persistence
 from services.ui_dispatcher import TkDispatcher  # Phase 1: Moved to services
 from ui.balance_edit_dialog import BalanceEditEntry, BalanceRelockDialog, BalanceUnlockDialog
 from ui.bot_config_panel import BotConfigPanel  # Phase 8.4
@@ -92,16 +97,30 @@ class MainWindow:
         self.trade_manager = TradeManager(state)
 
         # Phase 10: Initialize demo recorder for human demonstration recording
-        demo_dir = Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
-        self.demo_recorder = DemoRecorderSink(demo_dir)
-        logger.info(f"DemoRecorderSink initialized: {demo_dir}")
+        # Phase 12: Conditional on RUGS_LEGACY_RECORDERS env var
+        if LEGACY_RECORDERS_ENABLED:
+            demo_dir = (
+                Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
+            )
+            self.demo_recorder = DemoRecorderSink(demo_dir)
+            logger.info(f"DemoRecorderSink initialized: {demo_dir}")
 
-        # Raw WebSocket capture for protocol debugging
-        self.raw_capture_recorder = RawCaptureRecorder()
-        self.raw_capture_recorder.on_capture_started = self._on_raw_capture_started
-        self.raw_capture_recorder.on_capture_stopped = self._on_raw_capture_stopped
-        self.raw_capture_recorder.on_event_captured = self._on_raw_event_captured
-        logger.info("RawCaptureRecorder initialized for WebSocket debugging")
+            # Raw WebSocket capture for protocol debugging
+            self.raw_capture_recorder = RawCaptureRecorder()
+            self.raw_capture_recorder.on_capture_started = self._on_raw_capture_started
+            self.raw_capture_recorder.on_capture_stopped = self._on_raw_capture_stopped
+            self.raw_capture_recorder.on_event_captured = self._on_raw_event_captured
+            logger.info("RawCaptureRecorder initialized for WebSocket debugging")
+        else:
+            self.demo_recorder = None
+            self.raw_capture_recorder = None
+            logger.info("Legacy recorders DISABLED (RUGS_LEGACY_RECORDERS=false)")
+
+        # Phase 12: Initialize EventStore for Parquet persistence (dual-write)
+        # EventStoreService subscribes to EventBus and writes to Parquet
+        self.event_store_service = EventStoreService(event_bus)
+        self.event_store_service.start()
+        logger.info("EventStoreService started for Parquet persistence")
 
         # Initialize game queue for multi-game sessions
         recordings_dir = config.FILES["recordings_dir"]
@@ -699,22 +718,6 @@ class MainWindow:
             logger.info("Auto-connecting to live feed...")
             self.live_feed_controller.toggle_live_feed()
 
-    # Phase 3.2: load_game, load_game_file moved to ReplayController
-
-    # Phase 3.4: enable_live_feed, disable_live_feed, toggle_live_feed moved to LiveFeedController
-
-    # display_tick() removed - now handled by ReplayEngine callbacks
-
-    # Phase 3.2: toggle_playback, step_forward, reset_game, set_playback_speed moved to ReplayController
-
-    # Phase 3.3: execute_buy, execute_sell, execute_sidebet, set_sell_percentage, highlight_percentage_button moved to TradingController
-
-    # ========================================================================
-    # BOT CONTROLS
-    # ========================================================================
-
-    # Phase 3.1: toggle_bot and _on_strategy_changed moved to BotManager
-
     # ========================================================================
     # REPLAY ENGINE CALLBACKS
     # ========================================================================
@@ -865,8 +868,6 @@ class MainWindow:
 
         # AUDIT FIX Phase 2.6: Marshal to UI thread
         self.ui_dispatcher.submit(_update_ui)
-
-    # Phase 3.2: _load_next_game moved to ReplayController
 
     # ========================================================================
     # EVENT HANDLERS
@@ -1163,14 +1164,6 @@ class MainWindow:
             )
         )
 
-    # Phase 3.1: _check_bot_results moved to BotManager
-
-    # ========================================================================
-    # BET AMOUNT METHODS
-    # ========================================================================
-
-    # Phase 3.3: set_bet_amount, increment_bet_amount, clear_bet_amount, half_bet_amount, double_bet_amount, max_bet_amount, get_bet_amount moved to TradingController
-
     # ========================================================================
     # KEYBOARD SHORTCUTS
     # ========================================================================
@@ -1250,8 +1243,6 @@ class MainWindow:
 
         logger.info("Keyboard shortcuts configured (added 'L' for live feed)")
 
-    # Phase 3.2: step_backward moved to ReplayController
-
     def show_help(self):
         """Show help dialog with keyboard shortcuts"""
         help_text = """
@@ -1282,24 +1273,7 @@ GAME RULES:
 """
         messagebox.showinfo("Help - Keyboard Shortcuts", help_text)
 
-    # ========================================================================
-    # MENU BAR CALLBACKS
-    # ========================================================================
-
-    # Phase 3.2: load_file_dialog, toggle_play_pause, _toggle_recording, _open_recordings_folder moved to ReplayController
-    # Phase 3.1: _toggle_bot_from_menu, _toggle_timing_overlay, _show_bot_config moved to BotManager
-
-    # ========== TIMING METRICS (Phase 8.6) ==========
-
-    # Phase 3.1: _show_timing_metrics moved to BotManager
-
-    # Phase 3.1: _update_timing_metrics_display moved to BotManager
-
-    # Phase 3.1: _update_timing_metrics_loop moved to BotManager
-
-    # Phase 3.4: _toggle_live_feed_from_menu moved to LiveFeedController
-
-    # ========== THEME MANAGEMENT (Phase 3: UI Theming) ==========
+    # ========== THEME MANAGEMENT ==========
 
     def _change_theme(self, theme_name: str):
         """
@@ -1896,6 +1870,14 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
                 logger.info("Raw capture stopped during shutdown")
             except Exception as e:
                 logger.error(f"Error stopping raw capture: {e}")
+
+        # Phase 12: Stop EventStoreService (flushes remaining Parquet data)
+        if hasattr(self, "event_store_service") and self.event_store_service:
+            try:
+                self.event_store_service.stop()
+                logger.info("EventStoreService stopped")
+            except Exception as e:
+                logger.error(f"Error stopping EventStoreService: {e}")
 
         # Phase 3.4: Delegate live feed cleanup to LiveFeedController
         self.live_feed_controller.cleanup()
