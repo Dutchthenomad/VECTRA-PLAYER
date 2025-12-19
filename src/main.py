@@ -62,7 +62,7 @@ class Application:
                 self.logger.info("MODE: REPLAY")
             self.logger.info("=" * 60)
 
-            # Phase 8.5: Store live mode flag
+            # Live mode flag for WebSocket feed vs replay
             self.live_mode = live_mode
 
             # Configure config runtime behavior at startup (avoid import-time side effects)
@@ -208,7 +208,7 @@ class Application:
     def run(self):
         """Run the application"""
         try:
-            # Phase 8.5: Create main window with live mode flag
+            # Create main window with live mode flag
             self.main_window = MainWindow(
                 self.root,
                 self.state,

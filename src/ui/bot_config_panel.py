@@ -53,8 +53,8 @@ class BotConfigPanel:
         self.execution_mode_var = None
         self.strategy_var = None
         self.bot_enabled_var = None
-        self.button_depress_duration_var = None  # Phase A.7: Button depression duration
-        self.inter_click_pause_var = None  # Phase A.7: Inter-click pause
+        self.button_depress_duration_var = None  # Button depression duration (UI timing)
+        self.inter_click_pause_var = None  # Inter-click pause duration (UI timing)
 
         logger.info(f"BotConfigPanel initialized (config: {self.config_file})")
 
@@ -66,7 +66,7 @@ class BotConfigPanel:
             Configuration dictionary with defaults
         """
         # Default configuration
-        # Phase 8 Fix: Default to UI_LAYER mode (for live trading preparation)
+        # Default to UI_LAYER mode for live trading preparation
         # BACKEND mode is for fast training, UI_LAYER learns realistic timing
         default_config = {
             "_schema_version": 1,
@@ -88,7 +88,7 @@ class BotConfigPanel:
             except Exception as e:
                 logger.error(f"Failed to load bot config: {e}")
         else:
-            # Phase 8 Fix: Create default config file on first run
+            # Create default config file on first run
             logger.info("No bot config found, creating default configuration")
             self._save_default_config(default_config)
 
@@ -170,7 +170,7 @@ class BotConfigPanel:
         # Create modal dialog
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title("Bot Configuration")
-        self.dialog.geometry("450x450")  # Phase A.7: Increased height for timing controls
+        self.dialog.geometry("450x450")  # Height adjusted for timing controls section
         self.dialog.resizable(False, False)
 
         # Make dialog modal
@@ -382,12 +382,10 @@ class BotConfigPanel:
         self.config["execution_mode"] = self.execution_mode_var.get()
         self.config["strategy"] = self.strategy_var.get()
         self.config["bot_enabled"] = self.bot_enabled_var.get()
-        self.config["button_depress_duration_ms"] = (
-            self.button_depress_duration_var.get()
-        )  # Phase A.7
-        self.config["inter_click_pause_ms"] = self.inter_click_pause_var.get()  # Phase A.7
+        self.config["button_depress_duration_ms"] = self.button_depress_duration_var.get()
+        self.config["inter_click_pause_ms"] = self.inter_click_pause_var.get()
 
-        # Phase 9.1: Save default balance
+        # Save default balance
         try:
             default_balance = float(self.default_balance_var.get())
             if default_balance < 0:

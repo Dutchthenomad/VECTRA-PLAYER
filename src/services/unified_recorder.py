@@ -1,7 +1,7 @@
 """
-Unified Recorder - Phase 10.5D
+Unified Recorder - Orchestrates game state and player action recording.
 
-Orchestrates GameStateRecorder + PlayerSessionRecorder with unified
+Combines GameStateRecorder + PlayerSessionRecorder with unified
 state machine and data integrity monitoring.
 
 Respects capture mode:
@@ -31,7 +31,7 @@ from models.recording_models import (
     PlayerSession,
     PlayerSessionMeta,
     RecordedAction,
-    # Phase 10.6: Validation-aware models
+    # Validation-aware models
     ServerState,
     validate_states,
 )
@@ -121,7 +121,7 @@ class UnifiedRecorder:
         self._player_session_start: datetime | None = None
         self._pending_actions: list[PlayerAction] = []
 
-        # Phase 10.6: Button recording state
+        # Button recording state
         self._current_game_actions: list[RecordedAction] = []
         self._action_file_handle = None
         self._last_server_state: ServerState | None = None
@@ -320,7 +320,7 @@ class UnifiedRecorder:
         self._integrity_monitor.on_connection_restored()
 
     # =========================================================================
-    # Phase 10.6: Button Recording with Validation
+    # BUTTON RECORDING WITH VALIDATION
     # =========================================================================
 
     def update_server_state(self, server_state: ServerState) -> None:
@@ -342,8 +342,8 @@ class UnifiedRecorder:
         """
         Record a button press with dual-state validation.
 
-        Phase 10.6: Records ALL button presses (not just trades) with
-        local vs server state validation.
+        Records ALL button presses (not just trades) with local vs server
+        state validation for drift detection.
 
         Args:
             button: Button text (e.g., 'BUY', '+0.01', '25%', 'X')
@@ -450,7 +450,7 @@ class UnifiedRecorder:
         self._current_game_actions = []
         self._pending_trade_actions = {}
 
-        # Phase 10.6: Open JSONL file for player actions
+        # Open JSONL file for player actions
         if self._config.capture_mode == CaptureMode.GAME_AND_PLAYER:
             player_dir = self.base_path / "player"
             player_dir.mkdir(parents=True, exist_ok=True)
@@ -493,7 +493,7 @@ class UnifiedRecorder:
         if not self._current_game:
             return None
 
-        # Phase 10.6: Close action file if open
+        # Close action file if open
         if self._action_file_handle:
             try:
                 self._action_file_handle.close()
@@ -541,7 +541,7 @@ class UnifiedRecorder:
             game_id = self._current_game.meta.game_id
             logger.warning(f"Discarding game due to integrity issue: {game_id}")
 
-            # Phase 10.6: Close and delete action file if open
+            # Close and delete incomplete action file
             if self._action_file_handle:
                 filepath = self._action_file_handle.name
                 try:

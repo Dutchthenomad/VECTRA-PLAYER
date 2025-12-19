@@ -145,7 +145,7 @@ class PlayerSession:
 
 
 # =============================================================================
-# Phase 10.6: Validation-Aware Recording Models
+# Validation-Aware Recording Models (local vs playerUpdate server truth)
 # =============================================================================
 
 

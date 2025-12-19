@@ -16,7 +16,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-# Phase 12: Legacy recorder toggle (set RUGS_LEGACY_RECORDERS=false to disable)
+# Migration note: legacy recorders are disabled when EventStore is the sole writer
+# TODO: Remove once legacy recorders and their configuration paths are fully deleted
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
 
 from models.recording_config import RecordingConfig
@@ -153,7 +154,7 @@ class RecordingController:
         Args:
             config: Configuration to use (defaults to saved config)
         """
-        # Phase 12: Check if legacy recorders are enabled
+        # Migration note: Skip legacy recording when EventStore is sole writer
         if not LEGACY_RECORDERS_ENABLED:
             logger.info("Legacy recorders disabled (RUGS_LEGACY_RECORDERS=false)")
             self._toast.show("Recording disabled (EventStore only mode)", "info")
@@ -265,7 +266,8 @@ class RecordingController:
             self._recorder.on_player_action(action)
 
     # =========================================================================
-    # Phase 10.6: Button Recording with Validation
+    # Button Recording: Capture player actions with dual-state validation
+    # (Local state vs server state from playerUpdate WebSocket event)
     # =========================================================================
 
     def on_button_press(

@@ -1,15 +1,14 @@
 """
-LiveFeedController - Manages WebSocket live feed connection and state
+LiveFeedController - Manages WebSocket live feed connection and state.
 
 Extracted from MainWindow to follow Single Responsibility Principle.
+
 Handles:
 - WebSocket feed connection/disconnection
 - Live mode state management
 - Feed source switching
 - UI updates for live feed status
-
-Phase 10.6: Auto-starts recording when WebSocket connects,
-auto-stops when disconnected.
+- Auto-start/stop recording when connected/disconnected
 """
 
 import logging
@@ -25,11 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class LiveFeedController:
-    """
-    Manages WebSocket live feed connection and state management.
-
-    Extracted from MainWindow (Phase 3.4) to reduce God Object anti-pattern.
-    """
+    """Manages WebSocket live feed connection and state management."""
 
     def __init__(
         self,
@@ -74,10 +69,10 @@ class LiveFeedController:
         self._latest_signal = None
         self._signal_drain_scheduled = False
 
-        # Phase 10.6: Recording controller for auto-start/stop
+        # Recording controller for auto-start/stop
         self._recording_controller: RecordingController | None = None
 
-        # Phase 10.7: Player identity tracking
+        # Player identity tracking
         self._player_id: str | None = None
         self._username: str | None = None
 
@@ -87,10 +82,7 @@ class LiveFeedController:
         """
         Set the recording controller for auto-start/stop recording.
 
-        Phase 10.6: Must be called after RecordingController is created.
-
-        Args:
-            controller: RecordingController instance
+        Must be called after RecordingController is created.
         """
         self._recording_controller = controller
         logger.debug("Recording controller set for auto-start/stop")
@@ -143,7 +135,7 @@ class LiveFeedController:
     # ========================================================================
 
     def enable_live_feed(self):
-        """Enable WebSocket live feed (Phase 6)"""
+        """Enable WebSocket live feed."""
         if self.parent.live_feed_connected:
             self.log("Live feed already connected")
             return
@@ -217,7 +209,7 @@ class LiveFeedController:
                     if hasattr(self.parent, "phase_label"):
                         self.parent.phase_label.config(text="PHASE: DISCONNECTED", fg="#ff3366")
 
-                    # Phase 10.6: Auto-stop recording
+                    # Auto-stop recording
                     if self._recording_controller and self._recording_controller.is_active:
                         try:
                             self._recording_controller.stop_session()
@@ -225,7 +217,7 @@ class LiveFeedController:
                         except Exception as rec_e:
                             logger.error(f"Failed to auto-stop recording: {rec_e}")
 
-                    # Phase 10.8: Reset server state UI
+                    # Reset server state UI
                     if hasattr(self.parent, "_reset_server_state"):
                         self.parent._reset_server_state()
 
@@ -247,7 +239,7 @@ class LiveFeedController:
 
                 self.root.after(0, handle_game_complete)
 
-            # Phase 10.7: Player identity event (once on connect)
+            # Player identity event (once on connect)
             @self.parent.live_feed.on("player_identity")
             def on_player_identity(info):
                 # PRODUCTION FIX: Capture info snapshot
@@ -269,7 +261,7 @@ class LiveFeedController:
 
                 self.root.after(0, handle_identity)
 
-            # Phase 10.7: Player update event (after each trade)
+            # Player update event (after each trade)
             @self.parent.live_feed.on("player_update")
             def on_player_update(data):
                 # PRODUCTION FIX: Capture data snapshot
@@ -337,8 +329,7 @@ class LiveFeedController:
             self.parent.live_feed.disconnect()
             self.parent.live_feed = None
             self.parent.live_feed_connected = False
-            # Phase 10.5: Reset game tracking
-            # Phase 10.7: Reset player tracking
+            # Reset tracking state
             self._player_id = None
             self._username = None
             self.toast.show("Live feed disconnected", "info")
@@ -374,15 +365,14 @@ class LiveFeedController:
     # ========================================================================
 
     def cleanup(self):
-        """Cleanup live feed on shutdown (Phase 6 cleanup)"""
+        """Cleanup live feed on shutdown."""
         if self.parent.live_feed_connected and self.parent.live_feed:
             try:
                 logger.info("Shutting down live feed...")
                 self.parent.live_feed.disconnect()
                 self.parent.live_feed = None
                 self.parent.live_feed_connected = False
-                # Phase 10.5: Reset game tracking
-                # Phase 10.7: Reset player tracking
+                # Reset tracking state
                 self._player_id = None
                 self._username = None
             except Exception as e:

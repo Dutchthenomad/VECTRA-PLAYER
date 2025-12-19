@@ -1,15 +1,11 @@
 """
-TradingController - Manages trade execution and bet amount management
+TradingController - Manages trade execution and bet amount management.
 
-Extracted from MainWindow to follow Single Responsibility Principle.
 Handles:
 - Trade execution (buy/sell/sidebet)
 - Bet amount management (increment, clear, half, double, max)
 - Sell percentage management (10%, 25%, 50%, 100%)
-- UI updates for trade state
-
-Phase 10.6: Records ALL button presses to RecordingController with
-dual-state validation (local vs server).
+- Recording button presses with dual-state validation (local vs server)
 """
 
 import logging
@@ -25,11 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class TradingController:
-    """
-    Manages trade execution and bet amount management.
-
-    Extracted from MainWindow (Phase 3.3) to reduce God Object anti-pattern.
-    """
+    """Manages trade execution and bet amount management."""
 
     def __init__(
         self,
@@ -38,77 +30,56 @@ class TradingController:
         state,
         config,
         browser_bridge,
-        # UI widgets
         bet_entry: tk.Entry,
         percentage_buttons: dict,
-        # UI dispatcher
         ui_dispatcher,
-        # Notifications
         toast,
-        # Callbacks
         log_callback: Callable[[str], None],
-        # Phase 10.6: Recording controller (replaces demo_recorder)
         recording_controller: Optional["RecordingController"] = None,
-        # Legacy: Keep demo_recorder for backwards compatibility during migration
-        demo_recorder=None,
+        demo_recorder=None,  # Legacy (deprecated)
     ):
         """
         Initialize TradingController with dependencies.
 
         Args:
-            parent_window: MainWindow instance (for state access)
+            parent_window: MainWindow instance
             trade_manager: TradeManager instance
             state: GameState instance
             config: Config object
-            browser_bridge: BrowserBridge instance (for browser sync)
+            browser_bridge: BrowserBridge instance
             bet_entry: Bet amount entry widget
             percentage_buttons: Dict mapping percentages to button info
             ui_dispatcher: TkDispatcher for thread-safe UI updates
             toast: Toast notification widget
             log_callback: Logging function
-            recording_controller: RecordingController for Phase 10.6 recording
-            demo_recorder: DEPRECATED - Legacy DemoRecorderSink (Phase 10.1-10.3)
+            recording_controller: RecordingController for button recording
+            demo_recorder: Deprecated legacy recorder
         """
         self.parent = parent_window
         self.trade_manager = trade_manager
         self.state = state
         self.config = config
         self.browser_bridge = browser_bridge
-
-        # UI widgets
         self.bet_entry = bet_entry
         self.percentage_buttons = percentage_buttons
-
-        # UI dispatcher
         self.ui_dispatcher = ui_dispatcher
-
-        # Notifications
         self.toast = toast
-
-        # Callbacks
         self.log = log_callback
-
-        # Phase 10.6: Recording controller (primary)
         self.recording_controller = recording_controller
-
-        # Legacy: Demo recorder (deprecated, kept for backwards compatibility)
         self.demo_recorder = demo_recorder
 
         logger.info("TradingController initialized")
 
     # ========================================================================
-    # RECORDING (Phase 10.6 - Unified with Validation)
+    # RECORDING
     # ========================================================================
 
     def _record_button_press(self, button: str, amount: Decimal = None):
         """
         Record a button press with dual-state validation.
 
-        Phase 10.6: Records ALL button presses to RecordingController
-        with local state snapshot for zero-tolerance validation against
-        server state.
-
-        Phase 11: Now includes server state for dual-state validation.
+        Records ALL button presses to RecordingController with local state
+        snapshot for validation against server state.
 
         Args:
             button: Button text (e.g., 'BUY', '+0.01', '25%')
@@ -121,21 +92,20 @@ class TradingController:
             except Exception:
                 bet_amount = Decimal("0")
 
-            # Phase 10.6: Use new RecordingController
             if self.recording_controller:
                 # Capture local state snapshot for validation
                 local_state = self.state.capture_local_snapshot(bet_amount)
 
-                # Phase 11: Get server state for dual-state validation
+                # Get server state for dual-state validation
                 server_state = None
                 if hasattr(self.parent, "get_latest_server_state"):
                     server_state = self.parent.get_latest_server_state()
 
-                # Record to new unified system with server state
+                # Record to unified recording system
                 self.recording_controller.on_button_press(
                     button=button, local_state=local_state, amount=amount, server_state=server_state
                 )
-                logger.debug(f"Recorded button press (Phase 10.6): {button}")
+                logger.debug(f"Recorded button press: {button}")
 
             # Legacy: Also record to old system during migration
             elif self.demo_recorder and self.demo_recorder.is_game_active():
@@ -153,16 +123,14 @@ class TradingController:
     # ========================================================================
 
     def execute_buy(self):
-        """Execute buy action using TradeManager (Phase 9.3: syncs to browser)"""
-        # Phase 9.3: ALWAYS click BUY in browser first - browser is source of truth
-        # This happens regardless of REPLAYER's internal state/validation
+        """Execute buy action using TradeManager."""
+        # Click BUY in browser first - browser is source of truth
         self.browser_bridge.on_buy_clicked()
 
         amount = self.get_bet_amount()
         if amount is None:
-            return  # Validation failed (toast already shown), but browser click already sent
+            return  # Validation failed, but browser click already sent
 
-        # Phase 10: Record the action
         self._record_button_press("BUY", amount)
 
         result = self.trade_manager.execute_buy(amount)
@@ -175,11 +143,10 @@ class TradingController:
             self.toast.show(f"Buy failed: {result['reason']}", "error")
 
     def execute_sell(self):
-        """Execute sell action using TradeManager (Phase 8.2: supports partial sells, Phase 9.3: syncs to browser)"""
-        # Phase 9.3: Also click SELL in browser if connected
+        """Execute sell action using TradeManager (supports partial sells)."""
+        # Click SELL in browser if connected
         self.browser_bridge.on_sell_clicked()
 
-        # Phase 10: Record the action
         self._record_button_press("SELL")
 
         result = self.trade_manager.execute_sell()
@@ -189,7 +156,7 @@ class TradingController:
             pnl_pct = result.get("pnl_percent", 0)
             msg_type = "success" if pnl >= 0 else "error"
 
-            # Phase 8.2: Show partial sell information
+            # Show partial sell information
             if result.get("partial", False):
                 percentage = result.get("percentage", 1.0)
                 remaining = result.get("remaining_amount", 0)
@@ -208,14 +175,13 @@ class TradingController:
 
     def execute_sidebet(self):
         """Execute sidebet using TradeManager (Phase 9.3: syncs to browser)"""
-        # Phase 9.3: ALWAYS click SIDEBET in browser first - browser is source of truth
+        # Click SIDEBET in browser first - browser is source of truth
         self.browser_bridge.on_sidebet_clicked()
 
         amount = self.get_bet_amount()
         if amount is None:
             return  # Validation failed (toast already shown), but browser click already sent
 
-        # Phase 10: Record the action
         self._record_button_press("SIDEBET", amount)
 
         result = self.trade_manager.execute_sidebet(amount)
@@ -244,10 +210,9 @@ class TradingController:
         Args:
             percentage: 0.1 (10%), 0.25 (25%), 0.5 (50%), or 1.0 (100%)
         """
-        # Phase 9.3: Also click percentage button in browser if connected
+        # Click percentage button in browser if connected
         self.browser_bridge.on_percentage_clicked(percentage)
 
-        # Phase 10: Record the action
         button_text = f"{int(percentage * 100)}%"
         self._record_button_press(button_text)
 
@@ -292,12 +257,11 @@ class TradingController:
 
     def increment_bet_amount(self, amount: Decimal):
         """Increment bet amount by specified amount (Phase 9.3: syncs to browser)"""
-        # Phase 9.3: ALWAYS click increment button in browser FIRST
+        # Click increment button in browser FIRST
         # Map Decimal amount to button text: 0.001 -> '+0.001', 0.01 -> '+0.01', etc.
         button_text = f"+{amount}"
         self.browser_bridge.on_increment_clicked(button_text)
 
-        # Phase 10: Record the action
         self._record_button_press(button_text)
 
         # Then update local UI
@@ -313,10 +277,9 @@ class TradingController:
 
     def clear_bet_amount(self):
         """Clear bet amount to zero (Phase 9.3: syncs to browser)"""
-        # Phase 9.3: ALWAYS click X (clear) button in browser FIRST
+        # Click X (clear) button in browser FIRST
         self.browser_bridge.on_clear_clicked()
 
-        # Phase 10: Record the action
         self._record_button_press("X")
 
         # Then update local UI
@@ -326,10 +289,9 @@ class TradingController:
 
     def half_bet_amount(self):
         """Halve bet amount (1/2 button) - Phase 9.3: syncs to browser"""
-        # Phase 9.3: ALWAYS click 1/2 button in browser FIRST
+        # Click 1/2 button in browser FIRST
         self.browser_bridge.on_increment_clicked("1/2")
 
-        # Phase 10: Record the action
         self._record_button_press("1/2")
 
         # Then update local UI
@@ -344,10 +306,9 @@ class TradingController:
 
     def double_bet_amount(self):
         """Double bet amount (X2 button) - Phase 9.3: syncs to browser"""
-        # Phase 9.3: ALWAYS click X2 button in browser FIRST
+        # Click X2 button in browser FIRST
         self.browser_bridge.on_increment_clicked("X2")
 
-        # Phase 10: Record the action
         self._record_button_press("X2")
 
         # Then update local UI
@@ -362,10 +323,9 @@ class TradingController:
 
     def max_bet_amount(self):
         """Set bet to max (MAX button) - Phase 9.3: syncs to browser"""
-        # Phase 9.3: ALWAYS click MAX button in browser FIRST
+        # Click MAX button in browser FIRST
         self.browser_bridge.on_increment_clicked("MAX")
 
-        # Phase 10: Record the action
         self._record_button_press("MAX")
 
         # Then update local UI

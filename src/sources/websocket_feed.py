@@ -43,7 +43,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
     socketio = _SocketIOShim()  # type: ignore
 
-# Phase 3 refactoring: Import extracted classes from modular components
+# Modular architecture: Extracted feed components for testability
 from services.event_bus import Events, event_bus
 from sources.feed_degradation import GracefulDegradationManager
 from sources.feed_monitors import ConnectionHealth, ConnectionHealthMonitor, LatencySpikeDetector

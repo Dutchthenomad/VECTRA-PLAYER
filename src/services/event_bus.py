@@ -36,8 +36,10 @@ class Events(Enum):
     TRADE_SIDEBET = "trade.sidebet"
     TRADE_EXECUTED = "trade.executed"
     TRADE_FAILED = "trade.failed"
-    SELL_PERCENTAGE_CHANGED = "trade.sell_percentage_changed"  # Phase 8.1
-    POSITION_REDUCED = "trade.position_reduced"  # Phase 8.1
+    # UI partial sell feature: percentage selection (10%, 25%, 50%, 100%)
+    SELL_PERCENTAGE_CHANGED = "trade.sell_percentage_changed"
+    # UI partial sell feature: position partially closed
+    POSITION_REDUCED = "trade.position_reduced"
 
     # Bot Events
     BOT_ENABLED = "bot.enabled"
@@ -60,14 +62,14 @@ class Events(Enum):
     REPLAY_PAUSED = "replay.paused"  # Alias for REPLAY_PAUSE
     REPLAY_STOPPED = "replay.stopped"  # Alias for REPLAY_STOP
 
-    # Phase 10.7: Player State Events (WebSocket server state)
-    PLAYER_IDENTITY = "player.identity"  # Player ID and username from usernameStatus
-    PLAYER_UPDATE = "player.update"  # Server state from playerUpdate
+    # WebSocket Events: Server-authoritative player state (auth-required)
+    PLAYER_IDENTITY = "player.identity"  # From usernameStatus WebSocket event
+    PLAYER_UPDATE = "player.update"  # From playerUpdate WebSocket event (server truth)
 
-    # WebSocket interception events (Phase 11)
+    # WebSocket interception events (CDP capture layer)
     WS_RAW_EVENT = "ws.raw_event"  # Every frame, unfiltered
-    WS_AUTH_EVENT = "ws.auth_event"  # Auth-only events
-    WS_SOURCE_CHANGED = "ws.source_changed"  # Source switching ("cdp" or "fallback")
+    WS_AUTH_EVENT = "ws.auth_event"  # Auth-only events (playerUpdate, usernameStatus)
+    WS_SOURCE_CHANGED = "ws.source_changed"  # Source switching (cdp/fallback)
 
 
 class EventBus:

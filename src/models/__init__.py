@@ -14,15 +14,15 @@ from .enums import Phase, PositionStatus, SideBetStatus
 from .game_tick import GameTick
 from .position import Position
 
-# Phase 10.5A: Recording config model
+# Recording configuration (JSONL export settings)
 from .recording_config import (
     CaptureMode,
     MonitorThresholdType,
     RecordingConfig,
 )
 
-# Phase 10.4B: Recording data models
-# Phase 10.6: Validation-aware recording models
+# Recording data models (dual-state validation: local vs server)
+# Server state from playerUpdate WebSocket event (auth-required, P0)
 from .recording_models import (
     DriftDetails,
     GameStateMeta,
@@ -51,19 +51,19 @@ __all__ = [
     "is_trade_action",
     "StateSnapshot",
     "DemoAction",
-    # Phase 10.4B: Recording data models
+    # Recording data models
     "GameStateMeta",
     "GameStateRecord",
     "PlayerAction",
     "PlayerSessionMeta",
     "PlayerSession",
-    # Phase 10.6: Validation-aware recording models
+    # Dual-state validation models (local vs playerUpdate server truth)
     "ServerState",
     "LocalStateSnapshot",
     "DriftDetails",
     "RecordedAction",
     "validate_states",
-    # Phase 10.5A: Recording config model
+    # Recording configuration
     "CaptureMode",
     "MonitorThresholdType",
     "RecordingConfig",
