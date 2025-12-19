@@ -54,7 +54,7 @@ class BotConfigPanel:
         self.strategy_var = None
         self.bot_enabled_var = None
         self.button_depress_duration_var = None  # Button depression duration (UI timing)
-        self.inter_click_pause_var = None  # Inter-click pause (UI timing)
+        self.inter_click_pause_var = None  # Inter-click pause duration (UI timing)
 
         logger.info(f"BotConfigPanel initialized (config: {self.config_file})")
 
@@ -170,7 +170,7 @@ class BotConfigPanel:
         # Create modal dialog
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title("Bot Configuration")
-        self.dialog.geometry("450x450")  # Height for timing controls section
+        self.dialog.geometry("450x450")  # Height adjusted for timing controls section
         self.dialog.resizable(False, False)
 
         # Make dialog modal
