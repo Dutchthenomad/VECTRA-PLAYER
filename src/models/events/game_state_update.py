@@ -199,7 +199,7 @@ class AvailableShitcoin(BaseModel):
     @field_validator("max_bet", "max_win", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return Decimal(str(v))
         return v
 
@@ -280,6 +280,29 @@ class Rugpool(BaseModel):
 # =============================================================================
 
 
+class GameStatePlayerUpdate(BaseModel):
+    """
+    Player-specific rugpool state update.
+
+    Broadcast alongside gameStateUpdate when the authenticated player
+    has rugpool entries. Contains only gameId and rugpool lottery state.
+
+    Socket.IO Format: 42["gameStatePlayerUpdate", {...}]
+    Auth Required: YES - Only sent to authenticated players with entries
+
+    Schema Version: 1.0.0
+    GitHub Issue: #23 (Phase 0 Schema Validation)
+    """
+
+    gameId: str = Field(..., description="Unique game identifier")
+    rugpool: Rugpool = Field(..., description="Rugpool lottery state for this player")
+
+    class Config:
+        """Pydantic model configuration."""
+
+        extra = "allow"
+
+
 class GameStateUpdate(BaseModel):
     """
     Primary tick event - the heartbeat of rugs.fun.
@@ -295,13 +318,15 @@ class GameStateUpdate(BaseModel):
 
     # ==========================================================================
     # CORE GAME STATE
+    # Note: During cooldown (between games), active/rugged/price/tickCount may be omitted.
+    # Defaults represent cooldown state (no active game).
     # ==========================================================================
     gameId: str = Field(..., description="Unique game identifier")
     gameVersion: str = Field("v3", description="Game version")
-    active: bool = Field(..., description="Game in progress")
-    rugged: bool = Field(..., description="Game has rugged")
-    price: Decimal = Field(..., description="Current multiplier (server-authoritative)")
-    tickCount: int = Field(..., description="Current tick number")
+    active: bool = Field(False, description="Game in progress (False during cooldown)")
+    rugged: bool = Field(False, description="Game has rugged (False during cooldown)")
+    price: Decimal = Field(Decimal("1.0"), description="Current multiplier (1.0 during cooldown)")
+    tickCount: int = Field(0, description="Current tick number (0 during cooldown)")
 
     # ==========================================================================
     # COOLDOWN/PAUSE STATE

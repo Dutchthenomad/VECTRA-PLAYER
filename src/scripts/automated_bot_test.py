@@ -10,8 +10,8 @@ This script runs the bot through multiple games and automatically detects:
 - Strategy logic errors
 
 Usage:
-    cd /home/nomad/Desktop/REPLAYER/src
-    /home/nomad/Desktop/rugs-rl-bot/.venv/bin/python3 automated_bot_test.py --games 5
+    cd <project_root>/src
+    python3 automated_bot_test.py --games 5
 
 Output:
     - Detailed test report with pass/fail for each check

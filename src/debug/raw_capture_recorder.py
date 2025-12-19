@@ -30,6 +30,17 @@ except ModuleNotFoundError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+def _get_default_capture_dir() -> Path:
+    """Get default capture directory from Config or fallback."""
+    try:
+        from config import Config
+
+        return Config.get_files_config()["recordings_dir"] / "raw_captures"
+    except (ImportError, KeyError):
+        # Fallback if config not available
+        return Path.home() / "rugs_recordings" / "raw_captures"
+
+
 class RawCaptureRecorder:
     """
     Records ALL raw Socket.IO events without filtering.
@@ -38,7 +49,6 @@ class RawCaptureRecorder:
     protocol exchange for documentation and debugging.
     """
 
-    DEFAULT_CAPTURE_DIR = Path.home() / "rugs_recordings" / "raw_captures"
     SERVER_URL = "https://backend.rugs.fun?frontend-version=1.0"
 
     def __init__(self, capture_dir: Path | None = None):
@@ -48,7 +58,7 @@ class RawCaptureRecorder:
         Args:
             capture_dir: Directory for capture files (default: raw_captures/)
         """
-        self.capture_dir = capture_dir or self.DEFAULT_CAPTURE_DIR
+        self.capture_dir = capture_dir or _get_default_capture_dir()
         self.capture_dir.mkdir(parents=True, exist_ok=True)
 
         # Socket.IO client (created fresh for each capture)

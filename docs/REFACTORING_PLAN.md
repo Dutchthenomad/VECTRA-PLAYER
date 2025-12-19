@@ -1,8 +1,21 @@
 # VECTRA-PLAYER Refactoring Plan
 
-**Status:** Draft
+**Status:** In Progress
 **Created:** December 17, 2025
+**Updated:** December 18, 2025
 **Goal:** Clean-slate refactor maintaining exact behavior while eliminating technical debt
+
+## Completed Phases
+
+| Phase | Status | Date | Notes |
+|-------|--------|------|-------|
+| 0.1 Test Baseline | ✅ DONE | Dec 17 | 983 tests passing |
+| 1.1 Fix Hardcoded Paths | ✅ DONE | Dec 17 | 11 paths fixed |
+| 1.2 Fix Test Infrastructure | ✅ DONE | Dec 17 | sys.path.insert removed |
+| 2.1 Remove Commented-Out Code | ✅ DONE | Dec 18 | Dead code removed |
+| 3A Dual-Write to EventStore | ✅ DONE | Dec 18 | EventStoreService started in MainWindow |
+| 3.2 Migration Path | ✅ DONE | Dec 18 | RUGS_LEGACY_RECORDERS env var added |
+| 3.3 Cross-Repo Coordination | ✅ DONE | Dec 18 | docs/CROSS_REPO_COORDINATION.md created |
 
 ---
 
@@ -10,16 +23,17 @@
 
 VECTRA-PLAYER has accumulated significant technical debt from iterative development. This plan provides a systematic approach to clean up the codebase while **preserving all existing behavior**. The strategy follows TDD principles: characterize first, then refactor with confidence.
 
-### Key Findings
+### Key Findings (Updated Dec 18)
 
-| Category | Count | Severity |
-|----------|-------|----------|
-| Hardcoded `/home/nomad/` paths | 5 | **CRITICAL** |
-| `sys.path.insert` anti-patterns | 4 | HIGH |
-| Phase markers (incomplete refactors) | 125 | MEDIUM |
-| AUDIT FIX/PRODUCTION FIX patches | 183 | MEDIUM |
-| Commented-out code blocks | 7 files | LOW |
-| Legacy/deprecated code | 4 instances | MEDIUM |
+| Category | Original | Current | Severity |
+|----------|----------|---------|----------|
+| Hardcoded `/home/nomad/` paths | 11 | **0** ✅ | **FIXED** |
+| `sys.path.insert` anti-patterns | 3 | **0** ✅ | **FIXED** |
+| Commented-out code blocks | 7 files | **2** ✅ | LOW |
+| Phase markers (incomplete refactors) | 125 | 125 | MEDIUM |
+| AUDIT FIX/PRODUCTION FIX patches | 183 | 183 | MEDIUM |
+| Legacy/deprecated code | 4 instances | 4 | MEDIUM |
+| **EventStore dual-write** | Not active | **Active** ✅ | **DONE** |
 
 ---
 
@@ -175,36 +189,76 @@ LEGACY_MANAGER = "legacy"
 
 ## Phase 3: Consolidate Recording Systems (Days 9-12)
 
-Currently 3 recording implementations:
+### 3.0 Key Finding: Public WebSocket Feed is Sufficient for ML
 
-| Recorder | File | Purpose | Output |
-|----------|------|---------|--------|
-| RawCaptureRecorder | `src/debug/raw_capture_recorder.py` | Debug captures | JSONL |
-| DemoRecorderSink | `src/core/demo_recorder.py` | Human demonstrations | JSON per game |
-| UnifiedRecorder | `src/services/unified_recorder.py` | Main recording | Various |
+**Source:** `rugs-expert` agent analysis (December 18, 2025)
 
-### 3.1 Audit Recording Behavior
+The public WebSocket feed (`gameStateUpdate`) contains **303+ fields** but we only capture 9.
+This is sufficient for ML training without CDP/authenticated capture.
 
-Create comparison tests:
-```python
-def test_all_recorders_capture_same_events():
-    """Verify all 3 recorders capture same event types"""
-    # Publish same events
-    # Check all 3 produce equivalent outputs
+#### Data Available from Public Feed (Unauthenticated)
+
+| Data | Fields | ML Relevance |
+|------|--------|--------------|
+| `gameStateUpdate` | 303+ fields | **HIGH** - Primary training data |
+| `leaderboard[]` | All players' positions, PnL | **HIGH** - Market state |
+| `gameHistory[]` | ~10 recent games with full price arrays | **HIGH** - Historical patterns |
+| `partialPrices` | Backfill for missed ticks | MEDIUM - Gap filling |
+| `statistics` | Session averages, highs | MEDIUM - Context |
+| `rugpool` | Instarug risk metrics | LOW - Edge cases |
+
+#### Data Requiring CDP/Auth
+
+| Data | Purpose | ML Relevance |
+|------|---------|--------------|
+| `playerUpdate` | YOUR balance/position (server truth) | MEDIUM - Verification only |
+| `gameStatePlayerUpdate` | Rugpool lottery details | LOW - Not core trading |
+| Trade responses | Latency metrics | LOW - Execution analysis |
+
+#### Recommendation: Simplified Architecture
+
+```
+Primary: Public WebSocket Feed (unauthenticated)
+├── gameStateUpdate (P0) → 90% of ML training data
+├── leaderboard[] → Market state (whale tracking!)
+├── gameHistory[] → Historical patterns
+└── partialPrices → Backfill missed ticks
+
+Storage: EventStore → Parquet (canonical truth)
+
+Optional: CDP Capture (authenticated)
+├── playerUpdate → Server-authoritative verification
+└── gameStatePlayerUpdate → Rugpool analytics
 ```
 
-### 3.2 Decision Matrix
+**Critical Gap:** We capture only 9 of 303+ fields in `gameStateUpdate`!
+See GitHub Issue #31 for expanding capture + Live Feed Inspector window.
 
-| Keep | Deprecate | Reasoning |
-|------|-----------|-----------|
-| UnifiedRecorder | - | Main implementation |
-| RawCaptureRecorder | TBD | May need for debug |
-| DemoRecorderSink | TBD | Specialized for demos |
+---
 
-**Recommendation:** Keep all 3 but clearly document their purposes. They serve different needs:
-- UnifiedRecorder: Production recording
-- RawCaptureRecorder: Debugging/development
-- DemoRecorderSink: ML training data
+### 3.1 Current Recording Implementations
+
+| Recorder | File | Purpose | Output | Keep? |
+|----------|------|---------|--------|-------|
+| RawCaptureRecorder | `src/debug/raw_capture_recorder.py` | Debug captures | JSONL | **Deprecate** → EventStore |
+| DemoRecorderSink | `src/core/demo_recorder.py` | Human demonstrations | JSON per game | **Deprecate** → EventStore |
+| UnifiedRecorder | `src/services/unified_recorder.py` | Main recording | Various | **Deprecate** → EventStore |
+| **EventStore** | `src/services/event_store/` | Canonical truth | Parquet | **KEEP** (Phase 12) |
+
+### 3.2 Migration Path
+
+1. **Phase A**: Dual-write (EventStore + legacy recorders)
+2. **Phase B**: Validate Parquet output matches legacy
+3. **Phase C**: Disable legacy recorders via `RUGS_LEGACY_RECORDERS=false`
+4. **Phase D**: Delete legacy recorder code
+
+### 3.3 Cross-Repo Coordination
+
+Recording consolidation requires coordination with:
+- **claude-flow**: `rugs-expert` agent will query EventStore data via LanceDB
+- **rugs-rl-bot**: ML training consumes Parquet exports from EventStore
+
+See `docs/CROSS_REPO_COORDINATION.md` for integration points.
 
 ---
 

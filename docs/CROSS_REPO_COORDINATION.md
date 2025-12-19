@@ -1,253 +1,207 @@
-# Cross-Repository Coordination Plan
+# Cross-Repository Coordination
 
 **Status:** Active
-**Created:** December 18, 2025
-**Purpose:** Coordinate development across VECTRA-PLAYER, claude-flow, and rugs-rl-bot
+**Updated:** December 18, 2025
+
+This document describes how VECTRA-PLAYER integrates with other repositories in the Rugs.fun ecosystem.
 
 ---
 
 ## Repository Overview
 
-| Repository | Purpose | Owner |
-|------------|---------|-------|
-| **VECTRA-PLAYER** | Data capture, storage, UI | This repo |
-| **claude-flow** | Dev orchestration, RAG, `rugs-expert` agent | Separate |
-| **rugs-rl-bot** | ML training, RL environment | Separate |
+| Repository | Location | Role |
+|------------|----------|------|
+| **VECTRA-PLAYER** | `/home/nomad/Desktop/VECTRA-PLAYER/` | Data capture, replay, and UI |
+| **claude-flow** | `/home/nomad/Desktop/claude-flow/` | Development orchestration, RAG agents |
+| **rugs-rl-bot** | `/home/nomad/Desktop/rugs-rl-bot/` | ML training, RL bot |
+| **Data Directory** | `~/rugs_data/` | Canonical storage (Parquet) |
 
 ---
 
 ## Data Flow Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         DATA FLOW                                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────┐                                                     │
-│  │  rugs.fun       │                                                     │
-│  │  WebSocket      │                                                     │
-│  └────────┬────────┘                                                     │
-│           │                                                              │
-│           ▼                                                              │
-│  ┌─────────────────────────────────────────────────────────┐            │
-│  │              VECTRA-PLAYER                               │            │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │            │
-│  │  │ WebSocket   │───▶│ EventStore  │───▶│  Parquet    │  │            │
-│  │  │ Feed        │    │ (writer)    │    │  (DuckDB)   │  │            │
-│  │  └─────────────┘    └─────────────┘    └──────┬──────┘  │            │
-│  │                                               │          │            │
-│  └───────────────────────────────────────────────┼──────────┘            │
-│                                                  │                       │
-│           ┌──────────────────────────────────────┤                       │
-│           │                                      │                       │
-│           ▼                                      ▼                       │
-│  ┌─────────────────────────┐        ┌─────────────────────────┐         │
-│  │      claude-flow        │        │      rugs-rl-bot        │         │
-│  │  ┌─────────────────┐    │        │  ┌─────────────────┐    │         │
-│  │  │ ChromaDB Vector │◀───┼────────┼──│ Parquet Reader  │    │         │
-│  │  │ Index           │    │        │  │ (training data) │    │         │
-│  │  └────────┬────────┘    │        │  └─────────────────┘    │         │
-│  │           │             │        │                         │         │
-│  │           ▼             │        │                         │         │
-│  │  ┌─────────────────┐    │        │                         │         │
-│  │  │ rugs-expert     │    │        │                         │         │
-│  │  │ agent           │    │        │                         │         │
-│  │  └─────────────────┘    │        │                         │         │
-│  └─────────────────────────┘        └─────────────────────────┘         │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        VECTRA-PLAYER                                │
+│                                                                     │
+│  WebSocket ──► EventBus ──► EventStoreService ──► Parquet Files    │
+│      │                                               │              │
+│      │                                               ▼              │
+│      ▼                                    ~/rugs_data/events_parquet/│
+│  Live UI Display                                     │              │
+│                                                      ▼              │
+└───────────────────────────────────────────────────────┼─────────────┘
+                                                        │
+        ┌───────────────────────────────────────────────┼──────────────┐
+        │                                               │              │
+        ▼                                               ▼              │
+┌───────────────────┐                        ┌─────────────────────────┐
+│    claude-flow    │                        │      rugs-rl-bot       │
+│                   │                        │                        │
+│  rugs-expert      │◄── Query Parquet ──────│  SidebetPredictor      │
+│  agent queries    │    via DuckDB          │  RL Environment        │
+│  LanceDB vectors  │                        │  Training Scripts      │
+└───────────────────┘                        └─────────────────────────┘
 ```
 
 ---
 
 ## Integration Points
 
-### 1. VECTRA-PLAYER → claude-flow
+### 1. VECTRA-PLAYER → Parquet (Canonical Truth)
 
-**What:** ChromaDB vector index built from Parquet data + protocol documentation
+**EventStoreService** persists all events to Parquet:
 
-**Interface:**
 ```
-~/rugs_data/
-├── events_parquet/     # VECTRA-PLAYER writes (canonical game data)
-├── vectors/            # Reserved for future use
-└── manifests/
-    └── schema_version.json  # Shared schema contract
-
-claude-flow/
-└── rag-pipeline/
-    └── storage/chroma/  # ChromaDB index (claude-flow owns)
+~/rugs_data/events_parquet/
+├── doc_type=ws_event/
+│   └── date=2025-12-18/
+│       └── 20251218_143052_a1b2c3d4.parquet
+├── doc_type=game_tick/
+├── doc_type=player_action/
+├── doc_type=server_state/
+└── doc_type=system_event/
 ```
 
-**Architecture:**
-- VECTRA-PLAYER only writes Parquet (data producer)
-- claude-flow owns vector indexing via ChromaDB (index builder)
-- Rebuild command: `cd claude-flow/rag-pipeline && python -m ingestion.ingest`
+**Schema Version:** 1.0.0 (see `src/services/event_store/schema.py`)
 
-**Decision:** claude-flow owns vector indexing with ChromaDB
+### 2. claude-flow → VECTRA-PLAYER Data
 
-**Coordination Required:**
-- [x] Agree on `RUGS_DATA_DIR` location (`~/rugs_data/`) ✅
-- [x] Define chunking strategy for `rugs-expert` queries ✅ (512 tokens, 50 overlap)
-- [x] Document embedding model (`all-MiniLM-L6-v2`) ✅
+The `rugs-expert` agent in claude-flow queries VECTRA-PLAYER's Parquet data:
 
----
-
-### 2. VECTRA-PLAYER → rugs-rl-bot
-
-**What:** ML training data from Parquet
-
-**Interface:**
+**DuckDB Query Layer:**
 ```python
-# rugs-rl-bot reads VECTRA-PLAYER's Parquet directly
 import duckdb
-
 conn = duckdb.connect()
 df = conn.execute("""
-    SELECT * FROM '~/rugs_data/events_parquet/doc_type=game_tick/**/*.parquet'
-    WHERE game_id = ?
-    ORDER BY tick
-""", [game_id]).df()
+    SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet'
+    WHERE doc_type = 'ws_event'
+    AND event_name = 'gameStateUpdate'
+    LIMIT 100
+""").df()
 ```
 
-**Coordination Required:**
-- [ ] Agree on schema for `game_tick` events
-- [ ] Define feature engineering queries (DuckDB SQL)
-- [ ] Ensure tick-by-tick data is complete (no gaps)
+**LanceDB Vector Search:** (Future - Phase 12E)
+```python
+import lancedb
+db = lancedb.connect("~/rugs_data/vectors/events.lance")
+results = db.table("events").search("What fields are in playerUpdate?").limit(10)
+```
+
+### 3. rugs-rl-bot → VECTRA-PLAYER Data
+
+ML training reads from the same Parquet dataset:
+
+**Sidebet Predictor Training:**
+```python
+# Load game data from Parquet
+import duckdb
+games_df = duckdb.execute("""
+    SELECT game_id, tick, price, ts
+    FROM '~/rugs_data/events_parquet/doc_type=game_tick/**/*.parquet'
+    ORDER BY session_id, seq
+""").df()
+```
+
+**RL Environment:**
+- Reads game recordings for replay-based training
+- Uses same data format as live WebSocket feed
+- SidebetPredictor integrated into observation space
 
 ---
 
-### 3. claude-flow `rugs-expert` → VECTRA-PLAYER
+## Environment Variables
 
-**What:** Protocol knowledge for validation
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RUGS_DATA_DIR` | `~/rugs_data` | Base directory for all data |
+| `RUGS_LEGACY_RECORDERS` | `true` | Set to `false` to disable legacy recorders |
 
-**Use Cases:**
-1. VECTRA-PLAYER asks `rugs-expert`: "What fields are in playerUpdate?"
-2. VECTRA-PLAYER validates captured data against spec
-3. Schema drift detection
+### Migration Mode
 
-**Interface:**
+To run in EventStore-only mode (no legacy recorders):
+
 ```bash
-# VECTRA-PLAYER can query rugs-expert via claude-flow
-claude-flow agent rugs-expert "What fields are in gameStateUpdate.leaderboard?"
+export RUGS_LEGACY_RECORDERS=false
+./run.sh
 ```
 
-**Coordination Required:**
-- [ ] Ensure `rugs-expert` knowledge base is up-to-date
-- [ ] Define validation workflow for new events
-- [ ] Document correction process for schema errors
+This disables:
+- `DemoRecorderSink` (JSONL demonstrations)
+- `RawCaptureRecorder` (debug JSONL captures)
+- `UnifiedRecorder` (game state + player action JSON)
+
+All data still flows through EventStoreService to Parquet.
 
 ---
 
-## Shared Configuration
+## Schema Compatibility
 
-### Environment Variables
+### Common Event Envelope
 
-| Variable | Default | Used By |
-|----------|---------|---------|
-| `RUGS_DATA_DIR` | `~/rugs_data/` | VECTRA-PLAYER, claude-flow, rugs-rl-bot |
-| `RUGS_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | claude-flow |
-| `RUGS_SCHEMA_VERSION` | `1.0.0` | All |
+All doc_types share a common envelope:
 
-### Schema Version Contract
+| Field | Type | Description |
+|-------|------|-------------|
+| `ts` | datetime | Event timestamp (UTC) |
+| `source` | string | cdp, public_ws, replay, ui |
+| `doc_type` | string | Event type |
+| `session_id` | string | Recording session UUID |
+| `seq` | int | Sequence within session |
+| `direction` | string | received, sent |
+| `raw_json` | string | Full original payload |
+| `game_id` | string? | Game identifier |
+| `player_id` | string? | Player DID |
+| `username` | string? | Player display name |
 
-All repos must agree on schema version:
-```
-~/rugs_data/manifests/schema_version.json
+### Version Management
+
+Schema version stored in `~/rugs_data/manifests/schema_version.json`:
+
+```json
 {
-    "version": "1.0.0",
-    "embedding_model": "all-MiniLM-L6-v2",
-    "last_updated": "2025-12-18T00:00:00Z"
+  "version": "1.0.0",
+  "created": "2025-12-18T00:00:00Z",
+  "fields": ["ts", "source", "doc_type", ...]
 }
 ```
 
-**Version Bump Rules:**
-1. **Patch (1.0.x):** New optional fields, backward compatible
-2. **Minor (1.x.0):** New required fields, migration needed
-3. **Major (x.0.0):** Breaking changes, full rebuild required
+rugs-rl-bot and claude-flow should check schema version before processing.
 
 ---
 
-## Development Workflow
+## Coordination Checklist
 
-### Adding a New Event Type
+### When Adding New Event Types
 
-1. **VECTRA-PLAYER:** Add Pydantic model in `src/models/events/`
-2. **VECTRA-PLAYER:** Update EventStore schema
-3. **claude-flow:** Update `rugs-expert` knowledge base
-4. **claude-flow:** Rebuild LanceDB index
-5. **rugs-rl-bot:** Update feature engineering if needed
+1. Update `src/services/event_store/schema.py` with new DocType
+2. Add EventBus subscription in `EventStoreService`
+3. Document in `docs/specs/WEBSOCKET_EVENTS_SPEC.md`
+4. Notify rugs-rl-bot if affects ML features
+5. Update claude-flow knowledge if needed
 
-### Schema Validation Workflow
+### When Changing Schema
 
-```
-1. VECTRA-PLAYER captures new event
-2. EventStore validates against schema
-3. If unknown fields:
-   a. Log to `manifests/unknown_fields.json`
-   b. Alert for human review
-   c. Query rugs-expert for field definition
-4. If validated:
-   a. Add to Pydantic model
-   b. Update WEBSOCKET_EVENTS_SPEC.md
-   c. Notify claude-flow to rebuild index
-```
+1. Increment schema version
+2. Add migration script if needed
+3. Update all consumers (rugs-rl-bot, claude-flow)
+4. Test backward compatibility
 
----
+### When Deploying Changes
 
-## Communication Channels
-
-### Async Coordination
-
-- **GitHub Issues:** Cross-reference issues with `[cross-repo]` prefix
-- **Commit Messages:** Reference related issues in other repos
-
-### Sync Points
-
-| Event | Action |
-|-------|--------|
-| Schema version bump | All repos update dependency |
-| New event type added | Update all three repos |
-| Embedding model change | Rebuild all vector indexes |
-| Breaking change | Major version bump, coordinated release |
+1. Run full test suite (`pytest tests/ -v`)
+2. Verify Parquet writes work (`ls -la ~/rugs_data/events_parquet/`)
+3. Test DuckDB queries still work
+4. Update CLAUDE.md in affected repos
 
 ---
 
-## Current Status
+## Contact Points
 
-### VECTRA-PLAYER
-
-- [x] EventStore writes Parquet
-- [x] DuckDB query layer
-- [ ] Expand gameStateUpdate capture (9 → 50+ fields)
-- [ ] LiveStateProvider (server-authoritative)
-
-### claude-flow
-
-- [x] `rugs-expert` agent exists
-- [x] Canonical WEBSOCKET_EVENTS_SPEC.md established
-- [x] ChromaDB RAG pipeline functional (211 chunks indexed)
-- [ ] CONTEXT.md enforcement hooks
-- [ ] Integration with VECTRA-PLAYER Parquet data (Phase 2)
-
-### rugs-rl-bot
-
-- [x] Can read JSONL recordings
-- [ ] Update to read Parquet directly
-- [ ] Feature engineering via DuckDB
+- **VECTRA-PLAYER issues:** Data capture, UI, EventStore
+- **claude-flow issues:** RAG queries, agent behavior
+- **rugs-rl-bot issues:** ML training, RL environment
 
 ---
 
-## Action Items
-
-| Task | Owner | Blocking |
-|------|-------|----------|
-| Finalize `RUGS_DATA_DIR` location | VECTRA-PLAYER | All |
-| Define chunking strategy | claude-flow | rugs-expert |
-| Expand gameStateUpdate capture | VECTRA-PLAYER | ML training quality |
-| Update rugs-rl-bot to read Parquet | rugs-rl-bot | Training pipeline |
-| Add schema validation workflow | VECTRA-PLAYER | Data quality |
-
----
-
-*Last Updated: December 18, 2025*
+*Last updated: December 18, 2025*

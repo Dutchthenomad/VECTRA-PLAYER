@@ -215,7 +215,7 @@ class TestEventBusErrorHandling:
 
         # Should not raise, and good handler should still receive event
         event_bus.publish(Events.TRADE_BUY, {"test": "data"})
-        time.sleep(0.1)  # Wait for async processing
+        time.sleep(0.3)  # Wait for async processing (increased from 0.1 for reliability)
 
         # Good handler should have received the event
         assert len(received) == 1

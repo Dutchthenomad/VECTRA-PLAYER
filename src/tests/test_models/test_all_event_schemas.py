@@ -10,10 +10,7 @@ Comprehensive tests for:
 - Issue #8: System events
 """
 
-import sys
 from decimal import Decimal
-
-sys.path.insert(0, "/home/nomad/Desktop/VECTRA-PLAYER/src")
 
 from models.events import (
     AuthEvent,
