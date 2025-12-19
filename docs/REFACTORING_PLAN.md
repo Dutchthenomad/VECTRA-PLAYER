@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Created:** December 17, 2025
-**Updated:** December 18, 2025
+**Updated:** December 19, 2025
 **Goal:** Clean-slate refactor maintaining exact behavior while eliminating technical debt
 
 ## Completed Phases
@@ -10,12 +10,16 @@
 | Phase | Status | Date | Notes |
 |-------|--------|------|-------|
 | 0.1 Test Baseline | ✅ DONE | Dec 17 | 983 tests passing |
+| 0.2a EventBus Characterization Tests | ✅ DONE | Dec 19 | test_event_bus_behavior.py |
+| 0.2b GameState Characterization Tests | ✅ DONE | Dec 19 | test_game_state_behavior.py |
 | 1.1 Fix Hardcoded Paths | ✅ DONE | Dec 17 | 11 paths fixed |
 | 1.2 Fix Test Infrastructure | ✅ DONE | Dec 17 | sys.path.insert removed |
 | 2.1 Remove Commented-Out Code | ✅ DONE | Dec 18 | Dead code removed |
 | 3A Dual-Write to EventStore | ✅ DONE | Dec 18 | EventStoreService started in MainWindow |
 | 3.2 Migration Path | ✅ DONE | Dec 18 | RUGS_LEGACY_RECORDERS env var added |
-| 3.3 Cross-Repo Coordination | ✅ DONE | Dec 18 | docs/CROSS_REPO_COORDINATION.md created |
+| 3.3 Cross-Repo Coordination | ✅ DONE | Dec 19 | Data source hierarchy documented |
+| 4.3a EventBus AUDIT FIX Cleanup | ✅ DONE | Dec 19 | 19 comments simplified → 0 |
+| Ruff Lint Fixes | ✅ DONE | Dec 19 | All 20 issues fixed |
 
 ---
 
@@ -23,17 +27,19 @@
 
 VECTRA-PLAYER has accumulated significant technical debt from iterative development. This plan provides a systematic approach to clean up the codebase while **preserving all existing behavior**. The strategy follows TDD principles: characterize first, then refactor with confidence.
 
-### Key Findings (Updated Dec 18)
+### Key Findings (Updated Dec 19)
 
 | Category | Original | Current | Severity |
 |----------|----------|---------|----------|
 | Hardcoded `/home/nomad/` paths | 11 | **0** ✅ | **FIXED** |
 | `sys.path.insert` anti-patterns | 3 | **0** ✅ | **FIXED** |
 | Commented-out code blocks | 7 files | **2** ✅ | LOW |
-| Phase markers (incomplete refactors) | 125 | 125 | MEDIUM |
-| AUDIT FIX/PRODUCTION FIX patches | 183 | 183 | MEDIUM |
+| Phase markers (incomplete refactors) | 125 | 340 | MEDIUM |
+| AUDIT FIX/PRODUCTION FIX patches | 183 | **164** | MEDIUM |
+| Ruff lint issues | 20 | **0** ✅ | **FIXED** |
 | Legacy/deprecated code | 4 instances | 4 | MEDIUM |
 | **EventStore dual-write** | Not active | **Active** ✅ | **DONE** |
+| **Characterization tests** | 1 | **3** ✅ | GOOD |
 
 ---
 
@@ -67,10 +73,10 @@ Add tests that capture **current behavior** (even if quirky). These serve as gol
 **File locations:**
 ```
 src/tests/test_characterization/
-├── test_event_bus_behavior.py      # Capture all patched edge cases
-├── test_live_feed_behavior.py      # Race condition scenarios
-├── test_game_state_behavior.py     # Thread safety edge cases
-└── test_recorder_behavior.py       # All 3 recorder outputs
+├── test_event_bus_behavior.py      # ✅ CREATED Dec 19 - Weak refs, deadlock prevention
+├── test_game_state_behavior.py     # ✅ CREATED Dec 19 - Bounded memory, thread safety
+├── test_recording_system.py        # ✅ EXISTS - Dual recording system behavior
+└── test_live_feed_behavior.py      # TODO - Race condition scenarios
 ```
 
 ---
@@ -487,9 +493,9 @@ src/tests/test_models/test_game_state_update.py:12   - sys.path
 
 ### A.3 Files with Most Technical Debt
 
-1. `src/services/event_bus.py` - 8 AUDIT FIX patches
+1. `src/services/event_bus.py` - ~~8 AUDIT FIX patches~~ **0** ✅ (Dec 19: cleaned up, tests added)
 2. `src/ui/controllers/live_feed_controller.py` - 7 PRODUCTION FIX patches
-3. `src/core/game_state.py` - Multiple patches
+3. `src/core/game_state.py` - Multiple patches (tests added Dec 19)
 4. `src/browser/executor.py` - Legacy fallback code
 
 ---
