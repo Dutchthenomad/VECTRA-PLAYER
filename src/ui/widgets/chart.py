@@ -409,8 +409,8 @@ class ChartWidget(Canvas):
 
         # Draw line segments with color based on trend
         for i in range(len(visible) - 1):
-            tick1, price1 = visible[i]
-            tick2, price2 = visible[i + 1]
+            _tick1, price1 = visible[i]
+            _tick2, price2 = visible[i + 1]
 
             x1 = self.tick_to_x(i)
             y1 = self.price_to_y(price1)
