@@ -54,8 +54,9 @@ class TestAuditFixWeakReferences:
         # Create subscriber in nested scope
         weak_handler = create_and_subscribe()
 
-        # Handler should exist before GC
-        assert weak_handler() is not None or True  # May already be collected
+        # Note: Depending on timing and Python's GC, the handler may or may not
+        # still be alive here. This test only asserts deterministic behavior
+        # after an explicit gc.collect() call below.
 
         # Force garbage collection
         gc.collect()

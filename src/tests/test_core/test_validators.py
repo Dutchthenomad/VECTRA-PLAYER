@@ -81,7 +81,7 @@ class TestValidateBetAmount:
         """Test validation fails for negative bet"""
         is_valid, _error = validate_bet_amount(Decimal("-0.01"), Decimal("0.1"))
 
-        assert is_valid == False
+        assert not is_valid
 
 
 class TestValidateTradingAllowed:
@@ -128,7 +128,7 @@ class TestValidateTradingAllowed:
 
         is_valid, _error = validate_trading_allowed(tick)
 
-        assert is_valid == True
+        assert is_valid
 
     def test_trading_in_active_phase(self):
         """Test trading allowed in ACTIVE phase"""
@@ -148,7 +148,7 @@ class TestValidateTradingAllowed:
 
         is_valid, _error = validate_trading_allowed(tick)
 
-        assert is_valid == True
+        assert is_valid
 
     def test_trading_in_cooldown_phase(self):
         """Test trading blocked in COOLDOWN phase"""

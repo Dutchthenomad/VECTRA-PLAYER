@@ -16,8 +16,6 @@ AUDIT FIX Summary (from src/core/game_state.py):
 from collections import deque
 from decimal import Decimal
 
-import pytest
-
 from core.game_state import (
     MAX_CLOSED_POSITIONS_SIZE,
     MAX_HISTORY_SIZE,
@@ -56,7 +54,6 @@ class TestAuditFixBoundedHistory:
         """
         # Use a small maxlen for testing
         state = GameState()
-        original_maxlen = state._history.maxlen
 
         # Create a new deque with small maxlen for testing
         state._history = deque(maxlen=5)
