@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Created:** December 17, 2025
-**Updated:** December 18, 2025
+**Updated:** December 21, 2025
 **Goal:** Clean-slate refactor maintaining exact behavior while eliminating technical debt
 
 ## Completed Phases
@@ -343,6 +343,173 @@ src/
 
 **Recommendation:** Document conventions, don't mass-rename (too risky for behavior parity)
 
+### 5.3 Refactor main_window.py Monolith ⭐ NEW
+
+**Priority:** HIGH
+**Risk Level:** HIGH
+**Status:** Not Started
+
+#### Problem Statement
+
+`src/ui/main_window.py` has grown to **1866 lines** with multiple concerns mixed together:
+
+| Section | Lines | Responsibility |
+|---------|-------|----------------|
+| Initialization | 52-173 | Component setup (browser, bot, recorders, event store) |
+| Menu Creation | 175-256 | MenuBarBuilder configuration (80 lines of callbacks) |
+| **UI Construction** | 258-651 | **390 lines** of widget creation |
+| Event Handlers Setup | 653-683 | Event bus subscriptions |
+| Replay Callbacks | 695-844 | Tick updates, game end logic |
+| Event Handlers | 846-1006 | 15+ handler methods |
+| Balance Lock/Unlock | 1008-1140 | Balance editing UI (130 lines) |
+| Keyboard Shortcuts | 1142-1248 | Setup + help dialog |
+| Theme Management | 1250-1421 | Theme switching, preferences, restart |
+| Demo Recording | 1456-1532 | Session/game handlers |
+| Unified Recording | 1533-1623 | Recording config, status |
+| Raw Capture | 1624-1810 | Developer tools |
+| Shutdown | 1811-1866 | Cleanup orchestration |
+
+#### Proposed Structure
+
+```
+src/ui/
+├── main_window.py              # Slim orchestrator (~200 lines)
+│
+├── window/                      # Window lifecycle & construction
+│   ├── __init__.py
+│   ├── initialization.py       # Component init (browser, bot, recorders)
+│   ├── ui_builder.py          # UI widget construction (split from _create_ui)
+│   ├── menu_setup.py          # Menu bar callback wiring
+│   └── shutdown.py            # Cleanup orchestration
+│
+├── handlers/                    # Event & callback handlers
+│   ├── __init__.py
+│   ├── replay_handlers.py     # _on_tick_update, _process_tick_ui, _on_game_end
+│   ├── event_handlers.py      # Game tick, trades, file loaded
+│   ├── player_handlers.py     # Player identity, updates, server state
+│   ├── balance_handlers.py    # Balance lock/unlock/edit dialogs
+│   ├── recording_handlers.py  # Demo + unified recording methods
+│   └── capture_handlers.py    # Raw capture developer tools
+│
+├── interactions/                # User interactions
+│   ├── __init__.py
+│   ├── keyboard_shortcuts.py  # Shortcut setup + help dialog
+│   └── theme_manager.py       # Theme switching, preferences, restart
+│
+└── controllers/                 # (Already exists - no changes)
+    ├── bot_manager.py
+    ├── replay_controller.py
+    └── ...
+```
+
+#### Implementation Steps
+
+**Step 1: Create Module Structure** (0.5 days)
+```bash
+mkdir -p src/ui/window src/ui/handlers src/ui/interactions
+touch src/ui/window/__init__.py
+touch src/ui/handlers/__init__.py
+touch src/ui/interactions/__init__.py
+```
+
+**Step 2: Extract Handlers** (1 day)
+
+Priority order (least risky → most risky):
+1. `keyboard_shortcuts.py` - Self-contained, easy to test
+2. `theme_manager.py` - Self-contained, static methods
+3. `capture_handlers.py` - Developer tools, isolated
+4. `recording_handlers.py` - Clear boundaries
+5. `balance_handlers.py` - Dialog logic
+6. `player_handlers.py` - Server state
+7. `event_handlers.py` - Core event handling
+8. `replay_handlers.py` - Tick processing (most critical)
+
+**Step 3: Extract Window Modules** (1 day)
+1. `shutdown.py` - Cleanup logic
+2. `initialization.py` - Component init
+3. `menu_setup.py` - Menu callbacks
+4. `ui_builder.py` - Widget construction (largest)
+
+**Step 4: Refactor main_window.py** (0.5 days)
+- Import extracted modules
+- Delegate to extracted methods
+- Keep public API identical: `from ui.main_window import MainWindow`
+
+**Step 5: Test Each Extraction** (1 day)
+```bash
+# After EACH module extraction:
+cd src && python -m pytest tests/ -v --tb=short -k "test_main_window or test_ui"
+
+# Integration test
+./run.sh  # Launch app, verify all features work
+```
+
+#### Acceptance Criteria
+
+- [ ] All tests pass after refactoring
+- [ ] `from ui.main_window import MainWindow` still works (backwards compatible)
+- [ ] main_window.py reduced from 1866 → ~200 lines
+- [ ] Each new module is 100-250 lines (readable size)
+- [ ] No behavior changes (UI, keyboard shortcuts, recording all work)
+- [ ] Each module has clear single responsibility
+
+#### Risk Mitigation
+
+**High-Risk Areas:**
+1. **Replay tick processing** - Critical path, high throughput
+   - Mitigation: Extract LAST, test heavily
+2. **Event handler wiring** - Easy to break subscriptions
+   - Mitigation: Keep handler setup in one place, verify subscriptions
+3. **Circular imports** - MainWindow imports handlers, handlers import MainWindow
+   - Mitigation: Use TYPE_CHECKING, pass dependencies explicitly
+
+**Rollback Strategy:**
+- Each extraction is a separate commit
+- If tests fail, revert that commit and investigate
+- Don't extract multiple modules in one commit
+
+#### Testing Strategy
+
+1. **Unit tests**: Test each extracted module independently
+2. **Integration tests**: Launch app, click through all UI features
+3. **Regression tests**: Run full test suite after each extraction
+
+```bash
+# Comprehensive verification
+cd src
+
+# 1. Unit tests
+python -m pytest tests/test_ui/ -v
+
+# 2. Full suite
+python -m pytest tests/ -v --tb=short
+
+# 3. Manual smoke test
+cd .. && ./run.sh
+# - Test keyboard shortcuts (Space, B, S, D, L, H)
+# - Test menu items (File, View, Settings, Dev)
+# - Test live feed toggle
+# - Test recording toggle
+# - Test theme switching
+```
+
+#### Dependencies
+
+- **Prerequisite:** Phase 4.1 (Phase marker cleanup) ✅ DONE
+- **Prerequisite:** Phase 2.1 (Commented code removal) ✅ DONE
+- **Enables:** Easier testing, better maintainability for all future UI work
+
+#### Estimated Effort
+
+- Module creation: 0.5 days
+- Handler extraction: 1 day
+- Window module extraction: 1 day
+- Main window refactor: 0.5 days
+- Testing & verification: 1 day
+- **Total: 4 days** (included in Phase 5 duration)
+
+---
+
 ---
 
 ## Phase 6: Strategy Pattern Cleanup (Days 19-20)
@@ -407,11 +574,16 @@ ruff check src/
 | 2 | Remove dead code | 3 days | Medium |
 | 3 | Consolidate recorders | 4 days | High |
 | 4 | Clean phase markers | 3 days | Low |
-| 5 | Naming/structure | 3 days | Low |
+| 5 | Naming/structure **+ main_window.py refactor** | **5 days** | **High** |
 | 6 | Strategy cleanup | 2 days | Medium |
 | 7 | Final verification | 2 days | Low |
 
-**Total:** ~22 days of focused work
+**Total:** ~24 days of focused work
+
+**Phase 5 Breakdown:**
+- 5.1 Module organization audit: 0.5 days
+- 5.2 Naming consistency: 0.5 days
+- **5.3 main_window.py refactor: 4 days** ⭐ NEW
 
 ---
 
@@ -422,7 +594,8 @@ ruff check src/
 3. **No commented-out code** - Clean diffs, clear history
 4. **Phase comments removed** - Or converted to proper docs
 5. **AUDIT FIX comments minimized** - Covered by tests instead
-6. **Identical behavior** - UI, recording, playback work exactly as before
+6. **main_window.py modularized** - Reduced from 1866 → ~200 lines ⭐ NEW
+7. **Identical behavior** - UI, recording, playback work exactly as before
 
 ---
 
@@ -488,10 +661,33 @@ src/tests/test_models/test_game_state_update.py:12   - sys.path
 
 ### A.3 Files with Most Technical Debt
 
-1. `src/services/event_bus.py` - 8 AUDIT FIX patches
-2. `src/ui/controllers/live_feed_controller.py` - 7 PRODUCTION FIX patches
-3. `src/core/game_state.py` - Multiple patches
-4. `src/browser/executor.py` - Legacy fallback code
+1. **`src/ui/main_window.py`** - **1866 lines** (monolithic, to be refactored in Phase 5.3) ⭐ NEW
+2. `src/services/event_bus.py` - 8 AUDIT FIX patches
+3. `src/ui/controllers/live_feed_controller.py` - 7 PRODUCTION FIX patches
+4. `src/core/game_state.py` - Multiple patches
+5. `src/browser/executor.py` - Legacy fallback code
+
+### A.4 main_window.py Detailed Breakdown ⭐ NEW
+
+**Total Lines:** 1866
+**Primary Issues:** God object anti-pattern, mixed concerns, difficult to test
+
+| Concern | Lines | Extract To |
+|---------|-------|------------|
+| Initialization | 121 | `window/initialization.py` |
+| Menu callbacks | 82 | `window/menu_setup.py` |
+| UI construction | 393 | `window/ui_builder.py` |
+| Replay callbacks | 150 | `handlers/replay_handlers.py` |
+| Event handlers | 161 | `handlers/event_handlers.py` |
+| Player/server state | 128 | `handlers/player_handlers.py` |
+| Balance lock/unlock | 133 | `handlers/balance_handlers.py` |
+| Keyboard shortcuts | 107 | `interactions/keyboard_shortcuts.py` |
+| Theme management | 172 | `interactions/theme_manager.py` |
+| Recording handlers | 168 | `handlers/recording_handlers.py` |
+| Raw capture tools | 187 | `handlers/capture_handlers.py` |
+| Shutdown | 56 | `window/shutdown.py` |
+
+**Post-refactor:** ~200 lines (orchestration + delegation only)
 
 ---
 
