@@ -36,6 +36,7 @@ class Events(Enum):
     TRADE_SIDEBET = "trade.sidebet"
     TRADE_EXECUTED = "trade.executed"
     TRADE_FAILED = "trade.failed"
+    TRADE_CONFIRMED = "trade.confirmed"  # Server confirmation with latency tracking
     # UI partial sell feature: percentage selection (10%, 25%, 50%, 100%)
     SELL_PERCENTAGE_CHANGED = "trade.sell_percentage_changed"
     # UI partial sell feature: position partially closed
