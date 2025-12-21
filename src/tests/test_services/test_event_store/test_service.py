@@ -387,3 +387,100 @@ class TestFlush:
         parquet_files = list(temp_data_dir.rglob("*.parquet"))
         assert len(parquet_files) >= 1
         service.stop()
+
+
+class TestUnwrapEventPayload:
+    """Tests for _unwrap_event_payload helper function"""
+
+    def test_unwrap_already_unwrapped_dict(self):
+        """Should return dict as-is if it already has 'event' field"""
+        payload = {
+            "event": "playerUpdate",
+            "data": {"cash": "1.0"},
+            "source": "cdp",
+            "game_id": "game-123",
+        }
+        
+        result = EventStoreService._unwrap_event_payload(payload)
+        
+        assert result == payload
+        assert result is payload  # Same object reference
+
+    def test_unwrap_eventbus_browserbridge_double_wrapped(self):
+        """Should unwrap EventBus + BrowserBridge double-wrapped format"""
+        # EventBus wraps: {"name": event_type, "data": {...}}
+        # BrowserBridge publishes: {"data": cdp_event}
+        # Result: {"name": event_type, "data": {"data": cdp_event}}
+        wrapped = {
+            "name": "ws.raw_event",
+            "data": {  # EventBus layer
+                "data": {  # BrowserBridge layer
+                    "event": "playerUpdate",
+                    "data": {"cash": "1.0"},
+                    "source": "cdp",
+                }
+            },
+        }
+        
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        
+        assert result is not None
+        assert result["event"] == "playerUpdate"
+        assert result["data"] == {"cash": "1.0"}
+        assert result["source"] == "cdp"
+
+    def test_unwrap_browserbridge_wrapped(self):
+        """Should unwrap BrowserBridge-wrapped format (single layer)"""
+        # This case might occur if EventBus layer is already stripped
+        wrapped = {
+            "data": {
+                "event": "gameStateUpdate",
+                "data": {"tick": 100},
+            }
+        }
+        
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        
+        assert result is not None
+        assert result["event"] == "gameStateUpdate"
+        assert result["data"] == {"tick": 100}
+
+    def test_unwrap_non_dict_returns_none(self):
+        """Should return None and log warning for non-dict input"""
+        result = EventStoreService._unwrap_event_payload("not a dict")
+        assert result is None
+        
+        result = EventStoreService._unwrap_event_payload(123)
+        assert result is None
+        
+        result = EventStoreService._unwrap_event_payload(None)
+        assert result is None
+
+    def test_unwrap_invalid_eventbus_layer_returns_none(self):
+        """Should return None if EventBus 'data' field is missing or invalid"""
+        # Missing 'data' field
+        wrapped = {"name": "ws.raw_event"}
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        assert result is None
+        
+        # Invalid 'data' field (not a dict)
+        wrapped = {"name": "ws.raw_event", "data": "invalid"}
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        assert result is None
+
+    def test_unwrap_invalid_browserbridge_layer_returns_none(self):
+        """Should return None if BrowserBridge 'data' field is missing or invalid"""
+        # EventBus layer valid, but BrowserBridge layer missing
+        wrapped = {"name": "ws.raw_event", "data": {}}
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        assert result is None
+        
+        # BrowserBridge 'data' field is not a dict
+        wrapped = {"name": "ws.raw_event", "data": {"data": "invalid"}}
+        result = EventStoreService._unwrap_event_payload(wrapped)
+        assert result is None
+
+    def test_unwrap_empty_dict_returns_none(self):
+        """Should return None for empty dict (no 'event' or 'data' fields)"""
+        result = EventStoreService._unwrap_event_payload({})
+        assert result is None
