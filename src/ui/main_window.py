@@ -25,6 +25,7 @@ from core.game_queue import GameQueue
 from debug.raw_capture_recorder import RawCaptureRecorder
 from models import GameTick
 from services.event_store import EventStoreService
+from services.live_state_provider import LiveStateProvider
 from services.ui_dispatcher import TkDispatcher
 from ui.balance_edit_dialog import BalanceEditEntry, BalanceRelockDialog, BalanceUnlockDialog
 from ui.bot_config_panel import BotConfigPanel
@@ -121,6 +122,10 @@ class MainWindow:
         self.event_store_service = EventStoreService(event_bus)
         self.event_store_service.start()
         logger.info("EventStoreService started for Parquet persistence")
+
+        # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
+        self.live_state_provider = LiveStateProvider(event_bus)
+        logger.info("LiveStateProvider initialized for server-authoritative state")
 
         # Initialize game queue for multi-game sessions
         recordings_dir = config.FILES["recordings_dir"]
@@ -893,6 +898,24 @@ class MainWindow:
             # Auto-load first file
             if hasattr(self, "replay_controller"):
                 self.replay_controller.load_game_file(files[0])
+
+    def _handle_ws_source_changed(self, event):
+        """Handle WebSocket source change event (CDP vs fallback)."""
+        from services.event_source_manager import EventSource
+
+        data = event.get("data", {})
+        source_str = data.get("source", "")
+
+        # Convert string to EventSource enum
+        if source_str == "cdp":
+            source = EventSource.CDP
+        elif source_str == "fallback":
+            source = EventSource.FALLBACK
+        else:
+            source = None
+
+        logger.info(f"WebSocket source changed: {source_str}")
+        self._update_source_indicator(source)
 
     def _handle_balance_changed(self, data):
         """Handle balance change (thread-safe via TkDispatcher)"""
@@ -1790,17 +1813,23 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             self._debug_terminal.show()
 
     def _update_source_indicator(self, source):
-        """Update event source indicator."""
+        """Update event source indicator with LIVE status."""
         from services.event_source_manager import EventSource
 
+        # Check if LiveStateProvider is receiving data
+        live_status = ""
+        if hasattr(self, "live_state_provider") and self.live_state_provider.is_connected:
+            username = self.live_state_provider.username or "Unknown"
+            live_status = f" | LIVE: {username}"
+
         if source == EventSource.CDP:
-            text = "🟢 CDP: Authenticated"  # 🟢
+            text = f"🟢 CDP: Authenticated{live_status}"
             color = "#00ff88"
         elif source == EventSource.FALLBACK:
-            text = "🟡 Fallback: Public"  # 🟡
+            text = f"🟡 Fallback: Public{live_status}"
             color = "#ffcc00"
         else:
-            text = "🔴 No Source"  # 🔴
+            text = "🔴 No Source"
             color = "#ff4444"
 
         def update():
@@ -1852,6 +1881,14 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
                 logger.info("EventStoreService stopped")
             except Exception as e:
                 logger.error(f"Error stopping EventStoreService: {e}")
+
+        # Stop LiveStateProvider
+        if hasattr(self, "live_state_provider") and self.live_state_provider:
+            try:
+                self.live_state_provider.stop()
+                logger.info("LiveStateProvider stopped")
+            except Exception as e:
+                logger.error(f"Error stopping LiveStateProvider: {e}")
 
         # Clean up live feed connection
         self.live_feed_controller.cleanup()

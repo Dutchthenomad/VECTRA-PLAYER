@@ -76,7 +76,8 @@ class TestEventStoreServiceLifecycle:
         service.start()
 
         # Verify subscription by publishing and checking buffer
-        event_bus.publish(Events.WS_RAW_EVENT, {"event": "test", "data": {}})
+        # Match BrowserBridge format: {"data": cdp_event}
+        event_bus.publish(Events.WS_RAW_EVENT, {"data": {"event": "test", "data": {}}})
 
         # Give EventBus time to process
         import time
@@ -93,7 +94,8 @@ class TestEventStoreServiceLifecycle:
         service.stop()
 
         # Publish event after stop - should not be received
-        event_bus.publish(Events.WS_RAW_EVENT, {"event": "test", "data": {}})
+        # Match BrowserBridge format: {"data": cdp_event}
+        event_bus.publish(Events.WS_RAW_EVENT, {"data": {"event": "test", "data": {}}})
 
         import time
 
@@ -149,13 +151,17 @@ class TestWebSocketEventHandling:
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
 
+        # Match BrowserBridge format: {"data": cdp_event}
+        # BrowserBridge wraps CDP events in {"data": event}
         event_bus.publish(
             Events.WS_RAW_EVENT,
             {
-                "event": "playerUpdate",
-                "data": {"playerId": "player-456"},
-                "source": "public_ws",
-                "game_id": "game-789",
+                "data": {
+                    "event": "playerUpdate",
+                    "data": {"playerId": "player-456"},
+                    "source": "public_ws",
+                    "game_id": "game-789",
+                }
             },
         )
 
@@ -366,7 +372,8 @@ class TestFlush:
         service = EventStoreService(event_bus, paths, buffer_size=100)
         service.start()
 
-        event_bus.publish(Events.WS_RAW_EVENT, {"event": "test", "data": {}})
+        # Match BrowserBridge format: {"data": cdp_event}
+        event_bus.publish(Events.WS_RAW_EVENT, {"data": {"event": "test", "data": {}}})
 
         import time
 

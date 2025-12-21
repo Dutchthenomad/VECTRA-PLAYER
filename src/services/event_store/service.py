@@ -87,6 +87,9 @@ class EventStoreService:
 
         # Subscribe to WebSocket events
         self._event_bus.subscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event, weak=False)
+        logger.info(
+            f"EventStoreService subscribed to WS_RAW_EVENT (event_bus id: {id(self._event_bus)})"
+        )
 
         # Subscribe to game events
         self._event_bus.subscribe(Events.GAME_TICK, self._on_game_tick, weak=False)
@@ -134,8 +137,22 @@ class EventStoreService:
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
         """Handle raw WebSocket event"""
         try:
-            # EventBus wraps data: {"name": event.value, "data": actual_data}
-            data = wrapped.get("data", wrapped)
+            # EventBus wraps: {"name": event_type, "data": {"data": cdp_event}}
+            # BrowserBridge publishes: {"data": cdp_event}
+            # So we need to unwrap twice
+            outer_data = wrapped.get("data", wrapped)  # Unwrap EventBus layer
+            if outer_data is None:
+                outer_data = wrapped
+            data = (
+                outer_data.get("data", outer_data) if isinstance(outer_data, dict) else outer_data
+            )
+            if data is None:
+                data = outer_data if isinstance(outer_data, dict) else {}
+
+            # Guard against non-dict data
+            if not isinstance(data, dict):
+                logger.warning(f"Unexpected data type: {type(data)}")
+                return
 
             event_name = data.get("event", "unknown")
             event_data = data.get("data", {})
