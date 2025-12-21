@@ -1819,7 +1819,10 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
         # Check if LiveStateProvider is receiving data
         live_status = ""
         if hasattr(self, "live_state_provider") and self.live_state_provider.is_connected:
-            username = self.live_state_provider.username or "Unknown"
+            # Sanitize username: limit length and remove special chars that could break layout
+            raw_username = self.live_state_provider.username or "Unknown"
+            # Limit to 20 chars and replace any non-alphanumeric with underscore
+            username = "".join(c if c.isalnum() or c in "-_" else "_" for c in raw_username)[:20]
             live_status = f" | LIVE: {username}"
 
         if source == EventSource.CDP:

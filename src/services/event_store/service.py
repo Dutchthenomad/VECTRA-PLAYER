@@ -135,26 +135,34 @@ class EventStoreService:
             return self._seq
 
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
-        """Handle raw WebSocket event"""
+        """Handle raw WebSocket event with simplified unwrapping"""
         try:
-            # EventBus wraps: {"name": event_type, "data": {"data": cdp_event}}
+            # Validate and unwrap structure upfront
+            # Expected: EventBus wraps as {"name": event_type, "data": {"data": cdp_event}}
             # BrowserBridge publishes: {"data": cdp_event}
-            # So we need to unwrap twice
-            outer_data = wrapped.get("data", wrapped)  # Unwrap EventBus layer
-            if outer_data is None:
-                outer_data = wrapped
-            data = (
-                outer_data.get("data", outer_data) if isinstance(outer_data, dict) else outer_data
-            )
-            if data is None:
-                data = outer_data if isinstance(outer_data, dict) else {}
-
-            # Guard against non-dict data
-            if not isinstance(data, dict):
-                logger.warning(f"Unexpected data type: {type(data)}")
+            
+            if not isinstance(wrapped, dict):
+                logger.warning(f"WS_RAW_EVENT: Expected dict, got {type(wrapped)}")
+                return
+            
+            # First unwrap: EventBus layer
+            outer_data = wrapped.get("data")
+            if outer_data is None or not isinstance(outer_data, dict):
+                logger.warning(f"WS_RAW_EVENT: Invalid EventBus layer, got {type(outer_data)}")
+                return
+            
+            # Second unwrap: BrowserBridge layer
+            data = outer_data.get("data")
+            if data is None or not isinstance(data, dict):
+                logger.warning(f"WS_RAW_EVENT: Invalid BrowserBridge layer, got {type(data)}")
                 return
 
-            event_name = data.get("event", "unknown")
+            # Extract event details
+            event_name = data.get("event")
+            if not event_name:
+                logger.warning("WS_RAW_EVENT: Missing event name")
+                return
+            
             event_data = data.get("data", {})
             source_str = data.get("source", "public_ws")
             game_id = data.get("game_id") or event_data.get("gameId")
