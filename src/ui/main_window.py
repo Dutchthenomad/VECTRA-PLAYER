@@ -175,6 +175,9 @@ class MainWindow:
 
         # Bot monitoring is handled by BotManager controller
 
+        # Start periodic capture stats updates (Phase 12D)
+        self._update_capture_stats()
+
         logger.info("MainWindow initialized with ReplayEngine and async bot executor")
 
     def _create_menu_bar(self):
@@ -281,6 +284,7 @@ class MainWindow:
         self.browser_status_label = status_widgets["browser_status_label"]
         self.source_label = status_widgets["source_label"]
         self.recording_toggle = status_widgets["recording_toggle"]
+        self.capture_stats_label = status_widgets["capture_stats_label"]
 
         # ========== ROW 2: CHART AREA (Phase Issue-4: Using builder) ==========
         chart_widgets = ChartBuilder(self.root).build()
@@ -1839,6 +1843,30 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
             self.source_label.config(text=text, foreground=color)
 
         self.ui_dispatcher.submit(update)
+
+    def _update_capture_stats(self):
+        """
+        Update capture stats display (Phase 12D).
+
+        Shows session ID (truncated) and buffered event count.
+        Runs every 1000ms.
+        """
+        try:
+            if hasattr(self, "event_store_service") and self.event_store_service:
+                # Get session ID (truncate to first 8 chars)
+                session_id = self.event_store_service.session_id[:8]
+                # Get buffered event count
+                event_count = self.event_store_service.event_count
+
+                # Update label
+                text = f"Session: {session_id} | Events: {event_count}"
+                self.capture_stats_label.config(text=text)
+
+        except Exception as e:
+            logger.debug(f"Error updating capture stats: {e}")
+
+        # Schedule next update (1000ms)
+        self.root.after(1000, self._update_capture_stats)
 
     def shutdown(self):
         """Cleanup dispatcher resources during application shutdown."""

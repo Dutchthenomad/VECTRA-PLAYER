@@ -115,6 +115,16 @@ class StatusBarBuilder:
         )
         recording_toggle.pack(side=tk.LEFT, padx=10)
 
+        # Capture stats panel (left, after recording toggle)
+        capture_stats_label = tk.Label(
+            status_bar,
+            text="Session: -------- | Events: 0",
+            font=("Courier", 9),
+            bg="#000000",
+            fg="#888888",
+        )
+        capture_stats_label.pack(side=tk.LEFT, padx=10)
+
         logger.debug("StatusBarBuilder: Status bar built")
 
         return {
@@ -126,4 +136,5 @@ class StatusBarBuilder:
             "browser_status_label": browser_status_label,
             "source_label": source_label,
             "recording_toggle": recording_toggle,
+            "capture_stats_label": capture_stats_label,
         }
