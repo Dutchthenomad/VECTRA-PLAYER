@@ -218,8 +218,9 @@ class BrowserBridge:
 
     # Timeouts (in seconds)
     CLICK_TIMEOUT = 10.0
-    CONNECT_TIMEOUT = 30.0
-    ACTION_TIMEOUT = 60.0  # Increased for wallet detection and CDP setup
+    ACTION_TIMEOUT = 10.0  # General action timeout; kept low for fast error detection
+    WALLET_DETECTION_TIMEOUT = 60.0  # Specific long timeout for wallet detection and CDP setup
+    CONNECT_TIMEOUT = WALLET_DETECTION_TIMEOUT  # Connect includes wallet detection
 
     # Retry configuration
     MAX_RETRIES = 3
@@ -247,21 +248,19 @@ class BrowserBridge:
         self._cdp_interceptor = CDPWebSocketInterceptor()
         self._event_source_manager = EventSourceManager()
         self._rag_ingester = RAGIngester()
+        self._event_bus = event_bus  # Store reference instead of ID for diagnostics
 
         # Wire up event flow from CDP interceptor
-        # Store event_bus ID for diagnostics (closure captures)
-        _event_bus_id = id(event_bus)
-
         def on_cdp_event(event):
             # Publish to EventBus for all subscribers
-            has_subs = event_bus.has_subscribers(Events.WS_RAW_EVENT)
+            has_subs = self._event_bus.has_subscribers(Events.WS_RAW_EVENT)
             if has_subs:
-                event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
+                self._event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
                 logger.debug(f"CDP event published to EventBus: {event.get('event')}")
             else:
-                # DIAGNOSTIC: Log when no subscribers found with bus ID
+                # DIAGNOSTIC: Log when no subscribers found
                 logger.warning(
-                    f"No EventBus subscribers for WS_RAW_EVENT (bus_id: {_event_bus_id}) - event dropped: {event.get('event')}"
+                    f"No EventBus subscribers for WS_RAW_EVENT - event dropped: {event.get('event')}"
                 )
             # Catalog for RAG
             self._rag_ingester.catalog(event)
@@ -580,10 +579,12 @@ class BrowserBridge:
                 # Wait for the reconnection to complete
                 await asyncio.sleep(1.0)
             else:
-                logger.warning("Could not find Socket.IO instance for reconnection")
+                logger.error("Could not find Socket.IO instance for reconnection; stopping CDP interception")
+                await self._stop_cdp_interception()
 
         except Exception as e:
-            logger.warning(f"Failed to force Socket.IO reconnect: {e}")
+            logger.error(f"Failed to force Socket.IO reconnect: {e}")
+            await self._stop_cdp_interception()
 
     # ========================================================================
     # BUTTON CLICK IMPLEMENTATIONS

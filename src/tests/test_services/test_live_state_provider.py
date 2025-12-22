@@ -15,6 +15,26 @@ from services.event_bus import EventBus, Events
 from services.live_state_provider import LiveStateProvider
 
 
+def wait_for_condition(condition_fn, timeout=2.0, poll_interval=0.05):
+    """
+    Poll for a condition to become true with timeout.
+    
+    Args:
+        condition_fn: Callable that returns True when condition is met
+        timeout: Maximum time to wait in seconds
+        poll_interval: Time between polls in seconds
+    
+    Returns:
+        True if condition was met, False if timeout occurred
+    """
+    start = time.time()
+    while time.time() - start < timeout:
+        if condition_fn():
+            return True
+        time.sleep(poll_interval)
+    return False
+
+
 @pytest.fixture
 def event_bus():
     """Create a fresh EventBus for each test."""
@@ -68,10 +88,8 @@ class TestPlayerUpdateHandling:
             },
         )
 
-        # Wait for async processing
-        time.sleep(0.1)
-
-        assert provider.cash == Decimal("1.5")
+        # Wait for event processing with timeout
+        assert wait_for_condition(lambda: provider.cash == Decimal("1.5"))
         assert provider.is_connected is True
 
     def test_updates_position_on_player_update(self, event_bus, provider):
@@ -85,9 +103,7 @@ class TestPlayerUpdateHandling:
             },
         )
 
-        time.sleep(0.1)
-
-        assert provider.position_qty == Decimal("10")
+        assert wait_for_condition(lambda: provider.position_qty == Decimal("10"))
         assert provider.avg_cost == Decimal("1.25")
         assert provider.has_position is True
 
@@ -103,9 +119,7 @@ class TestPlayerUpdateHandling:
             },
         )
 
-        time.sleep(0.1)
-
-        assert provider.player_id == "did:123:abc"
+        assert wait_for_condition(lambda: provider.player_id == "did:123:abc")
         assert provider.username == "Dutch"
         assert provider.game_id == "game-123"
 
@@ -120,9 +134,7 @@ class TestPlayerUpdateHandling:
             },
         )
 
-        time.sleep(0.1)
-
-        assert provider.cumulative_pnl == Decimal("0.25")
+        assert wait_for_condition(lambda: provider.cumulative_pnl == Decimal("0.25"))
         assert provider.total_invested == Decimal("0.75")
 
 
@@ -140,9 +152,7 @@ class TestGameTickHandling:
             },
         )
 
-        time.sleep(0.1)
-
-        assert provider.current_tick == 100
+        assert wait_for_condition(lambda: provider.current_tick == 100)
         assert provider.current_multiplier == Decimal("2.5")
         assert provider.game_id == "game-456"
 
@@ -156,9 +166,7 @@ class TestGameTickHandling:
             },
         )
 
-        time.sleep(0.1)
-
-        assert provider.current_tick == 50
+        assert wait_for_condition(lambda: provider.current_tick == 50)
         assert provider.current_multiplier == Decimal("1.75")
 
 
@@ -172,7 +180,7 @@ class TestSourceChangedHandling:
             {"source": "cdp"},
         )
 
-        time.sleep(0.1)
+        assert wait_for_condition(lambda: provider.source == "cdp")
 
         assert provider.source == "cdp"
         assert provider.is_live is True
@@ -180,23 +188,17 @@ class TestSourceChangedHandling:
     def test_is_live_for_cdp(self, event_bus, provider):
         """is_live should be True for CDP source."""
         event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": "cdp"})
-        time.sleep(0.1)
-
-        assert provider.is_live is True
+        assert wait_for_condition(lambda: provider.is_live is True)
 
     def test_is_live_for_public_ws(self, event_bus, provider):
         """is_live should be True for public WebSocket source."""
         event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": "public_ws"})
-        time.sleep(0.1)
-
-        assert provider.is_live is True
+        assert wait_for_condition(lambda: provider.is_live is True)
 
     def test_not_live_for_replay(self, event_bus, provider):
         """is_live should be False for replay source."""
         event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": "replay"})
-        time.sleep(0.1)
-
-        assert provider.is_live is False
+        assert wait_for_condition(lambda: provider.is_live is False)
 
 
 class TestComputedProperties:
@@ -223,8 +225,7 @@ class TestComputedProperties:
             },
         )
 
-        time.sleep(0.1)
-
+        assert wait_for_condition(lambda: provider.current_multiplier == Decimal("2.0"))
         # P&L = (2.0 - 1.5) * 10 = 5.0
         assert provider.unrealized_pnl == Decimal("5.0")
 
@@ -239,8 +240,7 @@ class TestComputedProperties:
             },
         )
 
-        time.sleep(0.1)
-
+        assert wait_for_condition(lambda: provider.cash == Decimal("1.0"))
         assert provider.unrealized_pnl == Decimal("0")
 
     def test_position_value_calculation(self, event_bus, provider):
@@ -262,8 +262,7 @@ class TestComputedProperties:
             },
         )
 
-        time.sleep(0.1)
-
+        assert wait_for_condition(lambda: provider.current_multiplier == Decimal("1.8"))
         # Position value = 5 * 1.8 = 9.0
         assert provider.position_value == Decimal("9.0")
 
@@ -287,8 +286,7 @@ class TestSnapshot:
             },
         )
 
-        time.sleep(0.1)
-
+        assert wait_for_condition(lambda: provider.cash == Decimal("2.0"))
         snapshot = provider.get_snapshot()
 
         assert snapshot["connected"] is True
@@ -354,15 +352,25 @@ class TestCleanup:
         assert event_bus.has_subscribers(Events.WS_SOURCE_CHANGED)
         assert event_bus.has_subscribers(Events.GAME_TICK)
 
+        # Publish an event to set initial state
+        event_bus.publish(Events.PLAYER_UPDATE, {"cash": "100.00"})
+        assert wait_for_condition(lambda: provider.cash == Decimal("100.00"))
+
         # Stop provider
         provider.stop()
 
-        # After stop, our specific callbacks should be unsubscribed
-        # Note: Other subscribers may still exist, but our specific ones are gone
+        # Verify the stop method was called and no exceptions occurred
+        # Note: EventBus may still process queued events after unsubscribe
+        # due to async queue processing, but the subscription is removed
 
     def test_context_manager(self, event_bus):
-        """Provider should work as context manager."""
+        """Provider should work as context manager and call stop() on exit."""
+        
         with LiveStateProvider(event_bus) as provider:
             assert provider.is_connected is False
+            # Set some state
+            event_bus.publish(Events.PLAYER_UPDATE, {"cash": "50.00"})
+            assert wait_for_condition(lambda: provider.cash == Decimal("50.00"))
 
         # After exiting context, stop should have been called
+        # Verify that __exit__ was invoked without exceptions
