@@ -190,6 +190,15 @@ class UnifiedRecorder:
         """Stop the recording session."""
         self._state_machine.stop_session()
 
+        # AUDIT FIX: Close action file handle to prevent leak on abnormal shutdown
+        if self._action_file_handle:
+            try:
+                self._action_file_handle.close()
+                logger.debug("Closed action file handle in stop_session()")
+            except Exception as e:
+                logger.error(f"Error closing action file in stop_session(): {e}")
+            self._action_file_handle = None
+
         # Save player session if any actions recorded
         if self._player_session and self._pending_actions:
             self._save_player_session()

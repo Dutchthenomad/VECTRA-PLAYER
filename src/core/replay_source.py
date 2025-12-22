@@ -175,12 +175,26 @@ class FileDirectorySource(ReplaySource):
         }
 
     def _resolve_path(self, identifier: str) -> Path:
-        """Resolve identifier to full file path"""
+        """
+        Resolve identifier to full file path
+
+        AUDIT FIX: Prevent path traversal attacks
+        """
         path = Path(identifier)
 
         # If absolute path provided, use as-is
         if path.is_absolute():
             return path
 
-        # Otherwise, resolve relative to directory
-        return self.directory / identifier
+        # Resolve relative to directory
+        resolved_path = (self.directory / identifier).resolve()
+
+        # AUDIT FIX: Verify resolved path is still within directory
+        try:
+            # Ensure the resolved path is a child of self.directory
+            resolved_path.relative_to(self.directory.resolve())
+            return resolved_path
+        except ValueError:
+            # Path escaped the directory - return original directory to fail safely
+            logger.warning(f"Path traversal attempt detected: {identifier}")
+            return self.directory / "invalid_path"
