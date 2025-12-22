@@ -400,9 +400,9 @@ class TestUnwrapEventPayload:
             "source": "cdp",
             "game_id": "game-123",
         }
-        
+
         result = EventStoreService._unwrap_event_payload(payload)
-        
+
         assert result == payload
         assert result is payload  # Same object reference
 
@@ -421,9 +421,9 @@ class TestUnwrapEventPayload:
                 }
             },
         }
-        
+
         result = EventStoreService._unwrap_event_payload(wrapped)
-        
+
         assert result is not None
         assert result["event"] == "playerUpdate"
         assert result["data"] == {"cash": "1.0"}
@@ -438,9 +438,9 @@ class TestUnwrapEventPayload:
                 "data": {"tick": 100},
             }
         }
-        
+
         result = EventStoreService._unwrap_event_payload(wrapped)
-        
+
         assert result is not None
         assert result["event"] == "gameStateUpdate"
         assert result["data"] == {"tick": 100}
@@ -449,10 +449,10 @@ class TestUnwrapEventPayload:
         """Should return None and log warning for non-dict input"""
         result = EventStoreService._unwrap_event_payload("not a dict")
         assert result is None
-        
+
         result = EventStoreService._unwrap_event_payload(123)
         assert result is None
-        
+
         result = EventStoreService._unwrap_event_payload(None)
         assert result is None
 
@@ -462,7 +462,7 @@ class TestUnwrapEventPayload:
         wrapped = {"name": "ws.raw_event"}
         result = EventStoreService._unwrap_event_payload(wrapped)
         assert result is None
-        
+
         # Invalid 'data' field (not a dict)
         wrapped = {"name": "ws.raw_event", "data": "invalid"}
         result = EventStoreService._unwrap_event_payload(wrapped)
@@ -474,7 +474,7 @@ class TestUnwrapEventPayload:
         wrapped = {"name": "ws.raw_event", "data": {}}
         result = EventStoreService._unwrap_event_payload(wrapped)
         assert result is None
-        
+
         # BrowserBridge 'data' field is not a dict
         wrapped = {"name": "ws.raw_event", "data": {"data": "invalid"}}
         result = EventStoreService._unwrap_event_payload(wrapped)

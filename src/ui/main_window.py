@@ -249,7 +249,7 @@ class MainWindow(
         }
 
         builder = MenuBarBuilder(self.root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
 
         self.browser_menu = refs["browser_menu"]
         self.dev_menu = refs["dev_menu"]

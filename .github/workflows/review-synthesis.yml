@@ -21,10 +21,10 @@ jobs:
     if: |
       (github.event.review && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.review.user.login)) ||
       (github.event.comment && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.comment.user.login))
-    
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -118,7 +118,7 @@ jobs:
 
           # Semantic deduplication
           print("🧠 Performing semantic deduplication...")
-          
+
           model = SentenceTransformer('all-MiniLM-L6-v2')
           texts = [c['body'][:1000] for c in all_comments]  # Truncate for performance
           embeddings = model.encode(texts)
@@ -132,19 +132,19 @@ jobs:
           for i in range(len(all_comments)):
               if i in processed:
                   continue
-              
+
               cluster = {
                   'representative': all_comments[i],
                   'similar': [],
                   'bots': [all_comments[i]['bot']]
               }
-              
+
               for j in range(i + 1, len(all_comments)):
                   if j not in processed and similarity_matrix[i][j] > SIMILARITY_THRESHOLD:
                       cluster['similar'].append(all_comments[j])
                       cluster['bots'].append(all_comments[j]['bot'])
                       processed.add(j)
-              
+
               processed.add(i)
               clusters.append(cluster)
 
@@ -153,7 +153,7 @@ jobs:
           # Severity scoring
           def calculate_severity(text, consensus_count):
               text_lower = text.lower()
-              
+
               # Base severity
               if any(word in text_lower for word in ['security', 'vulnerability', 'exploit', 'injection', 'malicious']):
                   base = 10
@@ -165,7 +165,7 @@ jobs:
                   base = 3
               else:
                   base = 4
-              
+
               # Consensus multiplier
               multiplier = 1 + (consensus_count - 1) * 0.3
               return min(10, base * multiplier)
@@ -174,7 +174,7 @@ jobs:
           def detect_categories(text):
               text_lower = text.lower()
               categories = []
-              
+
               if any(word in text_lower for word in ['security', 'auth', 'encrypt', 'vulnerab']):
                   categories.append('security')
               if any(word in text_lower for word in ['performance', 'optimiz', 'slow', 'cache']):
@@ -191,7 +191,7 @@ jobs:
                   categories.append('testing')
               if any(word in text_lower for word in ['architecture', 'design', 'pattern', 'structure']):
                   categories.append('architecture')
-              
+
               return categories if categories else ['general']
 
           # Actionability detection
@@ -203,16 +203,20 @@ jobs:
                   'add', 'remove', 'refactor', 'implement'
               ])
 
+          # Helper to format triage message
+          def format_triage_message(item_id):
+              return f"⚡ **Action Required** - Reply with `@github-actions approve {item_id}` or `@github-actions deny {item_id}` to triage\n\n"
+
           # Score and categorize
           scored_clusters = []
           for cluster in clusters:
               text = cluster['representative']['body']
               consensus_count = len(cluster['bots'])
-              
+
               severity_score = calculate_severity(text, consensus_count)
               categories = detect_categories(text)
               actionable = is_actionable(text)
-              
+
               if severity_score >= 8:
                   severity_level = 'critical'
               elif severity_score >= 6:
@@ -221,7 +225,7 @@ jobs:
                   severity_level = 'medium'
               else:
                   severity_level = 'low'
-              
+
               scored_clusters.append({
                   'cluster': cluster,
                   'severity_score': round(severity_score, 2),
@@ -245,9 +249,9 @@ jobs:
 
           report = f"""## 🤖 Intelligent Review Synthesis Report
 
-          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC  
-          **Total Bot Comments:** {len(all_comments)}  
-          **Unique Issues:** {len(clusters)}  
+          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+          **Total Bot Comments:** {len(all_comments)}
+          **Unique Issues:** {len(clusters)}
           **Deduplication Rate:** {dedup_rate}%
 
           ### 📊 Summary
@@ -258,36 +262,75 @@ jobs:
           - 🟢 **Low:** {len(low)}
           - ⚡ **Actionable:** {len(actionable_items)}
 
+          ### ✅ Triage Instructions
+
+          Review the findings below and respond in comments to indicate approval or denial:
+          - To **approve** an item for follow-up: Comment `@github-actions approve CRIT-1` (use the item ID like CRIT-1, HIGH-2, etc.)
+          - To **deny** an item: Comment `@github-actions deny HIGH-3`
+          - Critical and High severity items require explicit triage
+
           """
 
-          # Critical issues
+          # Critical issues - show all with item numbers
           if critical:
               report += "### 🔴 Critical Issues\n\n"
-              for item in critical:
+              for idx, item in enumerate(critical, 1):
                   rep = item['cluster']['representative']
                   body = rep['body'][:500] + ('...' if len(rep['body']) > 500 else '')
-                  report += f"**Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
+                  item_id = f"CRIT-{idx}"
+                  report += f"**#{item_id}** | **Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
                   report += f"**Bots:** {', '.join(set(item['cluster']['bots']))}\n\n"
                   report += f"> {body}\n\n"
-                  report += f"[View comment]({rep['url']})\n\n---\n\n"
+                  report += f"[View comment]({rep['url']})\n\n"
+                  if item['actionable']:
+                      report += format_triage_message(item_id)
+                  report += "---\n\n"
 
-          # High priority
+          # High priority - show all with item numbers
           if high:
               report += "### 🟠 High Priority\n\n"
-              for item in high[:5]:  # Top 5
+              for idx, item in enumerate(high, 1):
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:400] + ('...' if len(rep['body']) > 400 else '')
+                  item_id = f"HIGH-{idx}"
+                  report += f"**#{item_id}** | **Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
+                  report += f"**Bots:** {', '.join(set(item['cluster']['bots']))}\n\n"
+                  report += f"> {body}\n\n"
+                  report += f"[View comment]({rep['url']})\n\n"
+                  if item['actionable']:
+                      report += format_triage_message(item_id)
+                  report += "---\n\n"
+
+          # Medium priority - show summary with expandable details
+          if medium:
+              report += "### 🟡 Medium Priority\n\n"
+              report += f"**{len(medium)} medium priority items identified.** Expand for details.\n\n"
+              report += "<details>\n<summary>View Medium Priority Items</summary>\n\n"
+              for idx, item in enumerate(medium, 1):
                   rep = item['cluster']['representative']
                   body = rep['body'][:300] + ('...' if len(rep['body']) > 300 else '')
-                  report += f"**Severity: {item['severity_score']}/10** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
+                  report += f"**MED-{idx}** | **Severity: {item['severity_score']}/10** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
                   report += f"> {body}\n\n"
-              
-              if len(high) > 5:
-                  report += f"*... and {len(high) - 5} more high priority items*\n\n"
+                  report += "---\n\n"
+              report += "</details>\n\n"
+
+          # Low priority - show summary only
+          if low:
+              report += "### 🟢 Low Priority\n\n"
+              report += f"**{len(low)} low priority items identified.** These are minor suggestions and style improvements.\n\n"
+              report += "<details>\n<summary>View Low Priority Items</summary>\n\n"
+              for idx, item in enumerate(low, 1):
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:200] + ('...' if len(rep['body']) > 200 else '')
+                  report += f"**LOW-{idx}** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
+                  report += f"> {body}\n\n"
+              report += "</details>\n\n"
 
           report += "---\n*Automated synthesis by GitHub Copilot Review Synthesis Workflow*"
 
           # Post or update synthesis comment
           print("📝 Posting synthesis report...")
-          
+
           existing_comment = None
           for comment in pr.get_issue_comments():
               if comment.user.login == 'github-actions[bot]' and '🤖 Intelligent Review Synthesis Report' in comment.body:
@@ -301,49 +344,7 @@ jobs:
               pr.create_issue_comment(report)
               print("✅ Posted new synthesis report")
 
-          # Create follow-up issues for top critical/high actionable items
-          followup_candidates = [
-              item for item in scored_clusters
-              if item['severity_level'] in ['critical', 'high'] and item['actionable']
-          ][:3]  # Top 3
-
-          if followup_candidates:
-              print(f"📋 Creating {len(followup_candidates)} follow-up issues...")
-              
-              for item in followup_candidates:
-                  rep = item['cluster']['representative']
-                  categories_str = ', '.join(item['categories'][:2])
-                  
-                  title = f"[{item['severity_level'].upper()}] {categories_str} - From PR #{pr_number}"
-                  body = f"""## Review Synthesis Follow-Up
-
-          **Source PR:** #{pr_number}  
-          **Severity:** {item['severity_level'].upper()} ({item['severity_score']}/10)  
-          **Categories:** {', '.join(item['categories'])}  
-          **Consensus:** {item['consensus_count']} bot(s)  
-          **Bots:** {', '.join(set(item['cluster']['bots']))}
-
-          ### Review Details
-
-          {rep['body']}
-
-          ---
-          [Original Comment]({rep['url']})
-
-          *Auto-generated from review synthesis*
-          """
-                  
-                  labels = ['bot-review', 'needs-triage', item['severity_level']]
-                  labels.extend(item['categories'][:3])
-                  
-                  try:
-                      issue = repo.create_issue(title=title, body=body, labels=labels)
-                      pr.create_issue_comment(f"📋 Created follow-up issue: #{issue.number}")
-                      print(f"✅ Created issue #{issue.number}")
-                  except Exception as e:
-                      print(f"❌ Error creating issue: {e}")
-
-          print("✨ Synthesis complete!")
+          print("✨ Synthesis complete! All findings consolidated in PR comment for triage.")
           PYTHON_SCRIPT
-          
+
           python synthesize.py

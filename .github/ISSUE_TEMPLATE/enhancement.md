@@ -30,9 +30,9 @@ assignees: ['Dutchthenomad']
 ## 📋 Acceptance Criteria
 <!-- What needs to be true for this feature to be considered complete? -->
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
+- [ ]
 
 ## 🧪 Testing Requirements
 <!-- How should this feature be tested? -->

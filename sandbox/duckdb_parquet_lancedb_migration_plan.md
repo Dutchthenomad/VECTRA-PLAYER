@@ -1,7 +1,7 @@
 # REPLAYER → DuckDB/Parquet + LanceDB Vector Index (Unified Plan Draft)
 
-**Status:** Draft for cross-session coordination  
-**Audience:** REPLAYER refactor session + RAG/Socket pipeline session  
+**Status:** Draft for cross-session coordination
+**Audience:** REPLAYER refactor session + RAG/Socket pipeline session
 **Goal:** Replace today’s scattered JSON/JSONL “recordings” + ad-hoc RAG capture folders with a single, durable, ML-friendly dataset (Parquet) plus a rebuildable semantic index (LanceDB), while preserving a claude-flow compatible retrieval contract.
 
 ---
@@ -230,4 +230,3 @@ Index job processes only “new parquet files since last checkpoint”:
 - One command can generate a training dataset slice (DuckDB query) deterministically.
 - No legacy writers remain in runtime path (exporters are explicit only).
 - claude-flow retrieval works using the new backend (either reads Parquet or reads exported docs).
-

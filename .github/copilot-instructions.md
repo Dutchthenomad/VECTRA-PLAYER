@@ -126,12 +126,12 @@ pre-commit run --all-files
    - All data producers publish to EventBus
    - EventStore is the **single writer** to Parquet
    - No direct filesystem writes outside EventStore
-   
+
 2. **Data directory:**
    - Use `RUGS_DATA_DIR` environment variable
    - Never hardcode paths like `/home/nomad/...`
    - All data under `~/rugs_data/` structure
-   
+
 3. **Event schema:**
    - Follow unified event schema in `services/event_store/schema.py`
    - Common envelope: `ts`, `source`, `doc_type`, `session_id`, `seq`, `direction`, `raw_json`
@@ -260,7 +260,7 @@ cd src && pytest tests/ --cov=. --cov-report=html
 ```
 
 ### Issue: Import errors or path issues
-**Solution:** 
+**Solution:**
 - Use absolute imports from src directory
 - pythonpath is set to `["src"]` in pyproject.toml
 - Install in editable mode: `pip install -e ".[dev]"`
