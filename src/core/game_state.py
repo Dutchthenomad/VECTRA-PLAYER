@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.demo_action import StateSnapshot as DemoStateSnapshot
+    from models.recording_models import LocalStateSnapshot, ServerState
 
 from config import config
 

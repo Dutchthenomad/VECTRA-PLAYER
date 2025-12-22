@@ -244,7 +244,8 @@ class BrowserConnectionDialog:
                 self.parent.after(0, lambda: self._connection_finished(result))
             except Exception as e:
                 logger.error(f"Async connection error: {e}", exc_info=True)
-                self.parent.after(0, lambda: self._connection_finished(False, str(e)))
+                error_msg = str(e)
+                self.parent.after(0, lambda: self._connection_finished(False, error_msg))
             finally:
                 loop.close()
 

@@ -365,7 +365,7 @@ class TestCleanup:
 
     def test_context_manager(self, event_bus):
         """Provider should work as context manager and call stop() on exit."""
-        
+
         with LiveStateProvider(event_bus) as provider:
             assert provider.is_connected is False
             # Set some state

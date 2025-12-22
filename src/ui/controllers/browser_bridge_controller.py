@@ -140,7 +140,8 @@ class BrowserBridgeController:
                     self.root.after(0, self.on_browser_disconnected)
                 except Exception as e:
                     logger.error(f"Background disconnect failed: {e}", exc_info=True)
-                    self.root.after(0, lambda: self.log(f"Disconnect error: {e}"))
+                    error_msg = str(e)
+                    self.root.after(0, lambda: self.log(f"Disconnect error: {error_msg}"))
 
             import threading
 

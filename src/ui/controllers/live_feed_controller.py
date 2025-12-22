@@ -294,11 +294,14 @@ class LiveFeedController:
                 except Exception as e:
                     logger.error(f"Background connection failed: {e}", exc_info=True)
 
+                    # Capture error message before defining closure
+                    error_msg = str(e)
+
                     # Marshal error handling to main thread
                     def handle_error():
-                        self.log(f"Failed to connect to live feed: {e}")
+                        self.log(f"Failed to connect to live feed: {error_msg}")
                         if self.toast:
-                            self.toast.show(f"Live feed error: {e}", "error")
+                            self.toast.show(f"Live feed error: {error_msg}", "error")
                         self.parent.live_feed = None
                         self.parent.live_feed_connected = False
                         self.live_feed_var.set(False)
