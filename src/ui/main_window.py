@@ -4,10 +4,11 @@ Main Window UI Module - Refactored with Mixins
 
 import logging
 import os
+import sys
 import tkinter as tk
 from decimal import Decimal
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 # Toggle legacy recorders via environment (set RUGS_LEGACY_RECORDERS=false to disable)
 LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
@@ -121,19 +122,30 @@ class MainWindow(
             logger.info("Legacy recorders DISABLED")
 
         # EventStore persists all events to Parquet (canonical data store)
-        # AUDIT FIX: Defer toast notifications until toast is initialized
-        self._deferred_notifications = []
+        # EventStore is critical - failure requires clean shutdown
         try:
             self.event_store_service = EventStoreService(event_bus)
             self.event_store_service.start()
-            logger.info(
-                f"EventStoreService started: session {self.event_store_service.session_id[:8]}"
-            )
+            session_id = getattr(self.event_store_service, "session_id", None)
+            if session_id:
+                session_preview = str(session_id)[:8]
+                logger.info(f"EventStoreService started: session {session_preview}")
+            else:
+                logger.info("EventStoreService started (session_id not available)")
         except Exception as e:
             logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
+            # EventStore is a critical service - show error and exit cleanly
             self.event_store_service = None
-            # Defer toast notification until after _create_ui()
-            self._deferred_notifications.append(("Warning: Event storage disabled", "warning"))
+            messagebox.showerror(
+                "Critical Error - Event Storage",
+                "Failed to start the Event Store service.\n\n"
+                "Event storage is required for normal operation.\n"
+                "The application will now exit.",
+            )
+            sys.exit(1)
+
+        # Initialize deferred notifications list for non-critical services
+        self._deferred_notifications = []
 
         # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
         try:

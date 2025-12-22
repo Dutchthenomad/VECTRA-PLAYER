@@ -43,37 +43,20 @@ SOCKETIO_TYPES = {
 
 def _safe_truncate(text: str, max_length: int = 200) -> str:
     """
-    Safely truncate a string without breaking UTF-8 multi-byte characters.
+    Truncate a string to a maximum length for safe logging.
 
     Args:
         text: String to truncate
         max_length: Maximum length (default: 200)
 
     Returns:
-        Truncated string that is safe for logging
+        The input string if it is shorter than or equal to max_length,
+        otherwise the first max_length characters.
     """
     if len(text) <= max_length:
         return text
 
-    # Truncate at max_length
-    truncated = text[:max_length]
-
-    # Try encoding to bytes to detect broken UTF-8
-    try:
-        truncated.encode("utf-8")
-        return truncated
-    except UnicodeEncodeError:
-        # If encoding fails, progressively shorten until valid
-        # UTF-8 characters can be 1-4 bytes; this handles truncation in the middle of a multi-byte sequence
-        for i in range(1, 5):
-            try:
-                shorter = text[: max_length - i]
-                shorter.encode("utf-8")
-                return shorter
-            except UnicodeEncodeError:
-                continue
-        # Fallback: use repr() which is always safe
-        return repr(text[:max_length])
+    return text[:max_length]
 
 
 def parse_socketio_frame(raw: str) -> SocketIOFrame | None:
