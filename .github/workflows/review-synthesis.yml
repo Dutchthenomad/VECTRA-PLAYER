@@ -258,30 +258,69 @@ jobs:
           - 🟢 **Low:** {len(low)}
           - ⚡ **Actionable:** {len(actionable_items)}
 
+          ### ✅ Triage Instructions
+
+          Review the findings below and respond in comments to indicate approval or denial:
+          - To **approve** an item for follow-up: Comment `@github-actions approve #<item-number>`
+          - To **deny** an item: Comment `@github-actions deny #<item-number>`
+          - Critical and High severity items require explicit triage
+
           """
 
-          # Critical issues
+          # Critical issues - show all with item numbers
           if critical:
               report += "### 🔴 Critical Issues\n\n"
-              for item in critical:
+              for idx, item in enumerate(critical, 1):
                   rep = item['cluster']['representative']
                   body = rep['body'][:500] + ('...' if len(rep['body']) > 500 else '')
-                  report += f"**Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
+                  item_id = f"CRIT-{idx}"
+                  report += f"**#{item_id}** | **Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
                   report += f"**Bots:** {', '.join(set(item['cluster']['bots']))}\n\n"
                   report += f"> {body}\n\n"
-                  report += f"[View comment]({rep['url']})\n\n---\n\n"
+                  report += f"[View comment]({rep['url']})\n\n"
+                  if item['actionable']:
+                      report += f"⚡ **Action Required** - Reply with `@github-actions approve #{item_id}` or `@github-actions deny #{item_id}` to triage\n\n"
+                  report += "---\n\n"
 
-          # High priority
+          # High priority - show all with item numbers
           if high:
               report += "### 🟠 High Priority\n\n"
-              for item in high[:5]:  # Top 5
+              for idx, item in enumerate(high, 1):
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:400] + ('...' if len(rep['body']) > 400 else '')
+                  item_id = f"HIGH-{idx}"
+                  report += f"**#{item_id}** | **Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
+                  report += f"**Bots:** {', '.join(set(item['cluster']['bots']))}\n\n"
+                  report += f"> {body}\n\n"
+                  report += f"[View comment]({rep['url']})\n\n"
+                  if item['actionable']:
+                      report += f"⚡ **Action Required** - Reply with `@github-actions approve #{item_id}` or `@github-actions deny #{item_id}` to triage\n\n"
+                  report += "---\n\n"
+
+          # Medium priority - show summary with expandable details
+          if medium:
+              report += "### 🟡 Medium Priority\n\n"
+              report += f"**{len(medium)} medium priority items identified.** Expand for details.\n\n"
+              report += "<details>\n<summary>View Medium Priority Items</summary>\n\n"
+              for idx, item in enumerate(medium, 1):
                   rep = item['cluster']['representative']
                   body = rep['body'][:300] + ('...' if len(rep['body']) > 300 else '')
-                  report += f"**Severity: {item['severity_score']}/10** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
+                  report += f"**MED-{idx}** | **Severity: {item['severity_score']}/10** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
                   report += f"> {body}\n\n"
-              
-              if len(high) > 5:
-                  report += f"*... and {len(high) - 5} more high priority items*\n\n"
+                  report += "---\n\n"
+              report += "</details>\n\n"
+
+          # Low priority - show summary only
+          if low:
+              report += "### 🟢 Low Priority\n\n"
+              report += f"**{len(low)} low priority items identified.** These are minor suggestions and style improvements.\n\n"
+              report += "<details>\n<summary>View Low Priority Items</summary>\n\n"
+              for idx, item in enumerate(low, 1):
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:200] + ('...' if len(rep['body']) > 200 else '')
+                  report += f"**LOW-{idx}** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
+                  report += f"> {body}\n\n"
+              report += "</details>\n\n"
 
           report += "---\n*Automated synthesis by GitHub Copilot Review Synthesis Workflow*"
 
@@ -301,49 +340,7 @@ jobs:
               pr.create_issue_comment(report)
               print("✅ Posted new synthesis report")
 
-          # Create follow-up issues for top critical/high actionable items
-          followup_candidates = [
-              item for item in scored_clusters
-              if item['severity_level'] in ['critical', 'high'] and item['actionable']
-          ][:3]  # Top 3
-
-          if followup_candidates:
-              print(f"📋 Creating {len(followup_candidates)} follow-up issues...")
-              
-              for item in followup_candidates:
-                  rep = item['cluster']['representative']
-                  categories_str = ', '.join(item['categories'][:2])
-                  
-                  title = f"[{item['severity_level'].upper()}] {categories_str} - From PR #{pr_number}"
-                  body = f"""## Review Synthesis Follow-Up
-
-          **Source PR:** #{pr_number}  
-          **Severity:** {item['severity_level'].upper()} ({item['severity_score']}/10)  
-          **Categories:** {', '.join(item['categories'])}  
-          **Consensus:** {item['consensus_count']} bot(s)  
-          **Bots:** {', '.join(set(item['cluster']['bots']))}
-
-          ### Review Details
-
-          {rep['body']}
-
-          ---
-          [Original Comment]({rep['url']})
-
-          *Auto-generated from review synthesis*
-          """
-                  
-                  labels = ['bot-review', 'needs-triage', item['severity_level']]
-                  labels.extend(item['categories'][:3])
-                  
-                  try:
-                      issue = repo.create_issue(title=title, body=body, labels=labels)
-                      pr.create_issue_comment(f"📋 Created follow-up issue: #{issue.number}")
-                      print(f"✅ Created issue #{issue.number}")
-                  except Exception as e:
-                      print(f"❌ Error creating issue: {e}")
-
-          print("✨ Synthesis complete!")
+          print("✨ Synthesis complete! All findings consolidated in PR comment for triage.")
           PYTHON_SCRIPT
           
           python synthesize.py
