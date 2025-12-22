@@ -242,8 +242,12 @@ class DemoRecorderSink:
             self._game_id = game_id
             self._game_start_time = datetime.now()
 
+            # AUDIT FIX: Sanitize game_id to prevent path traversal
+            from services.recorders import _sanitize_filename
+            safe_game_id = _sanitize_filename(game_id)
+
             # Create filename: game_001_gameId.jsonl
-            filename = f"game_{self._game_number:03d}_{game_id}.jsonl"
+            filename = f"game_{self._game_number:03d}_{safe_game_id}.jsonl"
             self._game_file = self._session_dir / filename
 
             # Open file and write header
@@ -430,6 +434,10 @@ class DemoRecorderSink:
 
             # Remove from pending
             del self._pending_actions[action_id]
+
+            # AUDIT FIX: Flush immediately after confirmation to prevent data loss
+            # Confirmations are critical timing data and should be persisted
+            self._flush()
 
             logger.debug(f"Recorded confirmation for {action_id}: {latency_ms:.1f}ms")
             return latency_ms
