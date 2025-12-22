@@ -294,16 +294,16 @@ class TradeManager:
             return
 
         sidebet = self.state.get("sidebet")
-        ticks_since_placed = tick.tick - sidebet.placed_tick
+        ticks_since_placed = tick.tick - sidebet["placed_tick"]
 
         # Check if within window
         if ticks_since_placed <= config.GAME_RULES["sidebet_window_ticks"]:
             # WON sidebet (resolve_sidebet will update balance automatically)
             self.state.resolve_sidebet(won=True, tick=tick.tick)
 
-            payout = sidebet.amount * config.GAME_RULES["sidebet_multiplier"]
+            payout = sidebet["amount"] * config.GAME_RULES["sidebet_multiplier"]
             logger.info(
-                f"SIDEBET WON: {payout} SOL (placed at tick {sidebet.placed_tick}, rugged at {tick.tick})"
+                f"SIDEBET WON: {payout} SOL (placed at tick {sidebet['placed_tick']}, rugged at {tick.tick})"
             )
         else:
             # LOST sidebet (rugged after window)
@@ -325,8 +325,8 @@ class TradeManager:
             return
 
         sidebet = self.state.get("sidebet")
-        ticks_since_placed = tick.tick - sidebet.placed_tick
-        expiry_tick = sidebet.placed_tick + config.GAME_RULES["sidebet_window_ticks"]
+        ticks_since_placed = tick.tick - sidebet["placed_tick"]
+        expiry_tick = sidebet["placed_tick"] + config.GAME_RULES["sidebet_window_ticks"]
 
         # Check if expired
         if tick.tick > expiry_tick:
@@ -334,7 +334,7 @@ class TradeManager:
             self.state.resolve_sidebet(won=False, tick=tick.tick)
 
             logger.info(
-                f"SIDEBET EXPIRED: Lost {sidebet.amount} SOL (no rug in {config.GAME_RULES['sidebet_window_ticks']} ticks)"
+                f"SIDEBET EXPIRED: Lost {sidebet['amount']} SOL (no rug in {config.GAME_RULES['sidebet_window_ticks']} ticks)"
             )
 
     # ========================================================================

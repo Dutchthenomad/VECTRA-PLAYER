@@ -143,20 +143,26 @@ class BrowserConnectionDialog:
         """
         Add message to progress display
 
+        AUDIT FIX: Thread-safe - marshals UI updates to main thread
+
         Args:
             message: Message to log
             status: "info", "success", "error", "warning"
         """
-        self.progress_text.config(state="normal")
+        def _update_ui():
+            self.progress_text.config(state="normal")
 
-        # Color prefixes
-        prefixes = {"info": "  ", "success": "✓ ", "error": "✗ ", "warning": "⚠ "}
+            # Color prefixes
+            prefixes = {"info": "  ", "success": "✓ ", "error": "✗ ", "warning": "⚠ "}
 
-        prefix = prefixes.get(status, "  ")
-        self.progress_text.insert(tk.END, f"{prefix}{message}\n")
-        self.progress_text.see(tk.END)
-        self.progress_text.config(state="disabled")
-        self.dialog.update()
+            prefix = prefixes.get(status, "  ")
+            self.progress_text.insert(tk.END, f"{prefix}{message}\n")
+            self.progress_text.see(tk.END)
+            self.progress_text.config(state="disabled")
+            self.dialog.update()
+
+        # Always marshal to main thread for thread safety
+        self.parent.after(0, _update_ui)
 
     async def _connect_async(self):
         """
@@ -244,7 +250,8 @@ class BrowserConnectionDialog:
                 self.parent.after(0, lambda: self._connection_finished(result))
             except Exception as e:
                 logger.error(f"Async connection error: {e}", exc_info=True)
-                self.parent.after(0, lambda: self._connection_finished(False, str(e)))
+                error_msg = str(e)
+                self.parent.after(0, lambda: self._connection_finished(False, error_msg))
             finally:
                 loop.close()
 

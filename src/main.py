@@ -247,12 +247,16 @@ class Application:
         """Clean shutdown of application"""
         self.logger.info("Shutting down application...")
 
-        def timeout_handler(signum, frame):
-            self.logger.warning("Shutdown timeout - forcing exit")
-            os._exit(1)
+        # AUDIT FIX: signal.SIGALRM is Unix-only, guard for Windows portability
+        timeout_set = False
+        if hasattr(signal, "SIGALRM"):
+            def timeout_handler(signum, frame):
+                self.logger.warning("Shutdown timeout - forcing exit")
+                os._exit(1)
 
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(10)
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
+            timeout_set = True
 
         try:
             # Save configuration
@@ -278,7 +282,8 @@ class Application:
             self.logger.error(f"Error during shutdown: {e}")
 
         finally:
-            signal.alarm(0)
+            if timeout_set:
+                signal.alarm(0)
             self.logger.info("Application shutdown complete")
             sys.exit(0)
 

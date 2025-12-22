@@ -229,8 +229,10 @@ class EventStoreQuery:
                 WHERE {where_sql}
             """
 
+        # AUDIT FIX: Use parameter substitution instead of f-string for SQL injection safety
         if limit:
-            sql += f" LIMIT {limit}"
+            sql += " LIMIT $limit"
+            params["limit"] = limit
 
         result = self.query(sql, params if params else None)
         return result["game_id"].tolist() if len(result) > 0 else []
@@ -250,16 +252,16 @@ class EventStoreQuery:
 
         parquet_glob = self._parquet_glob()
 
-        # Build IN clause - DuckDB supports list parameters
-        game_list = ", ".join(f"'{gid}'" for gid in game_ids)
+        # AUDIT FIX: Use parameter substitution with UNNEST for SQL injection safety
+        # DuckDB supports list parameters via UNNEST
         sql = f"""
             SELECT *
             FROM '{parquet_glob}'
-            WHERE game_id IN ({game_list})
+            WHERE game_id IN (SELECT UNNEST($game_ids))
             ORDER BY game_id, seq
         """
 
-        all_data = self.query(sql)
+        all_data = self.query(sql, {"game_ids": game_ids})
 
         # Split into per-game DataFrames
         result = {}

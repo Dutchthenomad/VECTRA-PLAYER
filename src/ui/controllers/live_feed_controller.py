@@ -64,9 +64,10 @@ class LiveFeedController:
 
         # Callbacks
         self.log = log_callback
-        # Coalescing tick delivery to protect Tk event loop under bursty traffic.
+        # AUDIT FIX: Use queue instead of single variable to prevent tick loss
+        # Critical for accurate P&L, rug detection, recording, and bot decisions
         self._signal_lock = threading.Lock()
-        self._latest_signal = None
+        self._signal_queue = []  # Queue all signals, don't drop any
         self._signal_drain_scheduled = False
 
         # Recording controller for auto-start/stop
@@ -88,9 +89,9 @@ class LiveFeedController:
         logger.debug("Recording controller set for auto-start/stop")
 
     def _queue_live_signal(self, signal_snapshot) -> None:
-        """Store the latest signal and schedule a single UI-thread drain."""
+        """Queue signal for processing - no signals are dropped."""
         with self._signal_lock:
-            self._latest_signal = signal_snapshot
+            self._signal_queue.append(signal_snapshot)
             if self._signal_drain_scheduled:
                 return
             self._signal_drain_scheduled = True
@@ -98,27 +99,25 @@ class LiveFeedController:
         self.root.after(0, self._drain_live_signals)
 
     def _drain_live_signals(self) -> None:
-        """UI-thread: process the most recent pending signals (coalesced)."""
-        max_per_cycle = 3
+        """UI-thread: process queued signals in batches to avoid blocking."""
+        max_per_cycle = 10  # Process more per cycle to keep up with tick rate
         processed = 0
 
         while processed < max_per_cycle:
             with self._signal_lock:
-                captured_signal = self._latest_signal
-                self._latest_signal = None
-
-            if captured_signal is None:
-                break
+                if not self._signal_queue:
+                    break
+                captured_signal = self._signal_queue.pop(0)
 
             self._process_live_signal(captured_signal)
             processed += 1
 
         with self._signal_lock:
-            if self._latest_signal is None:
+            if not self._signal_queue:
                 self._signal_drain_scheduled = False
                 return
 
-        # More signals arrived while we were processing: schedule another drain.
+        # More signals in queue: schedule another drain immediately
         self.root.after(0, self._drain_live_signals)
 
     def _process_live_signal(self, captured_signal) -> None:
@@ -233,9 +232,10 @@ class LiveFeedController:
                     game_num = captured_data.get("gameNumber", 0)
                     seed_data = captured_data.get("seedData")
                     self.log(f"💥 Game {game_num} complete")
-                    # Attach seed data to the next ReplayEngine GAME_END for this game.
-                    if seed_data and getattr(self.replay_engine, "game_id", None):
-                        self.replay_engine.set_seed_data(self.replay_engine.game_id, seed_data)
+                    # AUDIT FIX: ReplayEngine.set_seed_data() doesn't exist
+                    # TODO: Implement seed data storage if needed
+                    # if seed_data and getattr(self.replay_engine, "game_id", None):
+                    #     self.replay_engine.set_seed_data(self.replay_engine.game_id, seed_data)
 
                 self.root.after(0, handle_game_complete)
 
@@ -294,11 +294,14 @@ class LiveFeedController:
                 except Exception as e:
                     logger.error(f"Background connection failed: {e}", exc_info=True)
 
+                    # Capture error message before defining closure
+                    error_msg = str(e)
+
                     # Marshal error handling to main thread
                     def handle_error():
-                        self.log(f"Failed to connect to live feed: {e}")
+                        self.log(f"Failed to connect to live feed: {error_msg}")
                         if self.toast:
-                            self.toast.show(f"Live feed error: {e}", "error")
+                            self.toast.show(f"Live feed error: {error_msg}", "error")
                         self.parent.live_feed = None
                         self.parent.live_feed_connected = False
                         self.live_feed_var.set(False)

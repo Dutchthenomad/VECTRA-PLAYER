@@ -1,8 +1,11 @@
 """Socket.IO frame parser for CDP WebSocket interception."""
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -83,8 +86,10 @@ def parse_socketio_frame(raw: str) -> SocketIOFrame | None:
         if len(raw) > 1:
             try:
                 data = json.loads(raw[1:])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                # Truncate payload for logging
+                truncated = raw[1:200] if len(raw) > 200 else raw[1:]
+                logger.warning(f"Invalid JSON in connect packet: {e}. Payload: {truncated}...")
         return SocketIOFrame(type="connect", data=data, raw=raw)
 
     # Handle disconnect
@@ -147,7 +152,10 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
 
     try:
         parsed = json.loads(json_payload)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        # Truncate payload for logging
+        truncated = json_payload[:200] if len(json_payload) > 200 else json_payload
+        logger.warning(f"Invalid JSON in message packet: {e}. Payload: {truncated}...")
         return None
 
     if isinstance(parsed, list) and len(parsed) >= 1:
@@ -167,7 +175,9 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
             event_data = parsed[1] if len(parsed) > 1 else None
 
             return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        # Truncate payload for logging
+        truncated = data[:200] if len(data) > 200 else data
+        logger.warning(f"Invalid JSON in event packet: {e}. Payload: {truncated}...")
 
     return None

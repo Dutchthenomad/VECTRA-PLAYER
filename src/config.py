@@ -211,7 +211,8 @@ class Config:
     BROWSER = {
         "chrome_binary": os.getenv("CHROME_BINARY", ""),
         "profile_name": os.getenv("CHROME_PROFILE", "rugs_bot"),
-        "cdp_port": int(os.getenv("CDP_PORT", "9222")),
+        # AUDIT FIX: Use safe parsing to prevent import-time crash on invalid CDP_PORT
+        "cdp_port": _safe_int_env("CDP_PORT", 9222, 1, 65535),
     }
 
     # ========== Color Themes ==========

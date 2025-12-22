@@ -190,6 +190,15 @@ class UnifiedRecorder:
         """Stop the recording session."""
         self._state_machine.stop_session()
 
+        # AUDIT FIX: Close action file handle to prevent leak on abnormal shutdown
+        if self._action_file_handle:
+            try:
+                self._action_file_handle.close()
+                logger.debug("Closed action file handle in stop_session()")
+            except Exception as e:
+                logger.error(f"Error closing action file in stop_session(): {e}")
+            self._action_file_handle = None
+
         # Save player session if any actions recorded
         if self._player_session and self._pending_actions:
             self._save_player_session()
@@ -586,7 +595,11 @@ class UnifiedRecorder:
         # Generate filename
         time_str = self._player_session_start.strftime("%Y%m%dT%H%M%S")
         username = self._player_session.meta.username or "anonymous"
-        filename = f"{time_str}_{username}_demo.json"
+        # AUDIT FIX: Sanitize username to prevent path traversal
+        # Import the sanitization function from recorders
+        from services.recorders import _sanitize_filename
+        safe_username = _sanitize_filename(username)
+        filename = f"{time_str}_{safe_username}_demo.json"
         filepath = demos_dir / filename
 
         # Write file

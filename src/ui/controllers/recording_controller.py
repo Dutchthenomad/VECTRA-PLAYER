@@ -157,7 +157,8 @@ class RecordingController:
         # Migration note: Skip legacy recording when EventStore is sole writer
         if not LEGACY_RECORDERS_ENABLED:
             logger.info("Legacy recorders disabled (RUGS_LEGACY_RECORDERS=false)")
-            self._toast.show("Recording disabled (EventStore only mode)", "info")
+            # AUDIT FIX: RecordingToastManager doesn't have show() method
+            # Just log the info, EventStore will handle recording
             return
 
         if self.is_active:

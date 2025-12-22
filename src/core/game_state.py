@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.demo_action import StateSnapshot as DemoStateSnapshot
+    from models.recording_models import LocalStateSnapshot, ServerState
 
 from config import config
 
@@ -172,7 +176,7 @@ class GameState:
                     "price": float(self._state.get("current_price", Decimal("1.0"))),
                     "phase": self._state.get("current_phase", "UNKNOWN"),
                     "active": self._state.get("game_active", False),
-                    "rugged": self._state.get("rug_detected", False),  # Fixed field name
+                    "rugged": self._state.get("rugged", False),  # AUDIT FIX: Use correct field name
                     "cooldown_timer": 0,  # Not tracked in state
                     "trade_count": 0,  # Not tracked in state
                 }

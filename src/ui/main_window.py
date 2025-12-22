@@ -120,14 +120,32 @@ class MainWindow(
             self.raw_capture_recorder = None
             logger.info("Legacy recorders DISABLED")
 
-        # EventStore (canonical data store)
-        self.event_store_service = EventStoreService(event_bus)
-        self.event_store_service.start()
-        logger.info("EventStoreService started")
+        # EventStore persists all events to Parquet (canonical data store)
+        # AUDIT FIX: Defer toast notifications until toast is initialized
+        self._deferred_notifications = []
+        try:
+            self.event_store_service = EventStoreService(event_bus)
+            self.event_store_service.start()
+            logger.info(
+                f"EventStoreService started: session {self.event_store_service.session_id[:8]}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
+            self.event_store_service = None
+            # Defer toast notification until after _create_ui()
+            self._deferred_notifications.append(("Warning: Event storage disabled", "warning"))
 
-        # LiveStateProvider
-        self.live_state_provider = LiveStateProvider(event_bus)
-        logger.info("LiveStateProvider initialized")
+        # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
+        try:
+            self.live_state_provider = LiveStateProvider(event_bus)
+            logger.info("LiveStateProvider initialized for server-authoritative state")
+        except Exception as e:
+            logger.error(f"Failed to initialize LiveStateProvider: {e}", exc_info=True)
+            self.live_state_provider = None
+            # Defer toast notification until after _create_ui()
+            self._deferred_notifications.append(
+                ("Warning: Live state tracking disabled", "warning")
+            )
 
         # Game queue
         recordings_dir = config.FILES["recordings_dir"]
@@ -161,6 +179,12 @@ class MainWindow(
 
         # Initialize UI
         self._create_ui()
+
+        # AUDIT FIX: Show deferred notifications now that toast is initialized
+        for message, msg_type in self._deferred_notifications:
+            self.toast.show(message, msg_type)
+        self._deferred_notifications = []
+
         self._setup_event_handlers()
         self._setup_keyboard_shortcuts()
 

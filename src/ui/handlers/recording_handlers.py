@@ -22,6 +22,9 @@ class RecordingHandlersMixin:
 
     def _start_demo_session(self: "MainWindow"):
         """Start a new demo recording session."""
+        if self.demo_recorder is None:
+            self.toast.show("Demo recorder disabled (legacy recorders off)", "warning")
+            return
         try:
             session_id = self.demo_recorder.start_session()
             self.log(f"Demo session started: {session_id}")
@@ -33,6 +36,8 @@ class RecordingHandlersMixin:
 
     def _end_demo_session(self: "MainWindow"):
         """End the current demo recording session."""
+        if self.demo_recorder is None:
+            return
         try:
             self.demo_recorder.end_session()
             self.log("Demo session ended")
@@ -44,6 +49,8 @@ class RecordingHandlersMixin:
 
     def _start_demo_game(self: "MainWindow"):
         """Start recording a new game in the demo session."""
+        if self.demo_recorder is None:
+            return
         game_id = self.state.get("game_id")
         if not game_id:
             game_id = f"game_{int(time.time())}"
@@ -59,6 +66,8 @@ class RecordingHandlersMixin:
 
     def _end_demo_game(self: "MainWindow"):
         """End recording the current game."""
+        if self.demo_recorder is None:
+            return
         try:
             self.demo_recorder.end_game()
             self.log("Demo game ended")
@@ -70,6 +79,11 @@ class RecordingHandlersMixin:
 
     def _show_demo_status(self: "MainWindow"):
         """Show current demo recording status in a dialog."""
+        if self.demo_recorder is None:
+            messagebox.showinfo(
+                "Demo Recording Status", "Demo recorder disabled (legacy recorders off)"
+            )
+            return
         try:
             status = self.demo_recorder.get_status()
             status_text = f"""Demo Recording Status

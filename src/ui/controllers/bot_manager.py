@@ -113,8 +113,8 @@ class BotManager:
 
             # Bug 5 Fix: Re-enable manual trading buttons when bot is disabled
             # (but only if game is active)
-            current_tick = self.state.get("current_tick")
-            if current_tick and current_tick.active:
+            # AUDIT FIX: Use game_active boolean instead of tick.active
+            if self.state.get("game_active"):
                 self.buy_button.config(state=tk.NORMAL)
                 self.sell_button.config(state=tk.NORMAL)
                 self.sidebet_button.config(state=tk.NORMAL)
@@ -173,11 +173,12 @@ class BotManager:
                 self.log("Bot configuration updated - restart required for changes to take effect")
 
                 # Inform user that restart is needed
+                # AUDIT FIX: Remove unsupported bootstyle parameter
                 if self.toast:
                     self.toast.show(
                         "Configuration updated. Restart required.",
+                        "warning",
                         duration=5000,
-                        bootstyle="warning",
                     )
 
                 # Note: We don't update bot at runtime to avoid complexity
