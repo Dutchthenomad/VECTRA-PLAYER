@@ -22,6 +22,26 @@ from models.recording_models import (
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_filename(name: str, max_length: int = 50) -> str:
+    """
+    Sanitize a string for safe use in filenames.
+
+    AUDIT FIX: Prevent path traversal attacks from unsanitized usernames.
+
+    Args:
+        name: String to sanitize (e.g., username)
+        max_length: Maximum length to truncate to
+
+    Returns:
+        Sanitized string safe for filenames
+    """
+    import re
+    # Keep only alphanumeric, dots, dashes, underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', name)
+    # Truncate to max length
+    return sanitized[:max_length]
+
+
 class DecimalEncoder(json.JSONEncoder):
     """JSON encoder that handles Decimal types."""
 
@@ -206,7 +226,9 @@ class PlayerSessionRecorder:
         # Generate filename
         time_str = self.session_start.strftime("%Y%m%dT%H%M%S")
         username = self.session.meta.username or "anonymous"
-        filename = f"{time_str}_{username}_session.json"
+        # AUDIT FIX: Sanitize username to prevent path traversal
+        safe_username = _sanitize_filename(username)
+        filename = f"{time_str}_{safe_username}_session.json"
         filepath = sessions_dir / filename
 
         # Write file
