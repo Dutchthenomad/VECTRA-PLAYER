@@ -64,7 +64,7 @@ class MenuBarBuilder:
         # Build all menus
         self._build_file_menu(menubar)
         self._build_playback_menu(menubar)
-        self._build_recording_menu(menubar)
+        # self._build_recording_menu(menubar)  # Legacy - EventStore auto-captures all events
         self._build_bot_menu(menubar)
         self._build_live_feed_menu(menubar)
         browser_menu, browser_indices = self._build_browser_menu(menubar)
@@ -251,29 +251,12 @@ class MenuBarBuilder:
         dev_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Developer Tools", menu=dev_menu)
 
-        # Raw capture toggle
-        dev_menu.add_command(
-            label="Start Raw Capture", command=self._get_callback("toggle_raw_capture")
-        )
-        dev_menu.add_separator()
-        dev_menu.add_command(
-            label="Analyze Last Capture", command=self._get_callback("analyze_capture")
-        )
-        dev_menu.add_command(
-            label="Open Captures Folder", command=self._get_callback("open_captures_folder")
-        )
-        dev_menu.add_separator()
-        dev_menu.add_command(
-            label="Show Capture Status", command=self._get_callback("show_capture_status")
-        )
-        dev_menu.add_separator()
+        # Debug Terminal for WebSocket events
         dev_menu.add_command(
             label="Open Debug Terminal", command=self._get_callback("open_debug_terminal")
         )
 
-        indices = {
-            "capture": 0,  # Index of "Start/Stop Raw Capture"
-        }
+        indices = {}  # No dynamic menu items currently
 
         return dev_menu, indices
 

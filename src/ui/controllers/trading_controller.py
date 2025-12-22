@@ -36,7 +36,6 @@ class TradingController:
         toast,
         log_callback: Callable[[str], None],
         recording_controller: Optional["RecordingController"] = None,
-        demo_recorder=None,  # Legacy (deprecated)
     ):
         """
         Initialize TradingController with dependencies.
@@ -53,7 +52,6 @@ class TradingController:
             toast: Toast notification widget
             log_callback: Logging function
             recording_controller: RecordingController for button recording
-            demo_recorder: Deprecated legacy recorder
         """
         self.parent = parent_window
         self.trade_manager = trade_manager
@@ -66,7 +64,6 @@ class TradingController:
         self.toast = toast
         self.log = log_callback
         self.recording_controller = recording_controller
-        self.demo_recorder = demo_recorder
 
         logger.info("TradingController initialized")
 
@@ -110,14 +107,6 @@ class TradingController:
                     button=button, local_state=local_state, amount=amount, server_state=server_state
                 )
                 logger.debug(f"Recorded button press: {button}")
-
-            # Legacy: Also record to old system during migration
-            elif self.demo_recorder and self.demo_recorder.is_game_active():
-                state_before = self.state.capture_demo_snapshot(bet_amount)
-                self.demo_recorder.record_button_press(
-                    button=button, state_before=state_before, amount=amount
-                )
-                logger.debug(f"Recorded button press (legacy): {button}")
 
         except Exception as e:
             logger.error(f"Failed to record button press: {e}")
