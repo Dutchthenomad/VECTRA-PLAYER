@@ -119,6 +119,8 @@ class MainWindow:
             logger.info("Legacy recorders DISABLED (RUGS_LEGACY_RECORDERS=false)")
 
         # EventStore persists all events to Parquet (canonical data store)
+        # AUDIT FIX: Defer toast notifications until toast is initialized
+        self._deferred_notifications = []
         try:
             self.event_store_service = EventStoreService(event_bus)
             self.event_store_service.start()
@@ -127,8 +129,9 @@ class MainWindow:
             )
         except Exception as e:
             logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
-            self.toast.show("Warning: Event storage disabled", "warning")
             self.event_store_service = None
+            # Defer toast notification until after _create_ui()
+            self._deferred_notifications.append(("Warning: Event storage disabled", "warning"))
 
         # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
         try:
@@ -136,8 +139,9 @@ class MainWindow:
             logger.info("LiveStateProvider initialized for server-authoritative state")
         except Exception as e:
             logger.error(f"Failed to initialize LiveStateProvider: {e}", exc_info=True)
-            self.toast.show("Warning: Live state tracking disabled", "warning")
             self.live_state_provider = None
+            # Defer toast notification until after _create_ui()
+            self._deferred_notifications.append(("Warning: Live state tracking disabled", "warning"))
 
         # Initialize game queue for multi-game sessions
         recordings_dir = config.FILES["recordings_dir"]
@@ -172,6 +176,12 @@ class MainWindow:
 
         # Initialize UI
         self._create_ui()
+
+        # AUDIT FIX: Show deferred notifications now that toast is initialized
+        for message, msg_type in self._deferred_notifications:
+            self.toast.show(message, msg_type)
+        self._deferred_notifications = []
+
         self._setup_event_handlers()
         self._setup_keyboard_shortcuts()
 
