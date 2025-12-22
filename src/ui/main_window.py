@@ -136,12 +136,21 @@ class MainWindow(
             logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
             # EventStore is a critical service - show error and exit cleanly
             self.event_store_service = None
-            messagebox.showerror(
-                "Critical Error - Event Storage",
-                "Failed to start the Event Store service.\n\n"
-                "Event storage is required for normal operation.\n"
-                "The application will now exit.",
-            )
+            try:
+                # Try to show error dialog (root window exists but main loop may not have started)
+                messagebox.showerror(
+                    "Critical Error - Event Storage",
+                    "Failed to start the Event Store service.\n\n"
+                    "Event storage is required for normal operation.\n"
+                    "The application will now exit.",
+                )
+            except Exception:
+                # Fallback to stderr if messagebox fails
+                print(
+                    "CRITICAL ERROR: Failed to start EventStoreService. "
+                    "Event storage is required for normal operation.",
+                    file=sys.stderr,
+                )
             sys.exit(1)
 
         # Initialize deferred notifications list for non-critical services
