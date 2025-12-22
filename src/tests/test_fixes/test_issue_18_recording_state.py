@@ -71,9 +71,9 @@ class TestRecordingStateConsistency:
         sig = inspect.signature(ReplayController.__init__)
         params = list(sig.parameters.keys())
 
-        assert "recording_controller" in params, (
-            "ReplayController.__init__ should have recording_controller parameter"
-        )
+        assert (
+            "recording_controller" in params
+        ), "ReplayController.__init__ should have recording_controller parameter"
 
     def test_toggle_recording_does_not_call_replay_engine(self, mock_replay_controller_deps):
         """
@@ -109,12 +109,12 @@ class TestRecordingStateConsistency:
         controller.toggle_recording()
 
         # AFTER FIX: Should NOT call legacy methods
-        assert not deps["replay_engine"].enable_recording.called, (
-            "toggle_recording should not call replay_engine.enable_recording()"
-        )
-        assert not deps["replay_engine"].disable_recording.called, (
-            "toggle_recording should not call replay_engine.disable_recording()"
-        )
+        assert (
+            not deps["replay_engine"].enable_recording.called
+        ), "toggle_recording should not call replay_engine.enable_recording()"
+        assert (
+            not deps["replay_engine"].disable_recording.called
+        ), "toggle_recording should not call replay_engine.disable_recording()"
 
     def test_toggle_recording_uses_recording_controller(self, mock_replay_controller_deps):
         """

@@ -109,9 +109,9 @@ jobs:
           script: |
             const version = '${{ needs.create-release.outputs.version || github.ref_name }}';
             const buildStatus = '${{ needs.build-artifacts.result }}';
-            
+
             let message = `## 🚀 Release ${version}\n\n`;
-            
+
             if (buildStatus === 'success') {
               message += '✅ Build artifacts created successfully\n\n';
               message += '### Next Steps\n';
@@ -122,9 +122,9 @@ jobs:
               message += '⚠️ Build artifacts creation failed\n\n';
               message += 'Please check the workflow logs for details.\n';
             }
-            
+
             message += '\n---\n*Automated release notification by GitHub Actions*';
-            
+
             // Create an issue for the release
             await github.rest.issues.create({
               owner: context.repo.owner,

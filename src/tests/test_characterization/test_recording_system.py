@@ -260,9 +260,9 @@ class TestLogMessageTriggers:
                 # Find the call that contains 'recording disabled'
                 calls = [str(c) for c in mock_logger.info.call_args_list]
                 found_recording_disabled = any("recording disabled" in c for c in calls)
-                assert found_recording_disabled, (
-                    f"Expected 'recording disabled' in logs, got: {calls}"
-                )
+                assert (
+                    found_recording_disabled
+                ), f"Expected 'recording disabled' in logs, got: {calls}"
 
             engine.cleanup()
 

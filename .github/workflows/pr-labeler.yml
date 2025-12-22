@@ -45,7 +45,7 @@ jobs:
           script: |
             const title = context.payload.pull_request.title.toLowerCase();
             const labels = [];
-            
+
             // Type-based labels
             if (title.includes('fix') || title.includes('bug')) {
               labels.push('bug');
@@ -82,7 +82,7 @@ jobs:
             if (title.includes('urgent') || title.includes('hotfix')) {
               labels.push('priority: high');
             }
-            
+
             // Add labels if any were identified
             if (labels.length > 0) {
               await github.rest.issues.addLabels({
@@ -91,6 +91,6 @@ jobs:
                 issue_number: context.payload.pull_request.number,
                 labels: labels
               });
-              
+
               console.log(`Added labels: ${labels.join(', ')}`);
             }

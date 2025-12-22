@@ -42,14 +42,14 @@ jobs:
         run: |
           echo "## Code Complexity Analysis" > complexity_report.md
           echo "" >> complexity_report.md
-          
+
           # Cyclomatic complexity with radon
           echo "### Cyclomatic Complexity (Radon)" >> complexity_report.md
           echo "\`\`\`" >> complexity_report.md
           radon cc src/ -a -s || echo "No complexity issues" >> complexity_report.md
           echo "\`\`\`" >> complexity_report.md
           echo "" >> complexity_report.md
-          
+
           # Maintainability index
           echo "### Maintainability Index" >> complexity_report.md
           echo "\`\`\`" >> complexity_report.md
@@ -63,21 +63,21 @@ jobs:
           script: |
             const fs = require('fs');
             const report = fs.readFileSync('complexity_report.md', 'utf8');
-            
+
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
             });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
               comment.body.includes('Code Complexity Analysis')
             );
-            
+
             const commentBody = `${report}\n\n---\n*Automated complexity analysis by GitHub Actions*`;
-            
+
             if (botComment) {
               // Update existing comment
               await github.rest.issues.updateComment({
@@ -169,18 +169,18 @@ jobs:
           script: |
             const fs = require('fs');
             let report = '## Security Scan Results\n\n';
-            
+
             try {
               const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
               const issues = bandit.results || [];
-              
+
               if (issues.length > 0) {
                 report += '### Security Issues Found\n\n';
                 issues.slice(0, 10).forEach(issue => {
                   report += `- **${issue.issue_severity}**: ${issue.issue_text}\n`;
                   report += `  - File: \`${issue.filename}:${issue.line_number}\`\n\n`;
                 });
-                
+
                 if (issues.length > 10) {
                   report += `\n*... and ${issues.length - 10} more issues*\n`;
                 }
@@ -190,9 +190,9 @@ jobs:
             } catch (e) {
               report += '⚠️ Could not parse security report\n';
             }
-            
+
             report += '\n---\n*Automated security scan by GitHub Actions*';
-            
+
             // Post comment
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -219,21 +219,21 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
             });
-            
+
             let summary = '## PR Change Summary\n\n';
-            
+
             // Count by file type
             const fileTypes = {};
             const changedAreas = new Set();
             let totalAdditions = 0;
             let totalDeletions = 0;
-            
+
             files.forEach(file => {
               const ext = file.filename.split('.').pop();
               fileTypes[ext] = (fileTypes[ext] || 0) + 1;
               totalAdditions += file.additions;
               totalDeletions += file.deletions;
-              
+
               // Determine area
               if (file.filename.startsWith('src/core/')) changedAreas.add('Core');
               if (file.filename.startsWith('src/services/')) changedAreas.add('Services');
@@ -242,51 +242,51 @@ jobs:
               if (file.filename.startsWith('.github/')) changedAreas.add('CI/CD');
               if (file.filename.includes('doc') || file.filename.endsWith('.md')) changedAreas.add('Documentation');
             });
-            
+
             summary += `### Statistics\n`;
             summary += `- **Files changed**: ${files.length}\n`;
             summary += `- **Additions**: +${totalAdditions} lines\n`;
             summary += `- **Deletions**: -${totalDeletions} lines\n`;
             summary += `- **Net change**: ${totalAdditions - totalDeletions} lines\n\n`;
-            
+
             summary += `### Areas Affected\n`;
             changedAreas.forEach(area => summary += `- ${area}\n`);
             summary += '\n';
-            
+
             summary += `### File Types\n`;
             Object.entries(fileTypes)
               .sort((a, b) => b[1] - a[1])
               .forEach(([type, count]) => {
                 summary += `- \`.${type}\`: ${count} file(s)\n`;
               });
-            
+
             // Warnings
             summary += '\n### Review Checklist\n';
-            
+
             if (totalAdditions + totalDeletions > 500) {
               summary += '- ⚠️ **Large PR**: Consider breaking into smaller PRs\n';
             }
-            
+
             if (files.length > 20) {
               summary += '- ⚠️ **Many files changed**: Review carefully\n';
             }
-            
+
             const hasTests = files.some(f => f.filename.includes('test'));
             if (!hasTests && files.some(f => f.filename.endsWith('.py') && !f.filename.includes('test'))) {
               summary += '- ⚠️ **No test changes detected**: Consider adding tests\n';
             }
-            
-            const hasSecurityChanges = files.some(f => 
-              f.filename.includes('security') || 
+
+            const hasSecurityChanges = files.some(f =>
+              f.filename.includes('security') ||
               f.filename.includes('auth') ||
               f.filename.includes('event_store')
             );
             if (hasSecurityChanges) {
               summary += '- 🔒 **Security-sensitive changes**: Extra review required\n';
             }
-            
+
             summary += '\n---\n*Automated PR analysis by GitHub Actions*';
-            
+
             // Post comment
             await github.rest.issues.createComment({
               owner: context.repo.owner,

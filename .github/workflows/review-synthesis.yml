@@ -21,7 +21,7 @@ jobs:
     if: |
       (github.event.review && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.review.user.login)) ||
       (github.event.comment && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.comment.user.login))
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -118,7 +118,7 @@ jobs:
 
           # Semantic deduplication
           print("🧠 Performing semantic deduplication...")
-          
+
           model = SentenceTransformer('all-MiniLM-L6-v2')
           texts = [c['body'][:1000] for c in all_comments]  # Truncate for performance
           embeddings = model.encode(texts)
@@ -132,19 +132,19 @@ jobs:
           for i in range(len(all_comments)):
               if i in processed:
                   continue
-              
+
               cluster = {
                   'representative': all_comments[i],
                   'similar': [],
                   'bots': [all_comments[i]['bot']]
               }
-              
+
               for j in range(i + 1, len(all_comments)):
                   if j not in processed and similarity_matrix[i][j] > SIMILARITY_THRESHOLD:
                       cluster['similar'].append(all_comments[j])
                       cluster['bots'].append(all_comments[j]['bot'])
                       processed.add(j)
-              
+
               processed.add(i)
               clusters.append(cluster)
 
@@ -153,7 +153,7 @@ jobs:
           # Severity scoring
           def calculate_severity(text, consensus_count):
               text_lower = text.lower()
-              
+
               # Base severity
               if any(word in text_lower for word in ['security', 'vulnerability', 'exploit', 'injection', 'malicious']):
                   base = 10
@@ -165,7 +165,7 @@ jobs:
                   base = 3
               else:
                   base = 4
-              
+
               # Consensus multiplier
               multiplier = 1 + (consensus_count - 1) * 0.3
               return min(10, base * multiplier)
@@ -174,7 +174,7 @@ jobs:
           def detect_categories(text):
               text_lower = text.lower()
               categories = []
-              
+
               if any(word in text_lower for word in ['security', 'auth', 'encrypt', 'vulnerab']):
                   categories.append('security')
               if any(word in text_lower for word in ['performance', 'optimiz', 'slow', 'cache']):
@@ -191,7 +191,7 @@ jobs:
                   categories.append('testing')
               if any(word in text_lower for word in ['architecture', 'design', 'pattern', 'structure']):
                   categories.append('architecture')
-              
+
               return categories if categories else ['general']
 
           # Actionability detection
@@ -212,11 +212,11 @@ jobs:
           for cluster in clusters:
               text = cluster['representative']['body']
               consensus_count = len(cluster['bots'])
-              
+
               severity_score = calculate_severity(text, consensus_count)
               categories = detect_categories(text)
               actionable = is_actionable(text)
-              
+
               if severity_score >= 8:
                   severity_level = 'critical'
               elif severity_score >= 6:
@@ -225,7 +225,7 @@ jobs:
                   severity_level = 'medium'
               else:
                   severity_level = 'low'
-              
+
               scored_clusters.append({
                   'cluster': cluster,
                   'severity_score': round(severity_score, 2),
@@ -249,9 +249,9 @@ jobs:
 
           report = f"""## 🤖 Intelligent Review Synthesis Report
 
-          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC  
-          **Total Bot Comments:** {len(all_comments)}  
-          **Unique Issues:** {len(clusters)}  
+          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+          **Total Bot Comments:** {len(all_comments)}
+          **Unique Issues:** {len(clusters)}
           **Deduplication Rate:** {dedup_rate}%
 
           ### 📊 Summary
@@ -330,7 +330,7 @@ jobs:
 
           # Post or update synthesis comment
           print("📝 Posting synthesis report...")
-          
+
           existing_comment = None
           for comment in pr.get_issue_comments():
               if comment.user.login == 'github-actions[bot]' and '🤖 Intelligent Review Synthesis Report' in comment.body:
@@ -346,5 +346,5 @@ jobs:
 
           print("✨ Synthesis complete! All findings consolidated in PR comment for triage.")
           PYTHON_SCRIPT
-          
+
           python synthesize.py

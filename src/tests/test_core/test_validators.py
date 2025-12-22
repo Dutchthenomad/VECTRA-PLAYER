@@ -79,7 +79,7 @@ class TestValidateBetAmount:
 
     def test_negative_bet(self):
         """Test validation fails for negative bet"""
-        is_valid, error = validate_bet_amount(Decimal("-0.01"), Decimal("0.1"))
+        is_valid, _error = validate_bet_amount(Decimal("-0.01"), Decimal("0.1"))
 
         assert is_valid == False
 
@@ -126,7 +126,7 @@ class TestValidateTradingAllowed:
             }
         )
 
-        is_valid, error = validate_trading_allowed(tick)
+        is_valid, _error = validate_trading_allowed(tick)
 
         assert is_valid == True
 
@@ -146,7 +146,7 @@ class TestValidateTradingAllowed:
             }
         )
 
-        is_valid, error = validate_trading_allowed(tick)
+        is_valid, _error = validate_trading_allowed(tick)
 
         assert is_valid == True
 
@@ -198,9 +198,9 @@ class TestValidateSidebet:
             last_sidebet_resolved_tick=last_resolved_tick,
         )
 
-        assert is_valid == True, (
-            f"Expected sidebet to be allowed at exactly {config.SIDEBET_COOLDOWN_TICKS} ticks, but got: {error}"
-        )
+        assert (
+            is_valid == True
+        ), f"Expected sidebet to be allowed at exactly {config.SIDEBET_COOLDOWN_TICKS} ticks, but got: {error}"
         assert error is None
 
     def test_sidebet_blocked_at_4_ticks(self, sample_tick):
