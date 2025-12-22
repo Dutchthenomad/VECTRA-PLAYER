@@ -75,31 +75,31 @@ class TestMenuBarBuilder:
     def test_build_creates_menu(self, root, callbacks, variables):
         """build() should create a tk.Menu"""
         builder = MenuBarBuilder(root, callbacks, variables)
-        menubar, refs = builder.build()
+        menubar, _refs = builder.build()
         assert isinstance(menubar, tk.Menu)
 
     def test_build_returns_refs_dict(self, root, callbacks, variables):
         """build() should return a refs dictionary"""
         builder = MenuBarBuilder(root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
         assert isinstance(refs, dict)
 
     def test_refs_contains_browser_menu(self, root, callbacks, variables):
         """refs should contain browser_menu for dynamic updates"""
         builder = MenuBarBuilder(root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
         assert "browser_menu" in refs
 
     def test_refs_contains_dev_menu(self, root, callbacks, variables):
         """refs should contain dev_menu for dynamic updates"""
         builder = MenuBarBuilder(root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
         assert "dev_menu" in refs
 
     def test_refs_contains_menu_indices(self, root, callbacks, variables):
         """refs should contain menu item indices for updates"""
         builder = MenuBarBuilder(root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
         assert "browser_status_item_index" in refs
         assert "browser_disconnect_item_index" in refs
         assert "dev_capture_item_index" in refs

@@ -1,6 +1,6 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-21 (Phase 12D Complete)
+Last Updated: 2025-12-21 18:30 (Phase 5.3 Refactor Complete)
 
 ---
 
@@ -23,11 +23,33 @@ gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 
 ## Active Work
 
-### Current Phase: Phase 12D - System Validation (COMPLETE)
+### Current Phase: Refactoring Phase 5.3 - main_window.py (COMPLETE)
 
 **Branch:** `feat/phase-3-recording-consolidation`
 
-**Latest Commit:** `89239b1` - `docs(Phase 12D): Add migration guide and update CLAUDE.md`
+**Latest Commit:** Staged (1127 tests passed, awaiting commit after PR automation fix)
+
+### Refactoring Status
+
+| Task | Status |
+|------|--------|
+| Phase 5.3: main_window.py modularization | ✅ COMPLETE |
+
+**Result:** main_window.py reduced from **1968 lines → 616 lines** (68% reduction)
+
+### Extracted Modules
+
+| Module | Location | Lines |
+|--------|----------|-------|
+| keyboard_shortcuts.py | ui/interactions/ | ~100 |
+| theme_manager.py | ui/interactions/ | ~170 |
+| shutdown.py | ui/window/ | ~65 |
+| capture_handlers.py | ui/handlers/ | ~130 |
+| recording_handlers.py | ui/handlers/ | ~135 |
+| balance_handlers.py | ui/handlers/ | ~85 |
+| player_handlers.py | ui/handlers/ | ~100 |
+| event_handlers.py | ui/handlers/ | ~100 |
+| replay_handlers.py | ui/handlers/ | ~120 |
 
 ### Phase Status
 
@@ -38,6 +60,7 @@ gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 | 12C | LiveStateProvider | ✅ COMPLETE (20 tests) |
 | 12D | System Validation & Legacy Consolidation | ✅ COMPLETE (8 tasks) |
 | 12E | Protocol Explorer UI | ⏳ PENDING |
+| 5.3 | main_window.py Refactor | ✅ COMPLETE |
 
 ---
 
@@ -131,6 +154,7 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src
 
 ## Session History
 
+- **2025-12-21**: Phase 5.3 refactor complete - main_window.py 1968→616 lines (68% reduction)
 - **2025-12-21**: Phase 12D complete - All 8 tasks, 1127 tests passing
 - **2025-12-21**: Phase 12C complete - LiveStateProvider implemented
 - **2025-12-17**: EventStore/Parquet writer development

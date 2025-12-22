@@ -79,7 +79,7 @@ class TestValidateBetAmount:
 
     def test_negative_bet(self):
         """Test validation fails for negative bet"""
-        is_valid, error = validate_bet_amount(Decimal("-0.01"), Decimal("0.1"))
+        is_valid, _error = validate_bet_amount(Decimal("-0.01"), Decimal("0.1"))
 
         assert is_valid == False
 
@@ -126,7 +126,7 @@ class TestValidateTradingAllowed:
             }
         )
 
-        is_valid, error = validate_trading_allowed(tick)
+        is_valid, _error = validate_trading_allowed(tick)
 
         assert is_valid == True
 
@@ -146,7 +146,7 @@ class TestValidateTradingAllowed:
             }
         )
 
-        is_valid, error = validate_trading_allowed(tick)
+        is_valid, _error = validate_trading_allowed(tick)
 
         assert is_valid == True
 

@@ -18,12 +18,12 @@ from services.live_state_provider import LiveStateProvider
 def wait_for_condition(condition_fn, timeout=2.0, poll_interval=0.05):
     """
     Poll for a condition to become true with timeout.
-    
+
     Args:
         condition_fn: Callable that returns True when condition is met
         timeout: Maximum time to wait in seconds
         poll_interval: Time between polls in seconds
-    
+
     Returns:
         True if condition was met, False if timeout occurred
     """

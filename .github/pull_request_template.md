@@ -19,9 +19,9 @@ Related to #
 
 ## Changes Made
 <!-- List the main changes in bullet points -->
-- 
-- 
-- 
+-
+-
+-
 
 ## Testing Performed
 <!-- Describe the tests you ran and their results -->
@@ -69,7 +69,7 @@ Related to #
 <!-- Any special deployment steps or considerations -->
 
 ---
-<!-- 
+<!--
 For reviewers: Please use the "Files changed" tab to leave inline comments.
 For automated tools: This PR will be automatically analyzed by:
 - Ruff (linting & formatting)

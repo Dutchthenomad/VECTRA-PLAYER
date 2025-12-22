@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -36,7 +36,7 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@v4
+        uses: mikepenz/release-changelog-builder-action@v6
         with:
           configuration: '.github/release-changelog-config.json'
           outputFile: 'CHANGELOG_LATEST.md'
@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: Release ${{ steps.version.outputs.version }}
@@ -72,7 +72,7 @@ jobs:
     needs: create-release
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -109,9 +109,9 @@ jobs:
           script: |
             const version = '${{ needs.create-release.outputs.version || github.ref_name }}';
             const buildStatus = '${{ needs.build-artifacts.result }}';
-            
+
             let message = `## 🚀 Release ${version}\n\n`;
-            
+
             if (buildStatus === 'success') {
               message += '✅ Build artifacts created successfully\n\n';
               message += '### Next Steps\n';
@@ -122,9 +122,9 @@ jobs:
               message += '⚠️ Build artifacts creation failed\n\n';
               message += 'Please check the workflow logs for details.\n';
             }
-            
+
             message += '\n---\n*Automated release notification by GitHub Actions*';
-            
+
             // Create an issue for the release
             await github.rest.issues.create({
               owner: context.repo.owner,
