@@ -1,0 +1,349 @@
+name: Intelligent Review Synthesis
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  synthesize-reviews:
+    name: Synthesize Bot Reviews
+    runs-on: ubuntu-latest
+    # Only run when bot comments are detected
+    if: |
+      (github.event.review && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.review.user.login)) ||
+      (github.event.comment && contains(fromJson('["sourcery-ai[bot]", "coderabbitai[bot]", "Copilot", "qodo-merge-pro[bot]", "qodo-free-for-open-source-projects[bot]"]'), github.event.comment.user.login))
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install PyGithub sentence-transformers scikit-learn numpy
+
+      - name: Wait for All Bots
+        run: sleep 180  # Wait 3 minutes for all bots to finish commenting
+
+      - name: Synthesize Reviews
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          cat > synthesize.py << 'PYTHON_SCRIPT'
+          import os
+          import json
+          import re
+          from collections import defaultdict
+          from datetime import datetime
+          from github import Github
+          from sentence_transformers import SentenceTransformer
+          from sklearn.metrics.pairwise import cosine_similarity
+          import numpy as np
+
+          # Initialize GitHub client
+          g = Github(os.environ['GITHUB_TOKEN'])
+          repo = g.get_repo(os.environ['GITHUB_REPOSITORY'])
+          pr_number = int(os.environ['PR_NUMBER'])
+          pr = repo.get_pull(pr_number)
+
+          # Bot accounts to track
+          BOT_ACCOUNTS = [
+              'sourcery-ai[bot]',
+              'coderabbitai[bot]',
+              'Copilot',
+              'qodo-merge-pro[bot]',
+              'qodo-free-for-open-source-projects[bot]'
+          ]
+
+          print("🤖 Collecting bot reviews...")
+
+          # Collect all bot comments
+          all_comments = []
+
+          # PR reviews
+          for review in pr.get_reviews():
+              if review.user.login in BOT_ACCOUNTS and review.body:
+                  all_comments.append({
+                      'id': review.id,
+                      'bot': review.user.login,
+                      'body': review.body,
+                      'type': 'review',
+                      'url': review.html_url
+                  })
+
+          # Review comments
+          for comment in pr.get_review_comments():
+              if comment.user.login in BOT_ACCOUNTS:
+                  all_comments.append({
+                      'id': comment.id,
+                      'bot': comment.user.login,
+                      'body': comment.body,
+                      'type': 'review_comment',
+                      'path': comment.path,
+                      'url': comment.html_url
+                  })
+
+          # Issue comments
+          for comment in pr.get_issue_comments():
+              if comment.user.login in BOT_ACCOUNTS:
+                  all_comments.append({
+                      'id': comment.id,
+                      'bot': comment.user.login,
+                      'body': comment.body,
+                      'type': 'issue_comment',
+                      'url': comment.html_url
+                  })
+
+          if not all_comments:
+              print("No bot comments found")
+              exit(0)
+
+          print(f"Found {len(all_comments)} bot comments")
+
+          # Semantic deduplication
+          print("🧠 Performing semantic deduplication...")
+          
+          model = SentenceTransformer('all-MiniLM-L6-v2')
+          texts = [c['body'][:1000] for c in all_comments]  # Truncate for performance
+          embeddings = model.encode(texts)
+          similarity_matrix = cosine_similarity(embeddings)
+
+          # Cluster similar comments (threshold: 0.75)
+          SIMILARITY_THRESHOLD = 0.75
+          clusters = []
+          processed = set()
+
+          for i in range(len(all_comments)):
+              if i in processed:
+                  continue
+              
+              cluster = {
+                  'representative': all_comments[i],
+                  'similar': [],
+                  'bots': [all_comments[i]['bot']]
+              }
+              
+              for j in range(i + 1, len(all_comments)):
+                  if j not in processed and similarity_matrix[i][j] > SIMILARITY_THRESHOLD:
+                      cluster['similar'].append(all_comments[j])
+                      cluster['bots'].append(all_comments[j]['bot'])
+                      processed.add(j)
+              
+              processed.add(i)
+              clusters.append(cluster)
+
+          print(f"Deduplicated {len(all_comments)} comments into {len(clusters)} unique issues")
+
+          # Severity scoring
+          def calculate_severity(text, consensus_count):
+              text_lower = text.lower()
+              
+              # Base severity
+              if any(word in text_lower for word in ['security', 'vulnerability', 'exploit', 'injection', 'malicious']):
+                  base = 10
+              elif any(word in text_lower for word in ['error', 'bug', 'fail', 'crash', 'data loss', 'memory leak']):
+                  base = 7
+              elif any(word in text_lower for word in ['warning', 'issue', 'problem', 'performance', 'optimize']):
+                  base = 5
+              elif any(word in text_lower for word in ['style', 'formatting', 'typo', 'suggestion']):
+                  base = 3
+              else:
+                  base = 4
+              
+              # Consensus multiplier
+              multiplier = 1 + (consensus_count - 1) * 0.3
+              return min(10, base * multiplier)
+
+          # Category detection
+          def detect_categories(text):
+              text_lower = text.lower()
+              categories = []
+              
+              if any(word in text_lower for word in ['security', 'auth', 'encrypt', 'vulnerab']):
+                  categories.append('security')
+              if any(word in text_lower for word in ['performance', 'optimiz', 'slow', 'cache']):
+                  categories.append('performance')
+              if any(word in text_lower for word in ['bug', 'error', 'incorrect', 'wrong', 'fail']):
+                  categories.append('bugs')
+              if any(word in text_lower for word in ['code quality', 'maintain', 'readab', 'complex']):
+                  categories.append('code_quality')
+              if any(word in text_lower for word in ['style', 'format', 'naming', 'convention']):
+                  categories.append('style')
+              if any(word in text_lower for word in ['document', 'comment', 'docstring']):
+                  categories.append('documentation')
+              if any(word in text_lower for word in ['test', 'coverage', 'unit test']):
+                  categories.append('testing')
+              if any(word in text_lower for word in ['architecture', 'design', 'pattern', 'structure']):
+                  categories.append('architecture')
+              
+              return categories if categories else ['general']
+
+          # Actionability detection
+          def is_actionable(text):
+              text_lower = text.lower()
+              return any(word in text_lower for word in [
+                  'should', 'must', 'need to', 'required',
+                  'fix', 'change', 'update', 'replace',
+                  'add', 'remove', 'refactor', 'implement'
+              ])
+
+          # Score and categorize
+          scored_clusters = []
+          for cluster in clusters:
+              text = cluster['representative']['body']
+              consensus_count = len(cluster['bots'])
+              
+              severity_score = calculate_severity(text, consensus_count)
+              categories = detect_categories(text)
+              actionable = is_actionable(text)
+              
+              if severity_score >= 8:
+                  severity_level = 'critical'
+              elif severity_score >= 6:
+                  severity_level = 'high'
+              elif severity_score >= 4:
+                  severity_level = 'medium'
+              else:
+                  severity_level = 'low'
+              
+              scored_clusters.append({
+                  'cluster': cluster,
+                  'severity_score': round(severity_score, 2),
+                  'severity_level': severity_level,
+                  'categories': categories,
+                  'actionable': actionable,
+                  'consensus_count': consensus_count
+              })
+
+          # Sort by severity
+          scored_clusters.sort(key=lambda x: x['severity_score'], reverse=True)
+
+          # Generate report
+          critical = [c for c in scored_clusters if c['severity_level'] == 'critical']
+          high = [c for c in scored_clusters if c['severity_level'] == 'high']
+          medium = [c for c in scored_clusters if c['severity_level'] == 'medium']
+          low = [c for c in scored_clusters if c['severity_level'] == 'low']
+          actionable_items = [c for c in scored_clusters if c['actionable']]
+
+          dedup_rate = round((1 - len(clusters) / len(all_comments)) * 100, 1)
+
+          report = f"""## 🤖 Intelligent Review Synthesis Report
+
+          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC  
+          **Total Bot Comments:** {len(all_comments)}  
+          **Unique Issues:** {len(clusters)}  
+          **Deduplication Rate:** {dedup_rate}%
+
+          ### 📊 Summary
+
+          - 🔴 **Critical:** {len(critical)}
+          - 🟠 **High:** {len(high)}
+          - 🟡 **Medium:** {len(medium)}
+          - 🟢 **Low:** {len(low)}
+          - ⚡ **Actionable:** {len(actionable_items)}
+
+          """
+
+          # Critical issues
+          if critical:
+              report += "### 🔴 Critical Issues\n\n"
+              for item in critical:
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:500] + ('...' if len(rep['body']) > 500 else '')
+                  report += f"**Severity: {item['severity_score']}/10** | **Categories:** {', '.join(item['categories'])} | **Consensus:** {item['consensus_count']} bot(s)\n\n"
+                  report += f"**Bots:** {', '.join(set(item['cluster']['bots']))}\n\n"
+                  report += f"> {body}\n\n"
+                  report += f"[View comment]({rep['url']})\n\n---\n\n"
+
+          # High priority
+          if high:
+              report += "### 🟠 High Priority\n\n"
+              for item in high[:5]:  # Top 5
+                  rep = item['cluster']['representative']
+                  body = rep['body'][:300] + ('...' if len(rep['body']) > 300 else '')
+                  report += f"**Severity: {item['severity_score']}/10** | {', '.join(item['categories'])} | {item['consensus_count']} bot(s) | [Link]({rep['url']})\n\n"
+                  report += f"> {body}\n\n"
+              
+              if len(high) > 5:
+                  report += f"*... and {len(high) - 5} more high priority items*\n\n"
+
+          report += "---\n*Automated synthesis by GitHub Copilot Review Synthesis Workflow*"
+
+          # Post or update synthesis comment
+          print("📝 Posting synthesis report...")
+          
+          existing_comment = None
+          for comment in pr.get_issue_comments():
+              if comment.user.login == 'github-actions[bot]' and '🤖 Intelligent Review Synthesis Report' in comment.body:
+                  existing_comment = comment
+                  break
+
+          if existing_comment:
+              existing_comment.edit(report)
+              print("✅ Updated existing synthesis report")
+          else:
+              pr.create_issue_comment(report)
+              print("✅ Posted new synthesis report")
+
+          # Create follow-up issues for top critical/high actionable items
+          followup_candidates = [
+              item for item in scored_clusters
+              if item['severity_level'] in ['critical', 'high'] and item['actionable']
+          ][:3]  # Top 3
+
+          if followup_candidates:
+              print(f"📋 Creating {len(followup_candidates)} follow-up issues...")
+              
+              for item in followup_candidates:
+                  rep = item['cluster']['representative']
+                  categories_str = ', '.join(item['categories'][:2])
+                  
+                  title = f"[{item['severity_level'].upper()}] {categories_str} - From PR #{pr_number}"
+                  body = f"""## Review Synthesis Follow-Up
+
+          **Source PR:** #{pr_number}  
+          **Severity:** {item['severity_level'].upper()} ({item['severity_score']}/10)  
+          **Categories:** {', '.join(item['categories'])}  
+          **Consensus:** {item['consensus_count']} bot(s)  
+          **Bots:** {', '.join(set(item['cluster']['bots']))}
+
+          ### Review Details
+
+          {rep['body']}
+
+          ---
+          [Original Comment]({rep['url']})
+
+          *Auto-generated from review synthesis*
+          """
+                  
+                  labels = ['bot-review', 'needs-triage', item['severity_level']]
+                  labels.extend(item['categories'][:3])
+                  
+                  try:
+                      issue = repo.create_issue(title=title, body=body, labels=labels)
+                      pr.create_issue_comment(f"📋 Created follow-up issue: #{issue.number}")
+                      print(f"✅ Created issue #{issue.number}")
+                  except Exception as e:
+                      print(f"❌ Error creating issue: {e}")
+
+          print("✨ Synthesis complete!")
+          PYTHON_SCRIPT
+          
+          python synthesize.py
