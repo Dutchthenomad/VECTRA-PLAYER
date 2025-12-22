@@ -9,18 +9,13 @@ from decimal import Decimal
 from pathlib import Path
 from tkinter import ttk
 
-# Toggle legacy recorders via environment (set RUGS_LEGACY_RECORDERS=false to disable)
-LEGACY_RECORDERS_ENABLED = os.getenv("RUGS_LEGACY_RECORDERS", "true").lower() != "false"
-
 from bot import BotController, BotInterface, list_strategies
 from bot.async_executor import AsyncBotExecutor
 from bot.execution_mode import ExecutionMode
 from bot.ui_controller import BotUIController
 from browser.bridge import get_browser_bridge
 from core import ReplayEngine, TradeManager
-from core.demo_recorder import DemoRecorderSink
 from core.game_queue import GameQueue
-from debug.raw_capture_recorder import RawCaptureRecorder
 from services.event_store import EventStoreService
 from services.live_state_provider import LiveStateProvider
 from services.ui_dispatcher import TkDispatcher
@@ -35,10 +30,8 @@ from ui.builders import (
 
 # Import mixins
 from ui.handlers.balance_handlers import BalanceHandlersMixin
-from ui.handlers.capture_handlers import CaptureHandlersMixin
 from ui.handlers.event_handlers import EventHandlersMixin
 from ui.handlers.player_handlers import PlayerHandlersMixin
-from ui.handlers.recording_handlers import RecordingHandlersMixin
 from ui.handlers.replay_handlers import ReplayHandlersMixin
 from ui.interactions.keyboard_shortcuts import KeyboardShortcutsMixin
 from ui.interactions.theme_manager import ThemeManagerMixin
@@ -50,10 +43,8 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(
     BalanceHandlersMixin,
-    CaptureHandlersMixin,
     EventHandlersMixin,
     PlayerHandlersMixin,
-    RecordingHandlersMixin,
     ReplayHandlersMixin,
     KeyboardShortcutsMixin,
     ThemeManagerMixin,
@@ -103,22 +94,6 @@ class MainWindow(
         # Core components
         self.replay_engine = ReplayEngine(state)
         self.trade_manager = TradeManager(state)
-
-        # Legacy recorders
-        if LEGACY_RECORDERS_ENABLED:
-            demo_dir = (
-                Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
-            )
-            self.demo_recorder = DemoRecorderSink(demo_dir)
-            self.raw_capture_recorder = RawCaptureRecorder()
-            self.raw_capture_recorder.on_capture_started = self._on_raw_capture_started
-            self.raw_capture_recorder.on_capture_stopped = self._on_raw_capture_stopped
-            self.raw_capture_recorder.on_event_captured = self._on_raw_event_captured
-            logger.info("Legacy recorders initialized")
-        else:
-            self.demo_recorder = None
-            self.raw_capture_recorder = None
-            logger.info("Legacy recorders DISABLED")
 
         # EventStore persists all events to Parquet (canonical data store)
         # AUDIT FIX: Defer toast notifications until toast is initialized
@@ -571,7 +546,6 @@ class MainWindow(
             BotManager,
             BrowserBridgeController,
             LiveFeedController,
-            RecordingController,
             ReplayController,
             TradingController,
         )
@@ -623,7 +597,6 @@ class MainWindow(
             ui_dispatcher=self.ui_dispatcher,
             toast=self.toast,
             log_callback=self.log,
-            demo_recorder=self.demo_recorder,
         )
 
         self.live_feed_controller = LiveFeedController(
@@ -636,14 +609,8 @@ class MainWindow(
             log_callback=self.log,
         )
 
-        recordings_dir = self.config.FILES.get("recordings_dir", "rugs_recordings")
-        self.recording_controller = RecordingController(
-            root=self.root, recordings_path=recordings_dir, game_state=self.state
-        )
-
-        self.trading_controller.recording_controller = self.recording_controller
-        self.live_feed_controller.set_recording_controller(self.recording_controller)
-        self.replay_controller.recording_controller = self.recording_controller
+        # Legacy RecordingController disabled - EventStore handles all recording now
+        self.recording_controller = None
 
         self._create_menu_bar()
 
