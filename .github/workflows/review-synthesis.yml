@@ -203,6 +203,10 @@ jobs:
                   'add', 'remove', 'refactor', 'implement'
               ])
 
+          # Helper to format triage message
+          def format_triage_message(item_id):
+              return f"⚡ **Action Required** - Reply with `@github-actions approve {item_id}` or `@github-actions deny {item_id}` to triage\n\n"
+
           # Score and categorize
           scored_clusters = []
           for cluster in clusters:
@@ -261,8 +265,8 @@ jobs:
           ### ✅ Triage Instructions
 
           Review the findings below and respond in comments to indicate approval or denial:
-          - To **approve** an item for follow-up: Comment `@github-actions approve #<item-number>`
-          - To **deny** an item: Comment `@github-actions deny #<item-number>`
+          - To **approve** an item for follow-up: Comment `@github-actions approve CRIT-1` (use the item ID like CRIT-1, HIGH-2, etc.)
+          - To **deny** an item: Comment `@github-actions deny HIGH-3`
           - Critical and High severity items require explicit triage
 
           """
@@ -279,7 +283,7 @@ jobs:
                   report += f"> {body}\n\n"
                   report += f"[View comment]({rep['url']})\n\n"
                   if item['actionable']:
-                      report += f"⚡ **Action Required** - Reply with `@github-actions approve #{item_id}` or `@github-actions deny #{item_id}` to triage\n\n"
+                      report += format_triage_message(item_id)
                   report += "---\n\n"
 
           # High priority - show all with item numbers
@@ -294,7 +298,7 @@ jobs:
                   report += f"> {body}\n\n"
                   report += f"[View comment]({rep['url']})\n\n"
                   if item['actionable']:
-                      report += f"⚡ **Action Required** - Reply with `@github-actions approve #{item_id}` or `@github-actions deny #{item_id}` to triage\n\n"
+                      report += format_triage_message(item_id)
                   report += "---\n\n"
 
           # Medium priority - show summary with expandable details
