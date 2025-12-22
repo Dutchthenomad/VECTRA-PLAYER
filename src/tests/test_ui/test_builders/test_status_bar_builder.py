@@ -78,3 +78,18 @@ class TestStatusBarBuilder:
         builder = StatusBarBuilder(root)
         widgets = builder.build()
         assert widgets["price_label"].cget("text") == "PRICE: 1.0000 X"
+
+    def test_build_creates_capture_stats_label(self, root):
+        """build() should create capture_stats_label (Phase 12D)"""
+        builder = StatusBarBuilder(root)
+        widgets = builder.build()
+        assert "capture_stats_label" in widgets
+        assert isinstance(widgets["capture_stats_label"], tk.Label)
+
+    def test_capture_stats_label_initial_text(self, root):
+        """capture_stats_label should have initial placeholder text (Phase 12D)"""
+        builder = StatusBarBuilder(root)
+        widgets = builder.build()
+        text = widgets["capture_stats_label"].cget("text")
+        assert "Session:" in text
+        assert "Events:" in text

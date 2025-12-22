@@ -101,6 +101,7 @@ class EventStoreService:
         self._event_bus.subscribe(Events.TRADE_BUY, self._on_trade_buy, weak=False)
         self._event_bus.subscribe(Events.TRADE_SELL, self._on_trade_sell, weak=False)
         self._event_bus.subscribe(Events.TRADE_SIDEBET, self._on_trade_sidebet, weak=False)
+        self._event_bus.subscribe(Events.TRADE_CONFIRMED, self._on_trade_confirmed, weak=False)
 
         self._started = True
         logger.info("EventStoreService started")
@@ -117,6 +118,7 @@ class EventStoreService:
         self._event_bus.unsubscribe(Events.TRADE_BUY, self._on_trade_buy)
         self._event_bus.unsubscribe(Events.TRADE_SELL, self._on_trade_sell)
         self._event_bus.unsubscribe(Events.TRADE_SIDEBET, self._on_trade_sidebet)
+        self._event_bus.unsubscribe(Events.TRADE_CONFIRMED, self._on_trade_confirmed)
 
         # Flush and close writer
         self._writer.close()
@@ -302,6 +304,28 @@ class EventStoreService:
     def _on_trade_sidebet(self, data: dict[str, Any]) -> None:
         """Handle sidebet trade event"""
         self._handle_trade_action("sidebet", data)
+
+    def _on_trade_confirmed(self, wrapped: dict[str, Any]) -> None:
+        """Handle trade confirmation event with latency tracking"""
+        try:
+            # EventBus wraps data: {"name": event.value, "data": actual_data}
+            data = wrapped.get("data", wrapped)
+
+            envelope = EventEnvelope.from_player_action(
+                action_type="trade_confirmed",
+                data=data,
+                source=EventSource.UI,
+                session_id=self._session_id,
+                seq=self._next_seq(),
+                game_id=data.get("gameId"),
+                player_id=data.get("playerId"),
+                username=data.get("username"),
+            )
+
+            self._writer.write(envelope)
+
+        except Exception as e:
+            logger.error(f"Error handling TRADE_CONFIRMED: {e}")
 
     def _handle_trade_action(self, action_type: str, wrapped: dict[str, Any]) -> None:
         """Common handler for trade actions"""
