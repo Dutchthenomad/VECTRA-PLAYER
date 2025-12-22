@@ -22,7 +22,8 @@ VECTRA-PLAYER is a unified data architecture for game replay and live trading pl
 ### Initial Setup
 ```bash
 # Clone and navigate to repository
-cd /home/runner/work/VECTRA-PLAYER/VECTRA-PLAYER
+git clone https://github.com/Dutchthenomad/VECTRA-PLAYER.git
+cd VECTRA-PLAYER
 
 # Create virtual environment
 python3 -m venv .venv
