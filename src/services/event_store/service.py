@@ -87,6 +87,9 @@ class EventStoreService:
 
         # Subscribe to WebSocket events
         self._event_bus.subscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event, weak=False)
+        logger.info(
+            f"EventStoreService subscribed to WS_RAW_EVENT (event_bus id: {id(self._event_bus)})"
+        )
 
         # Subscribe to game events
         self._event_bus.subscribe(Events.GAME_TICK, self._on_game_tick, weak=False)
@@ -131,13 +134,78 @@ class EventStoreService:
             self._seq += 1
             return self._seq
 
+    @staticmethod
+    def _unwrap_event_payload(wrapped: Any) -> dict[str, Any] | None:
+        """
+        Unwrap event payload from EventBus and BrowserBridge wrappers.
+
+        Handles three known formats:
+        1. Already-unwrapped dict: {"event": "...", "data": {...}, ...}
+           Returns: same dict
+        
+        2. EventBus + BrowserBridge double-wrapped: {"name": "...", "data": {"data": cdp_event}}
+           Returns: cdp_event dict (inner "data")
+        
+        3. BrowserBridge-only wrapped: {"data": {"event": "...", "data": {...}, ...}}
+           Returns: inner dict containing event details
+
+        Args:
+            wrapped: Raw event payload from EventBus subscription
+
+        Returns:
+            Unwrapped event dict with "event", "data", etc. fields, or None if invalid
+
+        Note:
+            The double-wrapping occurs because:
+            - BrowserBridge publishes: {"data": cdp_event}
+            - EventBus wraps it as: {"name": event_type, "data": bridge_payload}
+            - Result: {"name": event_type, "data": {"data": cdp_event}}
+        """
+        # Validate input is dict
+        if not isinstance(wrapped, dict):
+            logger.warning(f"_unwrap_event_payload: Expected dict, got {type(wrapped)}")
+            return None
+
+        # Check if already unwrapped (has "event" field at top level)
+        if "event" in wrapped:
+            return wrapped
+
+        # Try unwrapping one layer (could be EventBus or BrowserBridge wrapper)
+        outer_data = wrapped.get("data")
+        if outer_data is None or not isinstance(outer_data, dict):
+            logger.warning(
+                f"_unwrap_event_payload: Invalid first wrapper layer, got {type(outer_data)}"
+            )
+            return None
+
+        # Check if outer_data already has "event" field (BrowserBridge-only case)
+        if "event" in outer_data:
+            return outer_data
+
+        # Try unwrapping second layer (EventBus + BrowserBridge double-wrapped)
+        data = outer_data.get("data")
+        if data is None or not isinstance(data, dict):
+            logger.warning(
+                f"_unwrap_event_payload: Invalid second wrapper layer, got {type(data)}"
+            )
+            return None
+
+        return data
+
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
         """Handle raw WebSocket event"""
         try:
-            # EventBus wraps data: {"name": event.value, "data": actual_data}
-            data = wrapped.get("data", wrapped)
+            # Unwrap event payload from EventBus/BrowserBridge wrappers
+            data = self._unwrap_event_payload(wrapped)
+            if data is None:
+                return
 
-            event_name = data.get("event", "unknown")
+            # Extract event details
+            event_name = data.get("event")
+            if not event_name:
+                logger.warning("WS_RAW_EVENT: Missing event name")
+                return
+
             event_data = data.get("data", {})
             source_str = data.get("source", "public_ws")
             game_id = data.get("game_id") or event_data.get("gameId")

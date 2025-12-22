@@ -218,8 +218,9 @@ class BrowserBridge:
 
     # Timeouts (in seconds)
     CLICK_TIMEOUT = 10.0
-    CONNECT_TIMEOUT = 30.0
-    ACTION_TIMEOUT = 5.0
+    ACTION_TIMEOUT = 10.0  # General action timeout; kept low for fast error detection
+    WALLET_DETECTION_TIMEOUT = 60.0  # Specific long timeout for wallet detection and CDP setup
+    CONNECT_TIMEOUT = WALLET_DETECTION_TIMEOUT  # Connect includes wallet detection
 
     # Retry configuration
     MAX_RETRIES = 3
@@ -247,12 +248,20 @@ class BrowserBridge:
         self._cdp_interceptor = CDPWebSocketInterceptor()
         self._event_source_manager = EventSourceManager()
         self._rag_ingester = RAGIngester()
+        self._event_bus = event_bus  # Store reference instead of ID for diagnostics
 
         # Wire up event flow from CDP interceptor
         def on_cdp_event(event):
             # Publish to EventBus for all subscribers
-            if event_bus.has_subscribers(Events.WS_RAW_EVENT):
-                event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
+            has_subs = self._event_bus.has_subscribers(Events.WS_RAW_EVENT)
+            if has_subs:
+                self._event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
+                logger.debug(f"CDP event published to EventBus: {event.get('event')}")
+            else:
+                # DIAGNOSTIC: Log when no subscribers found
+                logger.warning(
+                    f"No EventBus subscribers for WS_RAW_EVENT - event dropped: {event.get('event')}"
+                )
             # Catalog for RAG
             self._rag_ingester.catalog(event)
 
@@ -504,6 +513,9 @@ class BrowserBridge:
                 self._event_source_manager.switch_to_best_source()
                 self._rag_ingester.start_session()
                 logger.info("CDP WebSocket interception started")
+
+                # Force Socket.IO to reconnect so CDP can capture the new WebSocket
+                await self._force_socketio_reconnect()
             else:
                 logger.error("Failed to connect CDP interceptor")
 
@@ -525,6 +537,54 @@ class BrowserBridge:
 
         except Exception as e:
             logger.error(f"Failed to stop CDP interception: {e}", exc_info=True)
+
+    async def _force_socketio_reconnect(self):
+        """
+        Force Socket.IO to disconnect and reconnect.
+
+        This creates a new WebSocket connection that CDP can capture.
+        The pre-existing WebSocket (created before CDP interception started)
+        cannot be intercepted by CDP, so we force a reconnection.
+        """
+        try:
+            if not self.cdp_manager or not self.cdp_manager.page:
+                logger.warning("Cannot force reconnect - no page available")
+                return
+
+            # Socket.IO client typically available as window.socketService or window.socket
+            reconnect_js = """
+            () => {
+                // Try multiple common Socket.IO variable names
+                const socket = window.socketService || window.socket || window.io?.socket;
+                if (socket && typeof socket.disconnect === 'function') {
+                    console.log('[CDP Reconnect] Forcing Socket.IO reconnection...');
+                    socket.disconnect();
+                    // Small delay before reconnecting
+                    setTimeout(() => {
+                        if (typeof socket.connect === 'function') {
+                            socket.connect();
+                            console.log('[CDP Reconnect] Socket.IO reconnected');
+                        }
+                    }, 500);
+                    return true;
+                }
+                console.log('[CDP Reconnect] No Socket.IO instance found');
+                return false;
+            }
+            """
+
+            result = await self.cdp_manager.page.evaluate(reconnect_js)
+            if result:
+                logger.info("Forced Socket.IO reconnection for CDP capture")
+                # Wait for the reconnection to complete
+                await asyncio.sleep(1.0)
+            else:
+                logger.error("Could not find Socket.IO instance for reconnection; stopping CDP interception")
+                await self._stop_cdp_interception()
+
+        except Exception as e:
+            logger.error(f"Failed to force Socket.IO reconnect: {e}")
+            await self._stop_cdp_interception()
 
     # ========================================================================
     # BUTTON CLICK IMPLEMENTATIONS
