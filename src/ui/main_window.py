@@ -119,13 +119,25 @@ class MainWindow:
             logger.info("Legacy recorders DISABLED (RUGS_LEGACY_RECORDERS=false)")
 
         # EventStore persists all events to Parquet (canonical data store)
-        self.event_store_service = EventStoreService(event_bus)
-        self.event_store_service.start()
-        logger.info("EventStoreService started for Parquet persistence")
+        try:
+            self.event_store_service = EventStoreService(event_bus)
+            self.event_store_service.start()
+            logger.info(
+                f"EventStoreService started: session {self.event_store_service.session_id[:8]}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
+            self.toast.show("Warning: Event storage disabled", "warning")
+            self.event_store_service = None
 
         # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
-        self.live_state_provider = LiveStateProvider(event_bus)
-        logger.info("LiveStateProvider initialized for server-authoritative state")
+        try:
+            self.live_state_provider = LiveStateProvider(event_bus)
+            logger.info("LiveStateProvider initialized for server-authoritative state")
+        except Exception as e:
+            logger.error(f"Failed to initialize LiveStateProvider: {e}", exc_info=True)
+            self.toast.show("Warning: Live state tracking disabled", "warning")
+            self.live_state_provider = None
 
         # Initialize game queue for multi-game sessions
         recordings_dir = config.FILES["recordings_dir"]

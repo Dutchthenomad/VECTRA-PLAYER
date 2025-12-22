@@ -129,7 +129,11 @@ class TradingController:
     def execute_buy(self):
         """Execute buy action using TradeManager."""
         # Click BUY in browser first - browser is source of truth
-        self.browser_bridge.on_buy_clicked()
+        try:
+            self.browser_bridge.on_buy_clicked()
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for BUY: {e}")
+            # Continue with local trading - browser is optional
 
         amount = self.get_bet_amount()
         if amount is None:
@@ -149,7 +153,11 @@ class TradingController:
     def execute_sell(self):
         """Execute sell action using TradeManager (supports partial sells)."""
         # Click SELL in browser if connected
-        self.browser_bridge.on_sell_clicked()
+        try:
+            self.browser_bridge.on_sell_clicked()
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for SELL: {e}")
+            # Continue with local trading - browser is optional
 
         self._record_button_press("SELL")
 
@@ -180,7 +188,11 @@ class TradingController:
     def execute_sidebet(self):
         """Execute sidebet using TradeManager (Phase 9.3: syncs to browser)"""
         # Click SIDEBET in browser first - browser is source of truth
-        self.browser_bridge.on_sidebet_clicked()
+        try:
+            self.browser_bridge.on_sidebet_clicked()
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for SIDEBET: {e}")
+            # Continue with local trading - browser is optional
 
         amount = self.get_bet_amount()
         if amount is None:
@@ -215,7 +227,10 @@ class TradingController:
             percentage: 0.1 (10%), 0.25 (25%), 0.5 (50%), or 1.0 (100%)
         """
         # Click percentage button in browser if connected
-        self.browser_bridge.on_percentage_clicked(percentage)
+        try:
+            self.browser_bridge.on_percentage_clicked(percentage)
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for percentage {percentage}: {e}")
 
         button_text = f"{int(percentage * 100)}%"
         self._record_button_press(button_text)
@@ -264,7 +279,10 @@ class TradingController:
         # Click increment button in browser FIRST
         # Map Decimal amount to button text: 0.001 -> '+0.001', 0.01 -> '+0.01', etc.
         button_text = f"+{amount}"
-        self.browser_bridge.on_increment_clicked(button_text)
+        try:
+            self.browser_bridge.on_increment_clicked(button_text)
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for increment {button_text}: {e}")
 
         self._record_button_press(button_text)
 
@@ -286,7 +304,10 @@ class TradingController:
     def clear_bet_amount(self):
         """Clear bet amount to zero (Phase 9.3: syncs to browser)"""
         # Click X (clear) button in browser FIRST
-        self.browser_bridge.on_clear_clicked()
+        try:
+            self.browser_bridge.on_clear_clicked()
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for clear: {e}")
 
         self._record_button_press("X")
 
@@ -298,7 +319,10 @@ class TradingController:
     def half_bet_amount(self):
         """Halve bet amount (1/2 button) - Phase 9.3: syncs to browser"""
         # Click 1/2 button in browser FIRST
-        self.browser_bridge.on_increment_clicked("1/2")
+        try:
+            self.browser_bridge.on_increment_clicked("1/2")
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for half: {e}")
 
         self._record_button_press("1/2")
 
@@ -317,7 +341,10 @@ class TradingController:
     def double_bet_amount(self):
         """Double bet amount (X2 button) - Phase 9.3: syncs to browser"""
         # Click X2 button in browser FIRST
-        self.browser_bridge.on_increment_clicked("X2")
+        try:
+            self.browser_bridge.on_increment_clicked("X2")
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for double: {e}")
 
         self._record_button_press("X2")
 
@@ -336,7 +363,10 @@ class TradingController:
     def max_bet_amount(self):
         """Set bet to max (MAX button) - Phase 9.3: syncs to browser"""
         # Click MAX button in browser FIRST
-        self.browser_bridge.on_increment_clicked("MAX")
+        try:
+            self.browser_bridge.on_increment_clicked("MAX")
+        except Exception as e:
+            logger.warning(f"Browser bridge unavailable for MAX: {e}")
 
         self._record_button_press("MAX")
 
