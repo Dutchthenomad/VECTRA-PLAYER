@@ -36,9 +36,9 @@ class TestSchemaRegistry:
     def test_registry_maps_to_pydantic_models(self):
         """All registry values should be Pydantic BaseModel subclasses."""
         for event, schema in SCHEMA_REGISTRY.items():
-            assert issubclass(
-                schema, BaseModel
-            ), f"{event} schema is not a Pydantic model: {schema}"
+            assert issubclass(schema, BaseModel), (
+                f"{event} schema is not a Pydantic model: {schema}"
+            )
 
     def test_game_state_update_registered(self):
         """gameStateUpdate should map to GameStateUpdate."""

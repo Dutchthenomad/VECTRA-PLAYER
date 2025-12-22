@@ -198,9 +198,9 @@ class TestValidateSidebet:
             last_sidebet_resolved_tick=last_resolved_tick,
         )
 
-        assert (
-            is_valid == True
-        ), f"Expected sidebet to be allowed at exactly {config.SIDEBET_COOLDOWN_TICKS} ticks, but got: {error}"
+        assert is_valid == True, (
+            f"Expected sidebet to be allowed at exactly {config.SIDEBET_COOLDOWN_TICKS} ticks, but got: {error}"
+        )
         assert error is None
 
     def test_sidebet_blocked_at_4_ticks(self, sample_tick):
