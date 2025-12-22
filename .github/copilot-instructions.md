@@ -5,9 +5,9 @@ This file provides guidance for GitHub Copilot coding agent when working on issu
 ## 🎯 Project Overview
 
 VECTRA-PLAYER is a unified data architecture for game replay and live trading platform focused on:
-- **DuckDB/Parquet** as canonical truth storage + **LanceDB** for vector search
+- **DuckDB/Parquet** as canonical truth storage + **ChromaDB** for vector search
 - **Server-authoritative state** - Trust server in live mode
-- **RAG integration** - LanceDB powers AI agents and Protocol Explorer UI
+- **RAG integration** - ChromaDB powers AI agents and Protocol Explorer UI
 - **Event-driven architecture** - EventBus with EventStore persistence
 
 **Core Principle:** Parquet is canonical truth; vector indexes are derived and rebuildable.
@@ -22,7 +22,8 @@ VECTRA-PLAYER is a unified data architecture for game replay and live trading pl
 ### Initial Setup
 ```bash
 # Clone and navigate to repository
-cd /home/runner/work/VECTRA-PLAYER/VECTRA-PLAYER
+git clone https://github.com/Dutchthenomad/VECTRA-PLAYER.git
+cd VECTRA-PLAYER
 
 # Create virtual environment
 python3 -m venv .venv
@@ -299,7 +300,7 @@ When working on issues:
 
 ## 🔧 Advanced Topics
 
-### Vector Indexing (LanceDB)
+### Vector Indexing (ChromaDB)
 ```bash
 # Rebuild vector index from Parquet
 vectra-player index build --full
@@ -310,6 +311,8 @@ vectra-player index build --incremental
 # Query the index
 vectra-player index query "What fields are in playerUpdate?"
 ```
+
+**Note:** ChromaDB integration reuses existing claude-flow infrastructure (~600 LOC) for efficiency.
 
 ### DuckDB Queries
 ```python
