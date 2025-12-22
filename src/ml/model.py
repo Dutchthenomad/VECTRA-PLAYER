@@ -5,34 +5,83 @@ Trains on 14-feature vectors to predict optimal sidebet placement timing.
 Target: Win rate >25%, false positive rate <30%
 """
 
-import joblib
-import numpy as np
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
-from sklearn.model_selection import train_test_split
-from sklearn.utils.class_weight import compute_class_weight
+# AUDIT FIX: Lazy import of ML dependencies to avoid crashes in environments without sklearn
+# These will be imported when actually needed (in train() or predict() methods)
+joblib = None
+np = None
+GradientBoostingClassifier = None
+classification_report = None
+confusion_matrix = None
+roc_auc_score = None
+train_test_split = None
+compute_class_weight = None
 
 from .feature_extractor import FEATURE_NAMES
+
+
+def _ensure_ml_dependencies():
+    """Lazy load ML dependencies with clear error message."""
+    global joblib, np, GradientBoostingClassifier
+    global classification_report, confusion_matrix, roc_auc_score
+    global train_test_split, compute_class_weight
+
+    if np is not None:
+        return  # Already loaded
+
+    try:
+        import joblib as _joblib
+        import numpy as _np
+        from sklearn.ensemble import GradientBoostingClassifier as _GBC
+        from sklearn.metrics import (
+            classification_report as _cr,
+            confusion_matrix as _cm,
+            roc_auc_score as _ras,
+        )
+        from sklearn.model_selection import train_test_split as _tts
+        from sklearn.utils.class_weight import compute_class_weight as _ccw
+
+        joblib = _joblib
+        np = _np
+        GradientBoostingClassifier = _GBC
+        classification_report = _cr
+        confusion_matrix = _cm
+        roc_auc_score = _ras
+        train_test_split = _tts
+        compute_class_weight = _ccw
+    except ImportError as e:
+        raise ImportError(
+            f"ML dependencies not installed: {e}\n"
+            f"Install with: pip install scikit-learn joblib numpy\n"
+            f"Or use: pip install -e '.[ml]' if extras are configured"
+        ) from e
 
 
 class SidebetModel:
     """Gradient Boosting model for sidebet prediction"""
 
     def __init__(self):
-        self.model = GradientBoostingClassifier(
-            n_estimators=100,
-            max_depth=4,  # Shallow trees to prevent overfitting
-            learning_rate=0.1,
-            subsample=0.8,
-            min_samples_leaf=20,  # Require decent sample size
-            random_state=42,
-            verbose=1,
-        )
+        # AUDIT FIX: Defer model creation until train() is called
+        # to avoid importing sklearn at __init__ time
+        self.model = None
         self.is_trained = False
         self.optimal_threshold = 0.25  # Default (higher than 0.167 breakeven)
 
+    def _ensure_model(self):
+        """Lazy initialize the model."""
+        if self.model is None:
+            _ensure_ml_dependencies()
+            self.model = GradientBoostingClassifier(
+                n_estimators=100,
+                max_depth=4,  # Shallow trees to prevent overfitting
+                learning_rate=0.1,
+                subsample=0.8,
+                min_samples_leaf=20,  # Require decent sample size
+                random_state=42,
+                verbose=1,
+            )
+
     def train(
-        self, X: np.ndarray, y: np.ndarray, test_size: float = 0.2, val_size: float = 0.25
+        self, X, y, test_size: float = 0.2, val_size: float = 0.25
     ) -> dict:
         """
         Train model on features and labels
@@ -46,6 +95,9 @@ class SidebetModel:
         Returns:
             Dictionary with training metrics
         """
+        # AUDIT FIX: Ensure ML dependencies are loaded before training
+        self._ensure_model()
+
         print(f"\n{'=' * 60}")
         print("SIDEBET MODEL TRAINING")
         print(f"{'=' * 60}")
@@ -165,13 +217,16 @@ class SidebetModel:
             "threshold_results": threshold_results,
         }
 
-    def analyze_thresholds(self, X_test: np.ndarray, y_test: np.ndarray) -> list[dict]:
+    def analyze_thresholds(self, X_test, y_test) -> list[dict]:
         """
         Analyze performance at different probability thresholds
 
         Critical for finding optimal deployment threshold given 5:1 payout.
         Breakeven at 16.67% win rate.
         """
+        # AUDIT FIX: Ensure ML dependencies are loaded
+        _ensure_ml_dependencies()
+
         proba = self.model.predict_proba(X_test)[:, 1]
 
         results = []
@@ -226,7 +281,7 @@ class SidebetModel:
 
         return results
 
-    def predict(self, features: np.ndarray) -> tuple[int, float]:
+    def predict(self, features) -> tuple[int, float]:
         """
         Make prediction for single sample
 
@@ -238,6 +293,9 @@ class SidebetModel:
             - prediction: 0 or 1
             - probability: float in [0, 1]
         """
+        # AUDIT FIX: Ensure ML dependencies are loaded
+        _ensure_ml_dependencies()
+
         if not self.is_trained:
             raise ValueError("Model not trained yet")
 
@@ -250,6 +308,9 @@ class SidebetModel:
 
     def save(self, filepath: str):
         """Save trained model"""
+        # AUDIT FIX: Ensure ML dependencies are loaded
+        _ensure_ml_dependencies()
+
         joblib.dump(
             {
                 "model": self.model,
@@ -262,6 +323,9 @@ class SidebetModel:
 
     def load(self, filepath: str):
         """Load trained model"""
+        # AUDIT FIX: Ensure ML dependencies are loaded
+        _ensure_ml_dependencies()
+
         data = joblib.load(filepath)
         self.model = data["model"]
         self.optimal_threshold = data["optimal_threshold"]

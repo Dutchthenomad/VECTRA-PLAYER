@@ -164,20 +164,6 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
 
         return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
 
-    return None
-
-    try:
-        # Event format: ["eventName", data]
-        parsed = json.loads(data)
-
-        if isinstance(parsed, list) and len(parsed) >= 1:
-            event_name = parsed[0]
-            event_data = parsed[1] if len(parsed) > 1 else None
-
-            return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
-    except json.JSONDecodeError as e:
-        # Truncate payload for logging
-        truncated = data[:200] if len(data) > 200 else data
-        logger.warning(f"Invalid JSON in event packet: {e}. Payload: {truncated}...")
-
+    # AUDIT FIX: Removed unreachable duplicate code (lines 169-183)
+    # The duplicate parsing logic was never executed due to return None at line 167
     return None
