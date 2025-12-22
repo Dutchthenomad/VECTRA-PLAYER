@@ -1,6 +1,6 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-16 00:30
+Last Updated: 2025-12-21 (Phase 12D Complete)
 
 ---
 
@@ -10,11 +10,10 @@ Last Updated: 2025-12-16 00:30
 # Read key context files
 Read the following files:
 1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
-2. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-15-canonical-database-design.md
-3. /home/nomad/Desktop/VECTRA-PLAYER/src/models/events/CONTEXT.md
+2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
 
 # Run tests (VECTRA-PLAYER has its own venv now)
-cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/test_models/ -v --tb=short
+cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
 
 # Check GitHub issues
 gh issue list --repo Dutchthenomad/VECTRA-PLAYER
@@ -24,62 +23,66 @@ gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 
 ## Active Work
 
-### Current Phase: Phase 12 - Unified Data Architecture
+### Current Phase: Phase 12D - System Validation (COMPLETE)
 
-**Mission:** Clean-slate refactor from REPLAYER with:
-1. Unified data storage (DuckDB/Parquet as canonical truth + LanceDB vectors)
-2. Server-authoritative state (trust socket feed)
-3. RAG integration (LanceDB powers rugs-expert agent)
-4. Technical debt cleanup (remove deprecated code)
+**Branch:** `feat/phase-3-recording-consolidation`
 
-### Phase 12A: Event Schemas - COMPLETE ✅
+**Latest Commit:** `89239b1` - `docs(Phase 12D): Add migration guide and update CLAUDE.md`
 
-All 8 event schemas defined with 58 tests passing:
+### Phase Status
 
-| Issue | Event | Status | Tests |
-|-------|-------|--------|-------|
-| #1 | GameStateUpdate | ✅ | 20 |
-| #2 | PlayerUpdate | ✅ | 15 |
-| #3 | UsernameStatus | ✅ | 3 |
-| #4 | PlayerLeaderboardPosition | ✅ | 3 |
-| #5 | NewTrade | ✅ | 2 |
-| #6 | SidebetRequest/Response | ✅ | 4 |
-| #7 | BuyOrder/SellOrder | ✅ | 4 |
-| #8 | SystemEvents | ✅ | 6 |
-
-**Commit:** `86de4a7` - `feat(schema): Add Phase 12A event schemas (Issues #1-8)`
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 12A | Event Schemas | ✅ COMPLETE (58 tests) |
+| 12B | Parquet Writer + EventStore | ✅ COMPLETE (84 tests) |
+| 12C | LiveStateProvider | ✅ COMPLETE (20 tests) |
+| 12D | System Validation & Legacy Consolidation | ✅ COMPLETE (8 tasks) |
+| 12E | Protocol Explorer UI | ⏳ PENDING |
 
 ---
 
-## Next Steps: Phase 12B - Storage Layer
+## Phase 12D Deliverables (Dec 21, 2025)
 
-1. [ ] **Issue #9**: Parquet writer with buffering
-   - Atomic writes, 100 events or 5 seconds
-   - Partition by doc_type/date
+### UI Features
+- **Capture Stats Panel** - Session ID (truncated), event count, periodic updates
+- **Live Balance Display** - Server-authoritative cash from LiveStateProvider
+- **LIVE Indicator** - Shows "LIVE: {username}" when CDP connected
 
-2. [ ] **Issue #10**: DuckDB query layer
-   - Use MCP MotherDuck server when available
-   - Query helpers for common operations
+### CLI Scripts
+- `src/scripts/query_session.py` - DuckDB query tool (--stats, --recent N, --session ID)
+- `src/scripts/export_jsonl.py` - Backwards-compatible JSONL export
 
-3. [ ] **Issue #11**: Ingestion pipeline
-   - EventBus subscription
-   - Schema validation via Pydantic models
-   - Error handling
+### Infrastructure
+- **TRADE_CONFIRMED Event** - Captures latency_ms for trade timing analysis
+- **Legacy Deprecation Flags** - 6 env vars to control each legacy recorder
+- **Migration Guide** - `docs/MIGRATION_GUIDE.md`
+
+### Legacy Deprecation Flags
+```bash
+export LEGACY_RECORDER_SINK=false       # RecorderSink
+export LEGACY_DEMO_RECORDER=false       # DemoRecorderSink
+export LEGACY_RAW_CAPTURE=false         # RawCaptureRecorder
+export LEGACY_UNIFIED_RECORDER=false    # UnifiedRecorder
+export LEGACY_GAME_STATE_RECORDER=false # GameStateRecorder
+export LEGACY_PLAYER_SESSION_RECORDER=false # PlayerSessionRecorder
+```
+Default: All `true` (backwards compatible)
 
 ---
 
-## Key Design Decisions
+## Test Coverage
 
-1. **Decimal for all money/prices** - Prevents float precision drift
-2. **Parquet is canonical truth** - Vector indexes are derived and rebuildable
-3. **Partition by doc_type/date** - NOT by game_id (too many small files)
-4. **Extra='allow' in Pydantic** - Forward compatibility with new server fields
-5. **CONTEXT.md documentation** - Sister files to scripts, indexed to LanceDB
-6. **meta_* prefix for ingestion fields** - `meta_ts`, `meta_seq`, `meta_source`
+```bash
+# Run all tests
+cd /home/nomad/Desktop/VECTRA-PLAYER/src
+../.venv/bin/python -m pytest tests/ -v --tb=short
+
+# Current: 1127 tests passing
+```
 
 ---
 
-## Data Directory Structure
+## Data Directories
 
 ```
 ~/rugs_data/                          # RUGS_DATA_DIR (env var)
@@ -89,71 +92,50 @@ All 8 event schemas defined with 58 tests passing:
 │   ├── doc_type=player_action/
 │   ├── doc_type=server_state/
 │   └── doc_type=system_event/
-├── vectors/                          # Derived LanceDB index
-│   ├── events.lance/                 # WebSocket events ONLY
-│   ├── code_context.lance/           # CONTEXT.md files ONLY
-│   └── debug_notes.lance/            # AI reasoning ONLY
+├── exports/                          # JSONL exports (optional)
 └── manifests/
-    ├── schema_version.json
-    └── vector_index_checkpoint.json
 ```
 
 ---
 
-## GitHub Repo
+## Key Documentation
+
+| Document | Location |
+|----------|----------|
+| Migration Guide | `docs/MIGRATION_GUIDE.md` |
+| Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
+| Phase 12 Design | `sandbox/2025-12-15-phase-12-unified-data-architecture-design.md` |
+
+---
+
+## Next Phase: 12E - Protocol Explorer UI
+
+**Goals:**
+1. Vector indexing with ChromaDB (reuse claude-flow infrastructure)
+2. Protocol Explorer UI panel for querying captured events
+3. Integration with rugs-expert agent
+
+**Prerequisites:**
+- Phase 12D complete ✅
+- ChromaDB MCP server configured ✅
+
+---
+
+## GitHub Repository
 
 **URL:** https://github.com/Dutchthenomad/VECTRA-PLAYER
-**Branch:** main
-**Latest commit:** `86de4a7`
-
-### Staged Issues (Phase 12A)
-- #1-8: Event schemas (COMPLETED in commit 86de4a7)
-
-### TODO: Create Issues for Phase 12B-C
-- #9-11: Storage layer (Parquet, DuckDB, Ingestion)
-- #12-14: Vector DB (LanceDB tables)
-- #15-16: DevOps (CONTEXT.md hooks, /context command)
+**Branch:** `feat/phase-3-recording-consolidation`
+**Status:** Up to date with origin
 
 ---
 
-## Key Files
+## Session History
 
-| File | Purpose |
-|------|---------|
-| `docs/plans/2025-12-15-canonical-database-design.md` | Master design document |
-| `src/models/events/` | Pydantic schemas (Issues #1-8) |
-| `src/services/event_store/` | EventStore skeleton |
-| `docs/specs/WEBSOCKET_EVENTS_SPEC.md` | WebSocket protocol spec |
-
----
-
-## Commands
-
-```bash
-# Run event schema tests
-cd /home/nomad/Desktop/VECTRA-PLAYER/src
-../.venv/bin/python -m pytest tests/test_models/ -v --tb=short
-
-# View GitHub issues
-gh issue list --repo Dutchthenomad/VECTRA-PLAYER
-
-# DuckDB query (once Parquet files exist)
-import duckdb
-conn = duckdb.connect()
-df = conn.execute("SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet' LIMIT 10").df()
-```
-
----
-
-## MCP Server Status
-
-| Server | Purpose | Status |
-|--------|---------|--------|
-| mcp-server-motherduck | DuckDB cloud | Configured (needs testing) |
-| mcp-lance-db | Vector search | Configured (needs testing) |
-| mcp-chroma | Legacy RAG | Configured |
-
-**Note:** Use MotherDuck MCP for DuckDB operations when available.
+- **2025-12-21**: Phase 12D complete - All 8 tasks, 1127 tests passing
+- **2025-12-21**: Phase 12C complete - LiveStateProvider implemented
+- **2025-12-17**: EventStore/Parquet writer development
+- **2025-12-16**: Phase 12A complete (58 tests), pushed to GitHub
+- **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
 
 ---
 
@@ -161,16 +143,7 @@ df = conn.execute("SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet' LIMIT
 
 | Project | Location | Purpose |
 |---------|----------|---------|
-| REPLAYER | `/home/nomad/Desktop/REPLAYER/` | Production system (Phase 11) |
+| REPLAYER | `/home/nomad/Desktop/REPLAYER/` | Production system |
 | rugs-rl-bot | `/home/nomad/Desktop/rugs-rl-bot/` | RL training |
 | claude-flow | `/home/nomad/Desktop/claude-flow/` | DevOps layer |
 | Recordings | `/home/nomad/rugs_recordings/` | 929 games |
-
----
-
-## Session History
-
-- **2025-12-16**: Phase 12A complete (58 tests), pushed to GitHub
-- **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
-- **2025-12-15**: Canonical database design document written
-- **2025-12-15**: All 8 event schemas (Issues #1-8) implemented

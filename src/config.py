@@ -117,6 +117,35 @@ class Config:
             "schema_version": "1.0.0",
         }
 
+    @classmethod
+    def get_legacy_flags(cls) -> dict[str, bool]:
+        """
+        Get legacy recorder deprecation flags.
+
+        Each flag controls whether a legacy recorder is enabled.
+        Default: True (enabled for backwards compatibility)
+        Set environment variable to 'false' to disable.
+
+        Returns:
+            Dict with boolean flags for each legacy recorder
+        """
+        return {
+            "enable_recorder_sink": cls._get_bool_env("LEGACY_RECORDER_SINK", True),
+            "enable_demo_recorder": cls._get_bool_env("LEGACY_DEMO_RECORDER", True),
+            "enable_raw_capture": cls._get_bool_env("LEGACY_RAW_CAPTURE", True),
+            "enable_unified_recorder": cls._get_bool_env("LEGACY_UNIFIED_RECORDER", True),
+            "enable_game_state_recorder": cls._get_bool_env("LEGACY_GAME_STATE_RECORDER", True),
+            "enable_player_session_recorder": cls._get_bool_env(
+                "LEGACY_PLAYER_SESSION_RECORDER", True
+            ),
+        }
+
+    @classmethod
+    def _get_bool_env(cls, key: str, default: bool) -> bool:
+        """Get boolean from environment variable."""
+        value = os.environ.get(key, str(default)).lower()
+        return value in ("true", "1", "yes")
+
     # ========== File Settings ==========
     @classmethod
     def get_files_config(cls) -> dict:
