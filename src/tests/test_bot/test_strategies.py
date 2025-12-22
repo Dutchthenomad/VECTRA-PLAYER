@@ -77,7 +77,7 @@ class TestConservativeStrategy:
             "constraints": {},
         }
 
-        action_type, amount, reasoning = strategy.decide(observation, info)
+        action_type, _amount, reasoning = strategy.decide(observation, info)
 
         assert action_type in ["BUY", "WAIT", "SIDE"]
         assert isinstance(reasoning, str)
@@ -110,7 +110,7 @@ class TestConservativeStrategy:
             "constraints": {},
         }
 
-        action_type, amount, reasoning = strategy.decide(observation, info)
+        action_type, amount, _reasoning = strategy.decide(observation, info)
 
         if action_type in ["BUY", "SIDE"]:
             assert amount is not None
@@ -155,7 +155,7 @@ class TestAggressiveStrategy:
             "constraints": {},
         }
 
-        action_type, amount, reasoning = strategy.decide(observation, info)
+        action_type, _amount, reasoning = strategy.decide(observation, info)
 
         assert action_type in ["BUY", "WAIT", "SIDE", "SELL"]
         assert isinstance(reasoning, str)
@@ -198,7 +198,7 @@ class TestSidebetStrategy:
             "constraints": {},
         }
 
-        action_type, amount, reasoning = strategy.decide(observation, info)
+        action_type, _amount, reasoning = strategy.decide(observation, info)
 
         assert action_type in ["SIDE", "WAIT"]
         assert isinstance(reasoning, str)
@@ -236,7 +236,7 @@ class TestStrategyBehavior:
                 "constraints": {},
             }
 
-            action_type, amount, reasoning = strategy.decide(observation, info)
+            action_type, _amount, _reasoning = strategy.decide(observation, info)
 
             assert action_type == "WAIT"
 
@@ -268,7 +268,7 @@ class TestStrategyBehavior:
                 "constraints": {},
             }
 
-            action_type, amount, reasoning = strategy.decide(observation, info)
+            _action_type, _amount, reasoning = strategy.decide(observation, info)
 
             assert reasoning is not None
             assert isinstance(reasoning, str)

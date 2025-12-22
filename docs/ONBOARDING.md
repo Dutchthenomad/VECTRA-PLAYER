@@ -66,7 +66,7 @@ Welcome to VECTRA-PLAYER! This checklist will help you get set up and productive
   ```
   src/
   ├── core/        # Event bus, state management
-  ├── services/    # Event store, vector indexer  
+  ├── services/    # Event store, vector indexer
   ├── ui/          # UI components
   ├── bot/         # Bot/ML components
   └── tests/       # Test suite

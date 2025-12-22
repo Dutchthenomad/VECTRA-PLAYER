@@ -8,10 +8,10 @@ assignees: ['Dutchthenomad']
 ---
 
 ## 🔧 Workflow/Job Information
-**Workflow Name:** 
-**Job Name:** 
+**Workflow Name:**
+**Job Name:**
 **Run ID:** <!-- Link to the workflow run -->
-**Branch:** 
+**Branch:**
 
 ## 🐛 Problem Description
 <!-- Clear description of what's not working -->
@@ -19,9 +19,9 @@ assignees: ['Dutchthenomad']
 
 
 ## 📋 Steps to Reproduce
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## ✅ Expected Behavior
 <!-- What should happen? -->
@@ -73,7 +73,7 @@ assignees: ['Dutchthenomad']
 - [ ] Blocking specific PRs
 - [ ] Slowing down CI/CD
 - [ ] Intermittent failures
-- [ ] Other: 
+- [ ] Other:
 
 ## 🎯 Checklist
 - [ ] I have checked the workflow logs
