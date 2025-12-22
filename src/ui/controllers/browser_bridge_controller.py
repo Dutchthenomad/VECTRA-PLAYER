@@ -69,9 +69,11 @@ class BrowserBridgeController:
     def show_browser_connection_dialog(self):
         """Show browser connection wizard (Phase 8.5)"""
         try:
+            # AUDIT FIX: Pass required browser_executor parameter
             # Create dialog with callbacks
             dialog = BrowserConnectionDialog(
                 parent=self.root,
+                browser_executor=self.parent.browser_executor,
                 on_connected=self.on_browser_connected,
                 on_failed=self.on_browser_connection_failed,
             )

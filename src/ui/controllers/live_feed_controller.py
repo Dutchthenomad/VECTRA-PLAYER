@@ -233,9 +233,10 @@ class LiveFeedController:
                     game_num = captured_data.get("gameNumber", 0)
                     seed_data = captured_data.get("seedData")
                     self.log(f"💥 Game {game_num} complete")
-                    # Attach seed data to the next ReplayEngine GAME_END for this game.
-                    if seed_data and getattr(self.replay_engine, "game_id", None):
-                        self.replay_engine.set_seed_data(self.replay_engine.game_id, seed_data)
+                    # AUDIT FIX: ReplayEngine.set_seed_data() doesn't exist
+                    # TODO: Implement seed data storage if needed
+                    # if seed_data and getattr(self.replay_engine, "game_id", None):
+                    #     self.replay_engine.set_seed_data(self.replay_engine.game_id, seed_data)
 
                 self.root.after(0, handle_game_complete)
 

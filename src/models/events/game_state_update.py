@@ -199,7 +199,7 @@ class AvailableShitcoin(BaseModel):
     @field_validator("max_bet", "max_win", mode="before")
     @classmethod
     def coerce_decimal(cls, v):
-        if isinstance(v, int | float):
+        if isinstance(v, (int, float)):
             return Decimal(str(v))
         return v
 
