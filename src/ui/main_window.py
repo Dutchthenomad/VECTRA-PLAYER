@@ -253,7 +253,7 @@ class MainWindow:
 
         # Build menu bar
         builder = MenuBarBuilder(self.root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
 
         # Store menu references for dynamic updates
         self.browser_menu = refs["browser_menu"]

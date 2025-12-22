@@ -144,10 +144,10 @@ class EventStoreService:
         Handles three known formats:
         1. Already-unwrapped dict: {"event": "...", "data": {...}, ...}
            Returns: same dict
-        
+
         2. EventBus + BrowserBridge double-wrapped: {"name": "...", "data": {"data": cdp_event}}
            Returns: cdp_event dict (inner "data")
-        
+
         3. BrowserBridge-only wrapped: {"data": {"event": "...", "data": {...}, ...}}
            Returns: inner dict containing event details
 
@@ -187,9 +187,7 @@ class EventStoreService:
         # Try unwrapping second layer (EventBus + BrowserBridge double-wrapped)
         data = outer_data.get("data")
         if data is None or not isinstance(data, dict):
-            logger.warning(
-                f"_unwrap_event_payload: Invalid second wrapper layer, got {type(data)}"
-            )
+            logger.warning(f"_unwrap_event_payload: Invalid second wrapper layer, got {type(data)}")
             return None
 
         return data

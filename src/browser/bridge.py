@@ -579,7 +579,9 @@ class BrowserBridge:
                 # Wait for the reconnection to complete
                 await asyncio.sleep(1.0)
             else:
-                logger.error("Could not find Socket.IO instance for reconnection; stopping CDP interception")
+                logger.error(
+                    "Could not find Socket.IO instance for reconnection; stopping CDP interception"
+                )
                 await self._stop_cdp_interception()
 
         except Exception as e:

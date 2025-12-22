@@ -123,7 +123,7 @@ class SidebetPredictor:
         )
 
         # Get model prediction
-        prediction, probability = self.model.predict(features)
+        _prediction, probability = self.model.predict(features)
 
         # Calculate confidence based on feature quality
         confidence = self._calculate_confidence(features)
