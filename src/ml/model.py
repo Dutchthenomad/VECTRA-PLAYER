@@ -5,6 +5,8 @@ Trains on 14-feature vectors to predict optimal sidebet placement timing.
 Target: Win rate >25%, false positive rate <30%
 """
 
+from typing import TYPE_CHECKING
+
 # AUDIT FIX: Lazy import of ML dependencies to avoid crashes in environments without sklearn
 # These will be imported when actually needed (in train() or predict() methods)
 joblib = None
@@ -15,6 +17,10 @@ confusion_matrix = None
 roc_auc_score = None
 train_test_split = None
 compute_class_weight = None
+
+# Type hints for static analysis without runtime import
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 from .feature_extractor import FEATURE_NAMES
 
@@ -31,12 +37,10 @@ def _ensure_ml_dependencies():
     try:
         import joblib as _joblib
         import numpy as _np
-        from sklearn.ensemble import GradientBoostingClassifier as _GBC
-        from sklearn.metrics import (
-            classification_report as _cr,
-            confusion_matrix as _cm,
-            roc_auc_score as _ras,
-        )
+        from sklearn.ensemble import GradientBoostingClassifier as _GBC  # noqa: N814
+        from sklearn.metrics import classification_report as _cr
+        from sklearn.metrics import confusion_matrix as _cm
+        from sklearn.metrics import roc_auc_score as _ras
         from sklearn.model_selection import train_test_split as _tts
         from sklearn.utils.class_weight import compute_class_weight as _ccw
 
@@ -81,7 +85,11 @@ class SidebetModel:
             )
 
     def train(
-        self, X, y, test_size: float = 0.2, val_size: float = 0.25
+        self,
+        X: "npt.NDArray" if TYPE_CHECKING else None,
+        y: "npt.NDArray" if TYPE_CHECKING else None,
+        test_size: float = 0.2,
+        val_size: float = 0.25,
     ) -> dict:
         """
         Train model on features and labels
@@ -217,7 +225,11 @@ class SidebetModel:
             "threshold_results": threshold_results,
         }
 
-    def analyze_thresholds(self, X_test, y_test) -> list[dict]:
+    def analyze_thresholds(
+        self,
+        X_test: "npt.NDArray" if TYPE_CHECKING else None,
+        y_test: "npt.NDArray" if TYPE_CHECKING else None,
+    ) -> list[dict]:
         """
         Analyze performance at different probability thresholds
 
@@ -281,7 +293,7 @@ class SidebetModel:
 
         return results
 
-    def predict(self, features) -> tuple[int, float]:
+    def predict(self, features: "npt.NDArray" if TYPE_CHECKING else None) -> tuple[int, float]:
         """
         Make prediction for single sample
 
