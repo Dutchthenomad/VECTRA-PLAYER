@@ -36,7 +36,7 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@v4
+        uses: mikepenz/release-changelog-builder-action@v6
         with:
           configuration: '.github/release-changelog-config.json'
           outputFile: 'CHANGELOG_LATEST.md'
@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: Release ${{ steps.version.outputs.version }}
@@ -104,7 +104,7 @@ jobs:
     if: always()
     steps:
       - name: Create notification comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const version = '${{ needs.create-release.outputs.version || github.ref_name }}';

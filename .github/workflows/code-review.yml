@@ -57,7 +57,7 @@ jobs:
           echo "\`\`\`" >> complexity_report.md
 
       - name: Comment complexity report
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: always() && steps.complexity.outcome == 'success'
         with:
           script: |
@@ -162,7 +162,7 @@ jobs:
           bandit -r src/ -f json -o bandit-report.json || true
 
       - name: Comment security findings
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: always()
         continue-on-error: true
         with:
@@ -211,7 +211,7 @@ jobs:
           fetch-depth: 0
 
       - name: Analyze PR changes
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: files } = await github.rest.pulls.listFiles({
