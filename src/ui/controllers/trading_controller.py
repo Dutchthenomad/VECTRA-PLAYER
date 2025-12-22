@@ -11,7 +11,7 @@ Handles:
 import logging
 import tkinter as tk
 from collections.abc import Callable
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -89,7 +89,11 @@ class TradingController:
             # Get current bet amount from entry
             try:
                 bet_amount = Decimal(self.bet_entry.get())
-            except Exception:
+            except (InvalidOperation, ValueError) as e:
+                logger.warning(f"Invalid bet amount '{self.bet_entry.get()}': {e}")
+                bet_amount = Decimal("0")
+            except Exception as e:
+                logger.error(f"Unexpected error parsing bet amount: {e}")
                 bet_amount = Decimal("0")
 
             if self.recording_controller:
@@ -267,7 +271,11 @@ class TradingController:
         # Then update local UI
         try:
             current_amount = Decimal(self.bet_entry.get())
-        except Exception:
+        except (InvalidOperation, ValueError) as e:
+            logger.warning(f"Invalid bet amount during increment '{self.bet_entry.get()}': {e}")
+            current_amount = Decimal("0")
+        except Exception as e:
+            logger.error(f"Unexpected error parsing bet amount during increment: {e}")
             current_amount = Decimal("0")
 
         new_amount = current_amount + amount
@@ -301,8 +309,10 @@ class TradingController:
             self.bet_entry.delete(0, tk.END)
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount halved to {new_amount}")
-        except Exception:
-            pass
+        except (InvalidOperation, ValueError) as e:
+            logger.warning(f"Invalid bet amount during halve operation '{self.bet_entry.get()}': {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error during halve operation: {e}")
 
     def double_bet_amount(self):
         """Double bet amount (X2 button) - Phase 9.3: syncs to browser"""
@@ -318,8 +328,10 @@ class TradingController:
             self.bet_entry.delete(0, tk.END)
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount doubled to {new_amount}")
-        except Exception:
-            pass
+        except (InvalidOperation, ValueError) as e:
+            logger.warning(f"Invalid bet amount during double operation '{self.bet_entry.get()}': {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error during double operation: {e}")
 
     def max_bet_amount(self):
         """Set bet to max (MAX button) - Phase 9.3: syncs to browser"""

@@ -1520,6 +1520,10 @@ Keyboard Shortcuts: Press 'H' for help
 
     def _start_demo_session(self):
         """Start a new demo recording session."""
+        if not self.demo_recorder:
+            self.toast.show("Demo recording not available (legacy mode disabled)", "warning")
+            logger.warning("Demo recorder not available - legacy recorders disabled")
+            return
         try:
             session_id = self.demo_recorder.start_session()
             self.log(f"Demo session started: {session_id}")
@@ -1531,6 +1535,10 @@ Keyboard Shortcuts: Press 'H' for help
 
     def _end_demo_session(self):
         """End the current demo recording session."""
+        if not self.demo_recorder:
+            self.toast.show("Demo recording not available (legacy mode disabled)", "warning")
+            logger.warning("Demo recorder not available - legacy recorders disabled")
+            return
         try:
             self.demo_recorder.end_session()
             self.log("Demo session ended")
@@ -1542,6 +1550,10 @@ Keyboard Shortcuts: Press 'H' for help
 
     def _start_demo_game(self):
         """Start recording a new game in the demo session."""
+        if not self.demo_recorder:
+            self.toast.show("Demo recording not available (legacy mode disabled)", "warning")
+            logger.warning("Demo recorder not available - legacy recorders disabled")
+            return
         # Use current game ID from state, or prompt user
         game_id = self.state.get("game_id")
         if not game_id:
@@ -1561,6 +1573,10 @@ Keyboard Shortcuts: Press 'H' for help
 
     def _end_demo_game(self):
         """End recording the current game."""
+        if not self.demo_recorder:
+            self.toast.show("Demo recording not available (legacy mode disabled)", "warning")
+            logger.warning("Demo recorder not available - legacy recorders disabled")
+            return
         try:
             self.demo_recorder.end_game()
             self.log("Demo game ended")
@@ -1572,6 +1588,13 @@ Keyboard Shortcuts: Press 'H' for help
 
     def _show_demo_status(self):
         """Show current demo recording status in a dialog."""
+        if not self.demo_recorder:
+            messagebox.showwarning(
+                "Demo Recording Unavailable",
+                "Demo recording is not available.\n\nLegacy recorders are disabled. "
+                "Use EventStore for event capture."
+            )
+            return
         try:
             status = self.demo_recorder.get_status()
             status_text = f"""Demo Recording Status
@@ -1904,6 +1927,44 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
 
     def shutdown(self):
         """Cleanup dispatcher resources during application shutdown."""
+        # Unsubscribe from all event handlers to prevent memory leaks
+        from services.event_bus import Events
+        from core.game_state import StateEvents
+
+        # Unsubscribe from EventBus events
+        event_handlers = [
+            (Events.GAME_TICK, self._handle_game_tick),
+            (Events.TRADE_EXECUTED, self._handle_trade_executed),
+            (Events.TRADE_FAILED, self._handle_trade_failed),
+            (Events.FILE_LOADED, self._handle_file_loaded),
+            (Events.WS_SOURCE_CHANGED, self._handle_ws_source_changed),
+            (Events.GAME_START, self._handle_game_start_for_recording),
+            (Events.GAME_END, self._handle_game_end_for_recording),
+            (Events.PLAYER_IDENTITY, self._handle_player_identity),
+            (Events.PLAYER_UPDATE, self._handle_player_update),
+        ]
+
+        for event, handler in event_handlers:
+            try:
+                self.event_bus.unsubscribe(event, handler)
+            except Exception as e:
+                logger.warning(f"Failed to unsubscribe from {event.value}: {e}")
+
+        # Unsubscribe from GameState events
+        state_handlers = [
+            (StateEvents.BALANCE_CHANGED, self._handle_balance_changed),
+            (StateEvents.POSITION_OPENED, self._handle_position_opened),
+            (StateEvents.POSITION_CLOSED, self._handle_position_closed),
+            (StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed),
+            (StateEvents.POSITION_REDUCED, self._handle_position_reduced),
+        ]
+
+        for event, handler in state_handlers:
+            try:
+                self.state.unsubscribe(event, handler)
+            except Exception as e:
+                logger.warning(f"Failed to unsubscribe from state event: {e}")
+
         # Stop browser if connected
         if self.browser_connected and self.browser_executor:
             loop = None
