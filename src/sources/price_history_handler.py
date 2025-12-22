@@ -91,6 +91,10 @@ class PriceHistoryHandler:
 
     def _finalize_game(self, seed_data: dict | None = None):
         """Finalize and emit completed game data."""
+        # AUDIT FIX: Prevent double-finalization by checking if game is already finalized
+        if not self.current_game_id:
+            return  # Already finalized
+
         gaps = self.prices.count(None)
         if gaps > 0:
             logger.warning(f"Game {self.current_game_id} has {gaps} missing ticks")
@@ -106,6 +110,9 @@ class PriceHistoryHandler:
                 "has_gaps": gaps > 0,
             },
         )
+
+        # AUDIT FIX: Reset current_game_id to prevent double-finalization
+        self.current_game_id = None
 
     def get_prices(self) -> list[Decimal | None]:
         """Get current price array."""

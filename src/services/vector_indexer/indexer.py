@@ -18,13 +18,6 @@ import os
 import sys
 from pathlib import Path
 
-# Add claude-flow RAG pipeline to path (configurable via env var)
-_CLAUDE_FLOW_RAG = Path(
-    os.environ.get("CLAUDE_FLOW_RAG_PATH", str(Path.home() / "Desktop/claude-flow/rag-pipeline"))
-)
-if str(_CLAUDE_FLOW_RAG) not in sys.path:
-    sys.path.insert(0, str(_CLAUDE_FLOW_RAG))
-
 # Lazy import claude-flow modules to avoid import errors in tests
 store = None
 embed_batch = None
@@ -33,9 +26,31 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_claude_flow_imports():
-    """Lazy load claude-flow imports."""
+    """Lazy load claude-flow imports.
+
+    AUDIT FIX: sys.path mutation moved here (deferred until actually needed)
+    instead of at module import time.
+    """
     global store, embed_batch
     if store is None:
+        # Add claude-flow RAG pipeline to path (configurable via env var)
+        # CRITICAL: This is a development-time dependency on claude-flow
+        # Production deployments should package RAG pipeline as a proper dependency
+        _CLAUDE_FLOW_RAG = Path(
+            os.environ.get("CLAUDE_FLOW_RAG_PATH", str(Path.home() / "Desktop/claude-flow/rag-pipeline"))
+        )
+
+        if not _CLAUDE_FLOW_RAG.exists():
+            logger.warning(
+                f"claude-flow RAG pipeline not found at {_CLAUDE_FLOW_RAG}. "
+                f"Set CLAUDE_FLOW_RAG_PATH env var or ensure claude-flow is installed."
+            )
+            raise ImportError(f"claude-flow RAG pipeline not found at {_CLAUDE_FLOW_RAG}")
+
+        if str(_CLAUDE_FLOW_RAG) not in sys.path:
+            sys.path.insert(0, str(_CLAUDE_FLOW_RAG))
+            logger.debug(f"Added claude-flow RAG to sys.path: {_CLAUDE_FLOW_RAG}")
+
         from embeddings.embedder import embed_batch as _embed_batch
         from storage import store as _store
 

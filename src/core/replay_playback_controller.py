@@ -72,16 +72,25 @@ class PlaybackController:
                 return
 
             self.is_playing = True
-            self._stop_event.clear()
 
-            # Start playback thread
+        # AUDIT FIX: Ensure old thread is fully stopped before starting new one
+        # Wait outside the lock to prevent deadlock
+        if self.playback_thread and self.playback_thread.is_alive():
+            current_thread = threading.current_thread()
+            if current_thread != self.playback_thread:
+                logger.debug("Waiting for previous playback thread to finish")
+                self.playback_thread.join(timeout=2.0)
+
+        # Start new playback thread
+        self._stop_event.clear()
+        with self._lock:
             self.playback_thread = threading.Thread(
                 target=self._playback_loop, name="ReplayEngine-Playback", daemon=True
             )
             self.playback_thread.start()
 
-            event_bus.publish(Events.REPLAY_STARTED, {"game_id": self.engine.game_id})
-            logger.info("Playback started")
+        event_bus.publish(Events.REPLAY_STARTED, {"game_id": self.engine.game_id})
+        logger.info("Playback started")
 
     def pause(self):
         """Pause auto-playback"""
@@ -90,6 +99,10 @@ class PlaybackController:
                 return
 
             self.is_playing = False
+
+        # AUDIT FIX: Signal stop event to wake up waiting thread immediately
+        # (prevents thread from being stuck in wait loop)
+        self._stop_event.set()
 
         # AUDIT FIX: Only join thread if NOT called from within the thread itself
         # (prevents deadlock when auto-play reaches end of game)
@@ -280,5 +293,10 @@ class PlaybackController:
             self.is_playing = False
 
         # Wait for playback thread to finish
+        # AUDIT FIX: Only join thread if NOT called from within the thread itself
+        # (prevents deadlock if cleanup() called from playback thread)
+        current_thread = threading.current_thread()
         if self.playback_thread and self.playback_thread.is_alive():
-            self.playback_thread.join(timeout=2.0)
+            if current_thread != self.playback_thread:
+                self.playback_thread.join(timeout=2.0)
+            # else: We're in the playback thread - don't join, just return

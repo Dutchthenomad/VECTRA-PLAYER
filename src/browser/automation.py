@@ -159,7 +159,8 @@ async def connect_phantom_wallet(page, timeout: int = 30) -> bool:
                 # Wait for popup to close
                 await asyncio.sleep(2)
 
-        except TimeoutError:
+        except PlaywrightTimeout:
+            # AUDIT FIX: Catch Playwright's timeout exception, not built-in TimeoutError
             print("   ⚠️  Phantom popup did not appear")
             print("      (Wallet may already be connected)")
 

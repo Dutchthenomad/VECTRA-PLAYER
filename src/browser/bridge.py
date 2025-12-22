@@ -255,7 +255,9 @@ class BrowserBridge:
             # Publish to EventBus for all subscribers
             has_subs = self._event_bus.has_subscribers(Events.WS_RAW_EVENT)
             if has_subs:
-                self._event_bus.publish(Events.WS_RAW_EVENT, {"data": event})
+                # AUDIT FIX: Publish event directly without wrapping
+                # (prevents double-wrapping that breaks DebugTerminal parsing)
+                self._event_bus.publish(Events.WS_RAW_EVENT, event)
                 logger.debug(f"CDP event published to EventBus: {event.get('event')}")
             else:
                 # DIAGNOSTIC: Log when no subscribers found
@@ -446,13 +448,8 @@ class BrowserBridge:
     async def _do_connect(self):
         """Actually connect to browser (async)"""
         try:
-            import sys
-            from pathlib import Path
-
-            # Add parent directory for browser_automation imports
-            parent_dir = str(Path(__file__).parent.parent.parent)
-            if parent_dir not in sys.path:
-                sys.path.insert(0, parent_dir)
+            # AUDIT FIX: Use direct import without sys.path mutation
+            # (prevents non-deterministic import behavior and module shadowing)
             from browser.manager import CDPBrowserManager
 
             self.cdp_manager = CDPBrowserManager()
