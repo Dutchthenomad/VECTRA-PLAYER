@@ -12,11 +12,11 @@ from pathlib import Path
 import duckdb
 import pytest
 
-# Add scripts directory to path for imports
-scripts_dir = Path(__file__).parent.parent.parent / "scripts"
-sys.path.insert(0, str(scripts_dir))
-
+# Scripts path is added via conftest.py
 from query_session import get_data_dir, query_recent, query_session, query_stats
+
+# Scripts directory for CLI tests
+scripts_dir = Path(__file__).parent.parent.parent / "scripts"
 
 
 @pytest.fixture

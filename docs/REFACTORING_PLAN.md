@@ -256,7 +256,7 @@ See GitHub Issue #31 for expanding capture + Live Feed Inspector window.
 ### 3.3 Cross-Repo Coordination
 
 Recording consolidation requires coordination with:
-- **claude-flow**: `rugs-expert` agent will query EventStore data via LanceDB
+- **claude-flow**: `rugs-expert` agent will query EventStore data via ChromaDB
 - **rugs-rl-bot**: ML training consumes Parquet exports from EventStore
 
 See `docs/CROSS_REPO_COORDINATION.md` for integration points.

@@ -1,5 +1,15 @@
 """
 Trading strategies for bot automation
+
+DEPRECATED: These strategies are reference implementations from an early prototype.
+They will be replaced when the ML/RL bot system is rebuilt from scratch.
+
+Kept for:
+- Informing ML/RL development planning
+- Reference for entry/exit logic patterns
+- Empirical parameters (sweet spots, temporal windows, etc.)
+
+Do NOT invest time refactoring these - they're being replaced.
 """
 
 from .aggressive import AggressiveStrategy
