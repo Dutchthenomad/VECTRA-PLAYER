@@ -64,7 +64,8 @@ def _safe_truncate(text: str, max_length: int = 200) -> str:
         return truncated
     except UnicodeEncodeError:
         # If encoding fails, progressively shorten until valid
-        for i in range(1, 5):  # UTF-8 max 4 bytes per character
+        # UTF-8 characters can be 1-4 bytes; this handles truncation in the middle of a multi-byte sequence
+        for i in range(1, 5):
             try:
                 shorter = text[: max_length - i]
                 shorter.encode("utf-8")
