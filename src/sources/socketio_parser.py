@@ -41,6 +41,40 @@ SOCKETIO_TYPES = {
 }
 
 
+def _safe_truncate(text: str, max_length: int = 200) -> str:
+    """
+    Safely truncate a string without breaking UTF-8 multi-byte characters.
+
+    Args:
+        text: String to truncate
+        max_length: Maximum length (default: 200)
+
+    Returns:
+        Truncated string that is safe for logging
+    """
+    if len(text) <= max_length:
+        return text
+
+    # Truncate at max_length
+    truncated = text[:max_length]
+
+    # Try encoding to bytes to detect broken UTF-8
+    try:
+        truncated.encode("utf-8")
+        return truncated
+    except UnicodeEncodeError:
+        # If encoding fails, progressively shorten until valid
+        for i in range(1, 5):  # UTF-8 max 4 bytes per character
+            try:
+                shorter = text[: max_length - i]
+                shorter.encode("utf-8")
+                return shorter
+            except UnicodeEncodeError:
+                continue
+        # Fallback: use repr() which is always safe
+        return repr(text[:max_length])
+
+
 def parse_socketio_frame(raw: str) -> SocketIOFrame | None:
     """
     Parse a Socket.IO frame from raw WebSocket data.
@@ -87,8 +121,8 @@ def parse_socketio_frame(raw: str) -> SocketIOFrame | None:
             try:
                 data = json.loads(raw[1:])
             except json.JSONDecodeError as e:
-                # Truncate payload for logging
-                truncated = raw[1:200] if len(raw) > 200 else raw[1:]
+                # Safely truncate payload for logging (prevent UTF-8 encoding issues)
+                truncated = _safe_truncate(raw[1:], max_length=200)
                 logger.warning(f"Invalid JSON in connect packet: {e}. Payload: {truncated}...")
         return SocketIOFrame(type="connect", data=data, raw=raw)
 
@@ -153,8 +187,8 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
     try:
         parsed = json.loads(json_payload)
     except json.JSONDecodeError as e:
-        # Truncate payload for logging
-        truncated = json_payload[:200] if len(json_payload) > 200 else json_payload
+        # Safely truncate payload for logging (prevent UTF-8 encoding issues)
+        truncated = _safe_truncate(json_payload, max_length=200)
         logger.warning(f"Invalid JSON in message packet: {e}. Payload: {truncated}...")
         return None
 
@@ -176,8 +210,8 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
 
             return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
     except json.JSONDecodeError as e:
-        # Truncate payload for logging
-        truncated = data[:200] if len(data) > 200 else data
+        # Safely truncate payload for logging (prevent UTF-8 encoding issues)
+        truncated = _safe_truncate(data, max_length=200)
         logger.warning(f"Invalid JSON in event packet: {e}. Payload: {truncated}...")
 
     return None

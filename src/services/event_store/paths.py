@@ -4,7 +4,10 @@ Event Store Paths - Derive all directories from config/env
 No hardcoded paths. All paths derived from RUGS_DATA_DIR.
 """
 
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class EventStorePaths:
@@ -88,16 +91,13 @@ class EventStorePaths:
                 path.mkdir(parents=True, exist_ok=True)
                 status[name] = path.exists()
             except PermissionError as e:
-                import logging
-                logging.getLogger(__name__).error(f"Permission denied creating {name}: {path} - {e}")
+                logger.error(f"Permission denied creating {name}: {path} - {e}")
                 status[name] = False
             except OSError as e:
-                import logging
-                logging.getLogger(__name__).error(f"OS error creating {name}: {path} - {e}")
+                logger.error(f"OS error creating {name}: {path} - {e}")
                 status[name] = False
             except Exception as e:
-                import logging
-                logging.getLogger(__name__).error(f"Unexpected error creating {name}: {path} - {e}")
+                logger.error(f"Unexpected error creating {name}: {path} - {e}")
                 status[name] = False
         return status
 

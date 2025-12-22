@@ -91,10 +91,12 @@ class TradingController:
                 bet_amount = Decimal(self.bet_entry.get())
             except (InvalidOperation, ValueError) as e:
                 logger.warning(f"Invalid bet amount '{self.bet_entry.get()}': {e}")
-                bet_amount = Decimal("0")
+                # Do not proceed with recording when bet amount is invalid
+                return
             except Exception as e:
                 logger.error(f"Unexpected error parsing bet amount: {e}")
-                bet_amount = Decimal("0")
+                # Do not proceed with recording when bet amount is invalid
+                return
 
             if self.recording_controller:
                 # Capture local state snapshot for validation
@@ -132,7 +134,11 @@ class TradingController:
         try:
             self.browser_bridge.on_buy_clicked()
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for BUY: {e}")
+            logger.warning(
+                "Browser bridge operation failed during BUY (%s): %s",
+                type(e).__name__,
+                e,
+            )
             # Continue with local trading - browser is optional
 
         amount = self.get_bet_amount()
@@ -156,7 +162,11 @@ class TradingController:
         try:
             self.browser_bridge.on_sell_clicked()
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for SELL: {e}")
+            logger.warning(
+                "Browser bridge operation failed during SELL (%s): %s",
+                type(e).__name__,
+                e,
+            )
             # Continue with local trading - browser is optional
 
         self._record_button_press("SELL")
@@ -191,7 +201,11 @@ class TradingController:
         try:
             self.browser_bridge.on_sidebet_clicked()
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for SIDEBET: {e}")
+            logger.warning(
+                "Browser bridge operation failed during SIDEBET (%s): %s",
+                type(e).__name__,
+                e,
+            )
             # Continue with local trading - browser is optional
 
         amount = self.get_bet_amount()
@@ -230,7 +244,12 @@ class TradingController:
         try:
             self.browser_bridge.on_percentage_clicked(percentage)
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for percentage {percentage}: {e}")
+            logger.warning(
+                "Browser bridge operation failed during percentage %s (%s): %s",
+                percentage,
+                type(e).__name__,
+                e,
+            )
 
         button_text = f"{int(percentage * 100)}%"
         self._record_button_press(button_text)
@@ -282,7 +301,12 @@ class TradingController:
         try:
             self.browser_bridge.on_increment_clicked(button_text)
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for increment {button_text}: {e}")
+            logger.warning(
+                "Browser bridge operation failed during increment %s (%s): %s",
+                button_text,
+                type(e).__name__,
+                e,
+            )
 
         self._record_button_press(button_text)
 
@@ -307,7 +331,11 @@ class TradingController:
         try:
             self.browser_bridge.on_clear_clicked()
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for clear: {e}")
+            logger.warning(
+                "Browser bridge operation failed during clear (%s): %s",
+                type(e).__name__,
+                e,
+            )
 
         self._record_button_press("X")
 
@@ -322,7 +350,11 @@ class TradingController:
         try:
             self.browser_bridge.on_increment_clicked("1/2")
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for half: {e}")
+            logger.warning(
+                "Browser bridge operation failed during half (%s): %s",
+                type(e).__name__,
+                e,
+            )
 
         self._record_button_press("1/2")
 
@@ -334,7 +366,9 @@ class TradingController:
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount halved to {new_amount}")
         except (InvalidOperation, ValueError) as e:
-            logger.warning(f"Invalid bet amount during halve operation '{self.bet_entry.get()}': {e}")
+            logger.warning(
+                f"Invalid bet amount during halve operation '{self.bet_entry.get()}': {e}"
+            )
         except Exception as e:
             logger.error(f"Unexpected error during halve operation: {e}")
 
@@ -344,7 +378,11 @@ class TradingController:
         try:
             self.browser_bridge.on_increment_clicked("X2")
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for double: {e}")
+            logger.warning(
+                "Browser bridge operation failed during double (%s): %s",
+                type(e).__name__,
+                e,
+            )
 
         self._record_button_press("X2")
 
@@ -356,7 +394,9 @@ class TradingController:
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount doubled to {new_amount}")
         except (InvalidOperation, ValueError) as e:
-            logger.warning(f"Invalid bet amount during double operation '{self.bet_entry.get()}': {e}")
+            logger.warning(
+                f"Invalid bet amount during double operation '{self.bet_entry.get()}': {e}"
+            )
         except Exception as e:
             logger.error(f"Unexpected error during double operation: {e}")
 
@@ -366,7 +406,11 @@ class TradingController:
         try:
             self.browser_bridge.on_increment_clicked("MAX")
         except Exception as e:
-            logger.warning(f"Browser bridge unavailable for MAX: {e}")
+            logger.warning(
+                "Browser bridge operation failed during MAX (%s): %s",
+                type(e).__name__,
+                e,
+            )
 
         self._record_button_press("MAX")
 

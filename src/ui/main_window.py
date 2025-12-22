@@ -50,6 +50,25 @@ class MainWindow:
     - Live mode: Real-time WebSocket feed with optional browser automation
     """
 
+    # Event handler mappings for setup and cleanup
+    # Format: (event_type, handler_method_name, is_state_event)
+    EVENT_HANDLERS = [
+        ("GAME_TICK", "_handle_game_tick", False),
+        ("TRADE_EXECUTED", "_handle_trade_executed", False),
+        ("TRADE_FAILED", "_handle_trade_failed", False),
+        ("FILE_LOADED", "_handle_file_loaded", False),
+        ("WS_SOURCE_CHANGED", "_handle_ws_source_changed", False),
+        ("GAME_START", "_handle_game_start_for_recording", False),
+        ("GAME_END", "_handle_game_end_for_recording", False),
+        ("PLAYER_IDENTITY", "_handle_player_identity", False),
+        ("PLAYER_UPDATE", "_handle_player_update", False),
+        ("BALANCE_CHANGED", "_handle_balance_changed", True),
+        ("POSITION_OPENED", "_handle_position_opened", True),
+        ("POSITION_CLOSED", "_handle_position_closed", True),
+        ("SELL_PERCENTAGE_CHANGED", "_handle_sell_percentage_changed", True),
+        ("POSITION_REDUCED", "_handle_position_reduced", True),
+    ]
+
     def __init__(self, root: tk.Tk, state, event_bus, config, live_mode: bool = False):
         """
         Initialize main window.
@@ -122,13 +141,24 @@ class MainWindow:
         try:
             self.event_store_service = EventStoreService(event_bus)
             self.event_store_service.start()
-            logger.info(
-                f"EventStoreService started: session {self.event_store_service.session_id[:8]}"
-            )
+            session_id = getattr(self.event_store_service, "session_id", None)
+            if session_id:
+                session_preview = str(session_id)[:8]
+                logger.info(f"EventStoreService started: session {session_preview}")
+            else:
+                logger.info("EventStoreService started (session_id not available)")
         except Exception as e:
             logger.error(f"Failed to start EventStoreService: {e}", exc_info=True)
-            self.toast.show("Warning: Event storage disabled", "warning")
+            # EventStore is a critical service; require user acknowledgement and exit
             self.event_store_service = None
+            messagebox.showerror(
+                "Critical Error - Event Storage",
+                "Failed to start the Event Store service.\n\n"
+                "Event storage is required for normal operation, so the application will now exit.",
+            )
+            if hasattr(self, "root") and self.root is not None:
+                self.root.destroy()
+            return
 
         # LiveStateProvider for server-authoritative state in live mode (Phase 12C)
         try:
@@ -265,7 +295,7 @@ class MainWindow:
 
         # Build menu bar
         builder = MenuBarBuilder(self.root, callbacks, variables)
-        menubar, refs = builder.build()
+        _menubar, refs = builder.build()
 
         # Store menu references for dynamic updates
         self.browser_menu = refs["browser_menu"]
@@ -673,35 +703,18 @@ class MainWindow:
 
     def _setup_event_handlers(self):
         """Setup event bus subscriptions"""
+        from core.game_state import StateEvents
         from services.event_bus import Events
 
-        # Subscribe to game events
-        self.event_bus.subscribe(Events.GAME_TICK, self._handle_game_tick)
-        self.event_bus.subscribe(Events.TRADE_EXECUTED, self._handle_trade_executed)
-        self.event_bus.subscribe(Events.TRADE_FAILED, self._handle_trade_failed)
-        self.event_bus.subscribe(Events.FILE_LOADED, self._handle_file_loaded)
-
-        # Source switching (CDP vs fallback)
-        self.event_bus.subscribe(Events.WS_SOURCE_CHANGED, self._handle_ws_source_changed)
-
-        # Game lifecycle for recording
-        self.event_bus.subscribe(Events.GAME_START, self._handle_game_start_for_recording)
-        self.event_bus.subscribe(Events.GAME_END, self._handle_game_end_for_recording)
-
-        # Player events (server-authoritative state)
-        self.event_bus.subscribe(Events.PLAYER_IDENTITY, self._handle_player_identity)
-        self.event_bus.subscribe(Events.PLAYER_UPDATE, self._handle_player_update)
-
-        # State events
-        from core.game_state import StateEvents
-
-        self.state.subscribe(StateEvents.BALANCE_CHANGED, self._handle_balance_changed)
-        self.state.subscribe(StateEvents.POSITION_OPENED, self._handle_position_opened)
-        self.state.subscribe(StateEvents.POSITION_CLOSED, self._handle_position_closed)
-        self.state.subscribe(
-            StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed
-        )
-        self.state.subscribe(StateEvents.POSITION_REDUCED, self._handle_position_reduced)
+        # Subscribe to all events defined in EVENT_HANDLERS
+        for event_name, handler_method_name, is_state_event in self.EVENT_HANDLERS:
+            handler = getattr(self, handler_method_name)
+            if is_state_event:
+                event = getattr(StateEvents, event_name)
+                self.state.subscribe(event, handler)
+            else:
+                event = getattr(Events, event_name)
+                self.event_bus.subscribe(event, handler)
 
     def log(self, message: str):
         """Log message (using logger instead of text widget)"""
@@ -1604,7 +1617,7 @@ Keyboard Shortcuts: Press 'H' for help
             messagebox.showwarning(
                 "Demo Recording Unavailable",
                 "Demo recording is not available.\n\nLegacy recorders are disabled. "
-                "Use EventStore for event capture."
+                "Use EventStore for event capture.",
             )
             return
         try:
@@ -1939,43 +1952,22 @@ Captures Directory: {self.raw_capture_recorder.capture_dir}
 
     def shutdown(self):
         """Cleanup dispatcher resources during application shutdown."""
-        # Unsubscribe from all event handlers to prevent memory leaks
-        from services.event_bus import Events
         from core.game_state import StateEvents
+        from services.event_bus import Events
 
-        # Unsubscribe from EventBus events
-        event_handlers = [
-            (Events.GAME_TICK, self._handle_game_tick),
-            (Events.TRADE_EXECUTED, self._handle_trade_executed),
-            (Events.TRADE_FAILED, self._handle_trade_failed),
-            (Events.FILE_LOADED, self._handle_file_loaded),
-            (Events.WS_SOURCE_CHANGED, self._handle_ws_source_changed),
-            (Events.GAME_START, self._handle_game_start_for_recording),
-            (Events.GAME_END, self._handle_game_end_for_recording),
-            (Events.PLAYER_IDENTITY, self._handle_player_identity),
-            (Events.PLAYER_UPDATE, self._handle_player_update),
-        ]
-
-        for event, handler in event_handlers:
+        # Unsubscribe from all event handlers to prevent memory leaks
+        for event_name, handler_method_name, is_state_event in self.EVENT_HANDLERS:
+            handler = getattr(self, handler_method_name)
             try:
-                self.event_bus.unsubscribe(event, handler)
+                if is_state_event:
+                    event = getattr(StateEvents, event_name)
+                    self.state.unsubscribe(event, handler)
+                else:
+                    event = getattr(Events, event_name)
+                    self.event_bus.unsubscribe(event, handler)
             except Exception as e:
-                logger.warning(f"Failed to unsubscribe from {event.value}: {e}")
-
-        # Unsubscribe from GameState events
-        state_handlers = [
-            (StateEvents.BALANCE_CHANGED, self._handle_balance_changed),
-            (StateEvents.POSITION_OPENED, self._handle_position_opened),
-            (StateEvents.POSITION_CLOSED, self._handle_position_closed),
-            (StateEvents.SELL_PERCENTAGE_CHANGED, self._handle_sell_percentage_changed),
-            (StateEvents.POSITION_REDUCED, self._handle_position_reduced),
-        ]
-
-        for event, handler in state_handlers:
-            try:
-                self.state.unsubscribe(event, handler)
-            except Exception as e:
-                logger.warning(f"Failed to unsubscribe from state event: {e}")
+                event_type = "state" if is_state_event else "event bus"
+                logger.warning(f"Failed to unsubscribe from {event_type} {event_name}: {e}")
 
         # Stop browser if connected
         if self.browser_connected and self.browser_executor:
