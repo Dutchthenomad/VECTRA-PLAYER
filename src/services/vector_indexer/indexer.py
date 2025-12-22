@@ -30,22 +30,29 @@ def _ensure_claude_flow_imports():
 
     AUDIT FIX: sys.path mutation moved here (deferred until actually needed)
     instead of at module import time.
+
+    SECURITY FIX: Require explicit CLAUDE_FLOW_RAG_PATH environment variable
+    to prevent arbitrary code execution through sys.path injection.
     """
     global store, embed_batch
     if store is None:
-        # Add claude-flow RAG pipeline to path (configurable via env var)
-        # CRITICAL: This is a development-time dependency on claude-flow
-        # Production deployments should package RAG pipeline as a proper dependency
-        _CLAUDE_FLOW_RAG = Path(
-            os.environ.get("CLAUDE_FLOW_RAG_PATH", str(Path.home() / "Desktop/claude-flow/rag-pipeline"))
-        )
+        # SECURITY: Require explicit environment variable to prevent
+        # arbitrary code execution through sys.path injection
+        if "CLAUDE_FLOW_RAG_PATH" not in os.environ:
+            raise ImportError(
+                "CLAUDE_FLOW_RAG_PATH environment variable must be set. "
+                "Set it to the path of your claude-flow RAG pipeline installation. "
+                "This is a development-time dependency on claude-flow. "
+                "Production deployments should package RAG pipeline as a proper dependency."
+            )
+
+        _CLAUDE_FLOW_RAG = Path(os.environ["CLAUDE_FLOW_RAG_PATH"])
 
         if not _CLAUDE_FLOW_RAG.exists():
-            logger.warning(
+            raise ImportError(
                 f"claude-flow RAG pipeline not found at {_CLAUDE_FLOW_RAG}. "
-                f"Set CLAUDE_FLOW_RAG_PATH env var or ensure claude-flow is installed."
+                f"Verify CLAUDE_FLOW_RAG_PATH environment variable points to a valid directory."
             )
-            raise ImportError(f"claude-flow RAG pipeline not found at {_CLAUDE_FLOW_RAG}")
 
         if str(_CLAUDE_FLOW_RAG) not in sys.path:
             sys.path.insert(0, str(_CLAUDE_FLOW_RAG))

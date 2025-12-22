@@ -91,8 +91,9 @@ class PriceHistoryHandler:
 
     def _finalize_game(self, seed_data: dict | None = None):
         """Finalize and emit completed game data."""
-        # AUDIT FIX: Prevent double-finalization by checking if game is already finalized
-        if not self.current_game_id:
+        # AUDIT FIX: Use explicit `is None` check to avoid edge cases with falsy IDs
+        # (e.g., ID "0" or "" would incorrectly trigger early return with `if not`)
+        if self.current_game_id is None:
             return  # Already finalized
 
         gaps = self.prices.count(None)
