@@ -7,7 +7,7 @@ This file provides guidance for GitHub Copilot coding agent when working on issu
 VECTRA-PLAYER is a unified data architecture for game replay and live trading platform focused on:
 - **DuckDB/Parquet** as canonical truth storage + **ChromaDB** for vector search
 - **Server-authoritative state** - Trust server in live mode
-- **RAG integration** - ChromaDB powers AI agents and Protocol Explorer UI (reuses claude-flow infrastructure)
+- **RAG integration** - ChromaDB powers AI agents and Protocol Explorer UI
 - **Event-driven architecture** - EventBus with EventStore persistence
 
 **Core Principle:** Parquet is canonical truth; vector indexes are derived and rebuildable.
