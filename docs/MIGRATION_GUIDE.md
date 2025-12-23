@@ -8,10 +8,6 @@ Phase 12D consolidates 6 legacy recorders into a single EventStoreService. This 
 
 | Legacy Recorder | Replacement | Data Access |
 |-----------------|-------------|-------------|
-| RecorderSink | EventStore.GAME_TICK | `doc_type='game_tick'` |
-| DemoRecorderSink | EventStore + TRADE_CONFIRMED | `doc_type='player_action'` |
-| RawCaptureRecorder | EventStore.WS_RAW_EVENT | `doc_type='ws_event'` |
-| UnifiedRecorder | EventStore (all types) | All doc_types |
 | GameStateRecorder | EventStore.GAME_TICK | `doc_type='game_tick'` |
 | PlayerSessionRecorder | EventStore.PLAYER_UPDATE | `doc_type='server_state'` |
 
@@ -24,11 +20,9 @@ SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE session_id = 'abc-123'
 ORDER BY ts;
 
--- Game ticks (replaces RecorderSink)
 SELECT tick, price, game_id FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE doc_type = 'game_tick';
 
--- Player actions with latency (replaces DemoRecorderSink)
 SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE doc_type = 'player_action' AND action_type = 'trade_confirmed';
 ```

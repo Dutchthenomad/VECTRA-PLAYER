@@ -126,10 +126,7 @@ export RUGS_LEGACY_RECORDERS=false
 ./run.sh
 ```
 
-This disables:
-- `DemoRecorderSink` (JSONL demonstrations)
-- `RawCaptureRecorder` (debug JSONL captures)
-- `UnifiedRecorder` (game state + player action JSON)
+This disables legacy recording and capture tooling.
 
 All data still flows through EventStoreService to Parquet.
 

@@ -21,14 +21,9 @@ _LAZY_EXPORTS = {
     "StateVerifier": ("services.state_verifier", "StateVerifier"),
     "BALANCE_TOLERANCE": ("services.state_verifier", "BALANCE_TOLERANCE"),
     "POSITION_TOLERANCE": ("services.state_verifier", "POSITION_TOLERANCE"),
-    # Game and session recorders (legacy - see EventStore for Phase 12)
-    "GameStateRecorder": ("services.recorders", "GameStateRecorder"),
-    "PlayerSessionRecorder": ("services.recorders", "PlayerSessionRecorder"),
     # Recording state machine
     "RecordingState": ("services.recording_state_machine", "RecordingState"),
     "RecordingStateMachine": ("services.recording_state_machine", "RecordingStateMachine"),
-    # Unified recorder (legacy - see EventStore for Phase 12)
-    "UnifiedRecorder": ("services.unified_recorder", "UnifiedRecorder"),
     # Phase 12C: Server-authoritative state in live mode
     "LiveStateProvider": ("services.live_state_provider", "LiveStateProvider"),
 }

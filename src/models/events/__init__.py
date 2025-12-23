@@ -7,6 +7,9 @@ Schema Version: 1.0.0
 
 # Issue #1: gameStateUpdate
 # Issue #23: gameStatePlayerUpdate (Phase 0 Schema Validation)
+from .alert_trigger import AlertTrigger, AlertType
+from .bbc_round import BBCPrediction, BBCRound
+from .candleflip import CandleflipChoice, CandleflipRound
 from .game_state_update import (
     AvailableShitcoin,
     GameHistoryEntry,
@@ -20,15 +23,27 @@ from .game_state_update import (
     ShortPosition,
     SideBet,
 )
+from .ml_episode import MLEpisode
+from .other_player import ExceptionalPlayer, OtherActionType, OtherPlayerAction
+
+# Issue #2: playerUpdate
+from .player_action import (
+    ActionOutcome,
+    ActionTimestamps,
+    ActionType,
+    GameContext,
+    GamePhase,
+    PlayerAction,
+    PlayerState,
+)
 
 # Issue #4: playerLeaderboardPosition
 from .player_leaderboard_position import (
     LeaderboardPlayerEntry,
     PlayerLeaderboardPosition,
 )
-
-# Issue #2: playerUpdate
 from .player_update import PlayerUpdate
+from .short_position import ShortPositionState
 
 # Issue #8: System events
 from .system_events import (
@@ -67,6 +82,18 @@ __all__ = [
     "Rugpool",
     "SideBet",
     "ShortPosition",
+    # Issue #136: player actions
+    "ActionType",
+    "GamePhase",
+    "GameContext",
+    "PlayerState",
+    "ActionTimestamps",
+    "ActionOutcome",
+    "PlayerAction",
+    # Issue #136: other player events
+    "OtherActionType",
+    "OtherPlayerAction",
+    "ExceptionalPlayer",
     # Issue #2: playerUpdate
     "PlayerUpdate",
     # Issue #3: usernameStatus
@@ -90,4 +117,15 @@ __all__ = [
     "AuthEvent",
     "GameLifecycleEvent",
     "SessionEvent",
+    # Issue #136: alert triggers
+    "AlertType",
+    "AlertTrigger",
+    # Issue #136: ML episodes
+    "MLEpisode",
+    # Issue #136: sidegames placeholders
+    "BBCPrediction",
+    "BBCRound",
+    "CandleflipChoice",
+    "CandleflipRound",
+    "ShortPositionState",
 ]

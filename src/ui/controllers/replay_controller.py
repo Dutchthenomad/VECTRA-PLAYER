@@ -6,7 +6,6 @@ Handles:
 - Game file loading (file dialog, auto-load)
 - Playback control (play/pause, step, reset)
 - Playback speed management
-- Recording control
 """
 
 import logging
@@ -40,14 +39,10 @@ class ReplayController:
         reset_button: tk.Button,
         bot_toggle_button: tk.Button,
         speed_label: tk.Label,
-        # UI variables
-        recording_var: tk.BooleanVar,
         # Other dependencies
         toast,
         # Callbacks
         log_callback: Callable[[str], None],
-        # Issue #18 fix: Use RecordingController for state consistency
-        recording_controller=None,
     ):
         """
         Initialize ReplayController with dependencies.
@@ -63,10 +58,8 @@ class ReplayController:
             reset_button: Reset button
             bot_toggle_button: Bot toggle button
             speed_label: Speed display label
-            recording_var: Recording checkbox variable
             toast: Toast notification widget
             log_callback: Logging function
-            recording_controller: RecordingController for state management (Issue #18)
         """
         self.root = root
         self.parent = parent_window  # Access to MainWindow state
@@ -81,14 +74,8 @@ class ReplayController:
         self.bot_toggle_button = bot_toggle_button
         self.speed_label = speed_label
 
-        # UI variables
-        self.recording_var = recording_var
-
         # Other dependencies
         self.toast = toast
-
-        # Issue #18: RecordingController is now the source of truth
-        self.recording_controller = recording_controller
 
         # Callbacks
         self.log = log_callback
@@ -198,51 +185,8 @@ class ReplayController:
         self.speed_label.config(text=f"SPEED: {speed}X")
         self.log(f"Playback speed set to {speed}x")
 
-    # ========================================================================
-    # RECORDING CONTROL
-    # ========================================================================
-
-    def toggle_recording(self):
-        """
-        Toggle recording on/off from menu.
-
-        Issue #18 Fix: Uses RecordingController instead of ReplayEngine
-        for consistent state management.
-        """
-
-        def do_toggle():
-            # Issue #18: Use RecordingController as source of truth
-            if self.recording_controller:
-                if self.recording_controller.is_active:
-                    self.recording_controller.stop_session()
-                    self.recording_var.set(False)
-                    self.log("Recording stopped")
-                else:
-                    # Show config dialog for new recording session
-                    if self.recording_controller.show_config_dialog():
-                        self.recording_var.set(True)
-                        self.log("Recording started")
-            else:
-                # Fallback for backwards compatibility (no recording_controller)
-                logger.warning("No recording_controller - falling back to legacy")
-                if self.replay_engine.auto_recording:
-                    self.replay_engine.disable_recording()
-                    self.recording_var.set(False)
-                    self.log("Recording disabled")
-                    if self.toast:
-                        self.toast.show("Recording disabled", "info")
-                else:
-                    self.replay_engine.enable_recording()
-                    self.recording_var.set(True)
-                    self.log("Recording enabled")
-                    if self.toast:
-                        self.toast.show("Recording enabled", "success")
-
-        # Ensure always runs in main thread
-        self.root.after(0, do_toggle)
-
     def open_recordings_folder(self):
-        """Open recordings folder in system file manager"""
+        """Open recordings folder in system file manager."""
         recordings_dir = self.config.FILES["recordings_dir"]
 
         try:

@@ -10,7 +10,6 @@ from .browser_bridge_controller import BrowserBridgeController
 from .live_feed_controller import LiveFeedController
 
 # Recording controller (JSONL export, dual-state validation)
-from .recording_controller import RecordingController
 from .replay_controller import ReplayController
 from .trading_controller import TradingController
 
@@ -18,7 +17,6 @@ __all__ = [
     "BotManager",
     "BrowserBridgeController",
     "LiveFeedController",
-    "RecordingController",
     "ReplayController",
     "TradingController",
 ]

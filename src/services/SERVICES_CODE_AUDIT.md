@@ -12,8 +12,6 @@ The most important issues are concentrated in:
 
 - `vector_indexer/`: brittle import strategy (`sys.path` injection), missing error handling around checkpoint JSON, and potential runtime crashes from `json.dumps(..., indent=2)` on non-JSON-native types.
 - `event_store/duckdb.py`: multiple SQL construction patterns that are vulnerable to malformed IDs (and generally unsafe SQL string building), plus a few “stringly-typed timestamp” risks.
-- Recording outputs (`recorders.py`, `unified_recorder.py`): filenames incorporate unsanitized `username` values (path traversal / invalid filename risk) and one file-handle lifecycle edge case in `UnifiedRecorder`.
-
 No syntax errors were found, but several correctness, robustness, and operational risks should be addressed to harden the refactor.
 
 ## Inventory (Files Reviewed)
@@ -26,11 +24,9 @@ Top-level:
 - `src/services/live_state_provider.py`
 - `src/services/logger.py`
 - `src/services/rag_ingester.py`
-- `src/services/recorders.py`
 - `src/services/recording_state_machine.py`
 - `src/services/state_verifier.py`
 - `src/services/ui_dispatcher.py`
-- `src/services/unified_recorder.py`
 
 Subpackages:
 - `src/services/schema_validator/__init__.py`
@@ -93,38 +89,9 @@ Non-runtime / concerning artifacts present in-tree:
 - Use parameterized queries throughout (DuckDB supports parameters; for lists, prefer DuckDB list params or `UNNEST($list)` patterns).
 - Avoid f-string concatenation of untrusted values (IDs, timestamps, limits).
 
-### 4) Filename/path safety for `username` in recording outputs
-
-**Why this matters**
-- `username` is incorporated into filenames without sanitization. Usernames containing `/`, `..`, `:` or other platform-specific forbidden characters can:
-  - break file creation,
-  - create surprising nested directories,
-  - cause overwrites,
-  - or enable path traversal if the username is attacker-controlled.
-
-**Where**
-- `src/services/recorders.py` (`PlayerSessionRecorder.save()`: `filename = f"{time_str}_{username}_session.json"`)
-- `src/services/unified_recorder.py` (`_save_player_session()`: `filename = f"{time_str}_{username}_demo.json"`)
-
-**Recommended remediation**
-- Add a small “safe filename” helper (e.g., keep `[A-Za-z0-9._-]`, replace others with `_`, trim length).
-- Consider storing the raw username inside the JSON instead of in the filename.
-
 ## Medium Priority Findings (Fix When Practical)
 
-### 5) `UnifiedRecorder`: action-file handle lifecycle edge case
-
-**Why this matters**
-- `_start_game_recording()` opens a JSONL file handle for player actions.
-- The handle is closed on `_save_game()` and `_discard_current_game()`, but **not** explicitly closed if `stop_session()` transitions to `FINISHING_GAME` and the app never receives a matching `on_game_end()` (e.g., shutdown path, exception, disconnect without `on_connection_lost()` being called).
-
-**Where**
-- `src/services/unified_recorder.py` (`_start_game_recording`, `stop_session`)
-
-**Recommended remediation**
-- Ensure `stop_session()` (or a dedicated `close()`/`shutdown()` method) closes any open `_action_file_handle` and optionally finalizes or deletes partial files.
-
-### 6) `StateVerifier`: type normalization and key mismatch risk
+### 4) `StateVerifier`: type normalization and key mismatch risk
 
 **Why this matters**
 - `verify()` assumes server values are `Decimal`-compatible and compares them to local `Decimal`s.
@@ -138,7 +105,7 @@ Non-runtime / concerning artifacts present in-tree:
 - Normalize server values via `Decimal(str(...))` similarly to `LiveStateProvider` and `EventStoreService`.
 - Support both key styles or ensure upstream mapping is consistent.
 
-### 7) `EventSourceManager`: calls external code while holding a lock
+### 5) `EventSourceManager`: calls external code while holding a lock
 
 **Why this matters**
 - `switch_to_best_source()` holds `_lock` while publishing to `event_bus` and calling `on_source_changed`.
@@ -151,7 +118,7 @@ Non-runtime / concerning artifacts present in-tree:
 - Compute `(old_source, new_source, callback)` under lock, then release the lock before calling `event_bus.publish(...)` and `on_source_changed(...)`.
 - Avoid swallowing exceptions silently; log failures from `event_bus.publish`.
 
-### 8) Timestamp consistency and timezone semantics
+### 6) Timestamp consistency and timezone semantics
 
 **Why this matters**
 - Multiple places use `datetime.utcnow()` (naive datetime) and serialize via `.isoformat()` without an explicit `Z`/UTC offset.

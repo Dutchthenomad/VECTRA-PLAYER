@@ -87,7 +87,6 @@ src/tests/test_characterization/
 | `src/scripts/automated_bot_test.py` | 13-14, 226 | Use `RUGS_DATA_DIR` env var |
 | `src/scripts/debug_bot_session.py` | 13-14, 226 | Use `RUGS_DATA_DIR` env var |
 | `src/scripts/playwright_debug_helper.py` | 12-13 | Update docstrings |
-| `src/tests/test_debug/test_raw_capture_recorder.py` | 21 | Use config paths |
 | `src/tests/test_models/test_all_event_schemas.py` | 16 | Remove sys.path hack |
 | `src/tests/test_models/test_player_update.py` | 11 | Remove sys.path hack |
 | `src/tests/test_models/test_game_state_update.py` | 12 | Remove sys.path hack |
@@ -241,9 +240,6 @@ See GitHub Issue #31 for expanding capture + Live Feed Inspector window.
 
 | Recorder | File | Purpose | Output | Keep? |
 |----------|------|---------|--------|-------|
-| RawCaptureRecorder | `src/debug/raw_capture_recorder.py` | Debug captures | JSONL | **Deprecate** → EventStore |
-| DemoRecorderSink | `src/core/demo_recorder.py` | Human demonstrations | JSON per game | **Deprecate** → EventStore |
-| UnifiedRecorder | `src/services/unified_recorder.py` | Main recording | Various | **Deprecate** → EventStore |
 | **EventStore** | `src/services/event_store/` | Canonical truth | Parquet | **KEEP** (Phase 12) |
 
 ### 3.2 Migration Path
@@ -644,7 +640,6 @@ src/scripts/debug_bot_session.py:14   - docstring
 src/scripts/debug_bot_session.py:226  - runtime Path()
 src/scripts/playwright_debug_helper.py:12 - docstring
 src/scripts/playwright_debug_helper.py:13 - docstring
-src/tests/test_debug/test_raw_capture_recorder.py:21 - assertion
 src/tests/test_models/test_all_event_schemas.py:16   - sys.path
 src/tests/test_models/test_player_update.py:11       - sys.path
 src/tests/test_models/test_game_state_update.py:12   - sys.path

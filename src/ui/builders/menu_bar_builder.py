@@ -2,7 +2,7 @@
 MenuBarBuilder - Builds the application menu bar
 
 Extracted from MainWindow._create_menu_bar() (Phase 1)
-Handles construction of all menus: File, Playback, Recording, Bot, Live Feed, Browser, View, Developer Tools, Help.
+Handles construction of all menus: File, Playback, Bot, Live Feed, Browser, View, Developer Tools, Help.
 """
 
 import logging
@@ -23,7 +23,6 @@ class MenuBarBuilder:
             # ... etc
         }
         variables = {
-            'recording_var': tk.BooleanVar(),
             'bot_var': tk.BooleanVar(),
             'live_feed_var': tk.BooleanVar(),
             'timing_overlay_var': tk.BooleanVar(),
@@ -64,7 +63,6 @@ class MenuBarBuilder:
         # Build all menus
         self._build_file_menu(menubar)
         self._build_playback_menu(menubar)
-        # self._build_recording_menu(menubar)  # Legacy - EventStore auto-captures all events
         self._build_bot_menu(menubar)
         self._build_live_feed_menu(menubar)
         browser_menu, browser_indices = self._build_browser_menu(menubar)
@@ -96,27 +94,6 @@ class MenuBarBuilder:
         menubar.add_cascade(label="Playback", menu=playback_menu)
         playback_menu.add_command(label="Play/Pause", command=self._get_callback("toggle_playback"))
         playback_menu.add_command(label="Stop", command=self._get_callback("reset_game"))
-
-    def _build_recording_menu(self, menubar: tk.Menu):
-        """Build Recording menu"""
-        recording_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Recording", menu=recording_menu)
-
-        # Unified Recording Session
-        recording_menu.add_command(
-            label="Configure & Start Recording...",
-            command=self._get_callback("show_recording_config"),
-        )
-        recording_menu.add_command(
-            label="Stop Recording", command=self._get_callback("stop_recording")
-        )
-        recording_menu.add_separator()
-        recording_menu.add_command(
-            label="Open Recordings Folder", command=self._get_callback("open_recordings_folder")
-        )
-        recording_menu.add_command(
-            label="Show Recording Status", command=self._get_callback("show_recording_status")
-        )
 
     def _build_bot_menu(self, menubar: tk.Menu):
         """Build Bot menu"""

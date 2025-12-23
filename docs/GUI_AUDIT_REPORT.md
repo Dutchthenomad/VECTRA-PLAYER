@@ -85,8 +85,6 @@ self.live_state_provider = LiveStateProvider(
 ```python
 if LEGACY_RECORDERS_ENABLED:
     demo_dir = Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
-    self.demo_recorder = DemoRecorderSink(demo_dir)
-    self.raw_capture_recorder = RawCaptureRecorder()
     # ... callbacks
 ```
 
@@ -100,16 +98,13 @@ if LEGACY_RECORDERS_ENABLED:
 
 | File | Legacy System | Lines |
 |------|---------------|-------|
-| `ui/handlers/capture_handlers.py` | RawCaptureRecorder | 23-135 |
 | `ui/handlers/recording_handlers.py` | DemoRecorder | 23-105 |
-| `ui/controllers/recording_controller.py` | UnifiedRecorder | 31, 95-98, 171-176 |
 | `ui/controllers/trading_controller.py` | DemoRecorder (optional) | Various |
 
 **Recommended Action:**
 1. Set all 6 legacy flags to `false` in production
 2. Remove legacy recorder imports from above files
 3. Route all event capture through EventBus → EventStore
-4. Deprecate `recording_controller.py` entirely (replaced by EventStore)
 
 ---
 
@@ -168,7 +163,6 @@ result = subprocess.run(
 | Controller | Should Capture | Currently Uses | Status |
 |------------|----------------|----------------|--------|
 | live_feed_controller.py | WebSocket events | EventBus ✓ | ✅ Correct |
-| recording_controller.py | All events | UnifiedRecorder ⚠️ | 🔴 LEGACY |
 | trading_controller.py | Trade events | DemoRecorder ⚠️ | 🔴 LEGACY |
 
 **Expected Flow:**
@@ -232,10 +226,7 @@ demo_dir = RUGS_DATA_DIR / "demonstrations"
    ToastNotification(root).show(message, msg_type, duration)
    ```
 
-2. **Recording Toast:** `src/ui/toast_notification.py`
    ```python
-   RecordingToastManager(root).recording_started()
-   RecordingToastManager(root).recording_stopped()
    ```
 
 **Conflict:** `src/ui/bot_manager.py:176-181`
@@ -675,9 +666,7 @@ self.event_store_service.event_count   # Total events captured
 
 4. **Remove legacy recorder code**
    - Files to modify:
-     - `ui/handlers/capture_handlers.py` (remove RawCaptureRecorder)
      - `ui/handlers/recording_handlers.py` (remove DemoRecorder)
-     - `ui/controllers/recording_controller.py` (deprecate entire file)
      - `ui/main_window.py` (remove legacy imports + initialization)
 
 5. **Fix hardcoded paths**

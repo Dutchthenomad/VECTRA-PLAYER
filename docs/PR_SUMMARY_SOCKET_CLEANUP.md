@@ -74,38 +74,7 @@ sell_button = tk.Button(..., state=tk.NORMAL)
 
 ---
 
-### 2. Toast Notifications: FRAGMENTED
-
-**Current State:** Two duplicate implementations with incompatible APIs
-
-**Implementations:**
-1. `src/ui/widgets/toast_notification.py` (79 lines)
-   - Simple Toplevel-based toasts
-   - API: `show(message, msg_type="info", duration=3000)`
-
-2. `src/ui/toast_notification.py` (224 lines)
-   - Frame-based with RecordingToastManager
-   - API: `recording_started()`, `recording_stopped()`, etc.
-
-**Problems:**
-- BotManager crashes calling `toast.show()` with invalid `bootstyle` kwarg (not supported)
-- RecordingController crashes calling nonexistent `RecordingToastManager.show()` method
-- API incompatibility causes confusion and bugs
-
-**Not Wired to Sockets:**
-- WebSocket events exist (TRADE_CONFIRMED, TRADE_REJECTED, INSUFFICIENT_BALANCE)
-- No subscriptions to these events for toast notifications
-- Toasts triggered manually in controller code instead
-
-**Required Fix:**
-- Keep simpler `ui/widgets/toast_notification.py`
-- Delete `ui/toast_notification.py` and RecordingToastManager
-- Subscribe to WebSocket events for automatic notifications
-- Fix BotManager and RecordingController callers
-
----
-
-### 3. Local Balance Validation: DEPRECATED
+### 2. Local Balance Validation: DEPRECATED
 
 **Current State:** TradingController validates against local GameState balance
 
@@ -184,22 +153,7 @@ else:
 
 ---
 
-### Phase 2: Consolidate Toast System (2 days)
-
-**Goal:** Single toast system driven by WebSocket events
-
-**Changes:**
-- Keep `ui/widgets/toast_notification.py` (simpler)
-- Delete `ui/toast_notification.py` and RecordingToastManager
-- Wire socket events: TRADE_CONFIRMED, TRADE_REJECTED, INSUFFICIENT_BALANCE, etc.
-- Fix BotManager `bootstyle` kwarg bug
-- Update RecordingController to use unified API
-
-**Tests:** 3 new integration tests for toast event flow
-
----
-
-### Phase 3: Replace Local Balance Validation (1 day)
+### Phase 2: Replace Local Balance Validation (1 day)
 
 **Goal:** Use LiveStateProvider for all validation in live mode
 
@@ -212,7 +166,7 @@ else:
 
 ---
 
-### Phase 4: Deprecate GameState for Live Mode (2 days)
+### Phase 3: Deprecate GameState for Live Mode (2 days)
 
 **Goal:** Make GameState replay-only, LiveStateProvider for live
 
@@ -226,7 +180,7 @@ else:
 
 ---
 
-### Phase 5: Complete UI Refactoring (2 days)
+### Phase 4: Complete UI Refactoring (2 days)
 
 **Goal:** Finish remaining work, integration tests, docs
 
@@ -243,7 +197,7 @@ else:
 
 **Week 1:** Phases 1-2 (Button states + Toast consolidation)
 **Week 2:** Phases 3-4 (Balance validation + GameState deprecation)
-**Week 3:** Phase 5 (Integration testing + docs)
+**Week 3:** Phase 4 (Integration testing + docs)
 
 **Total:** ~3 weeks for full implementation
 
@@ -264,9 +218,6 @@ else:
 - `src/ui/controllers/trading_controller.py`
 - `src/ui/widgets/toast_notification.py`
 - `src/core/game_state.py`
-
-### Files to Delete (Future PRs)
-- `src/ui/toast_notification.py`
 
 ---
 
