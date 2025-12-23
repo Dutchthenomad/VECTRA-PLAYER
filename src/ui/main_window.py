@@ -78,6 +78,12 @@ class MainWindow(
         self.browser_executor = None
         self.browser_connected = False
 
+        # Optional tooling (initialized for shutdown safety)
+        self.demo_recorder = None
+        self.raw_capture_recorder = None
+        self._debug_terminal = None
+        self._debug_terminal_event_cb = None
+
         try:
             from browser.executor import BrowserExecutor
 
@@ -189,20 +195,6 @@ class MainWindow(
             "reset_game": lambda: self.replay_controller.reset_game()
             if hasattr(self, "replay_controller")
             else None,
-            "show_recording_config": self._show_recording_config,
-            "stop_recording": self._stop_recording_session,
-            "toggle_recording": lambda: self.replay_controller.toggle_recording()
-            if hasattr(self, "replay_controller")
-            else None,
-            "open_recordings_folder": lambda: self.replay_controller.open_recordings_folder()
-            if hasattr(self, "replay_controller")
-            else None,
-            "show_recording_status": self._show_recording_status,
-            "start_demo_session": self._start_demo_session,
-            "end_demo_session": self._end_demo_session,
-            "start_demo_game": self._start_demo_game,
-            "end_demo_game": self._end_demo_game,
-            "show_demo_status": self._show_demo_status,
             "toggle_bot": lambda: self.bot_manager.toggle_bot_from_menu()
             if hasattr(self, "bot_manager")
             else None,
@@ -230,10 +222,6 @@ class MainWindow(
             else None,
             "change_theme": self._change_theme,
             "set_ui_style": self._set_ui_style,
-            "toggle_raw_capture": self._toggle_raw_capture,
-            "analyze_capture": self._analyze_last_capture,
-            "open_captures_folder": self._open_captures_folder,
-            "show_capture_status": self._show_capture_status,
             "open_debug_terminal": self._open_debug_terminal,
             "show_about": self._show_about,
         }
@@ -583,6 +571,8 @@ class MainWindow(
             log_callback=self.log,
         )
 
+        # Note: demo_recorder parameter not passed - imitation learning integration
+        # is prepared but not enabled yet. When ready, pass DemoRecorderSink instance.
         self.trading_controller = TradingController(
             parent_window=self,
             trade_manager=self.trade_manager,
@@ -628,6 +618,84 @@ class MainWindow(
     def log(self, message: str):
         """Log message (using logger instead of text widget)"""
         logger.info(message)
+
+    def _update_capture_stats(self):
+        """Update the status bar capture stats (EventStore session + buffered event count)."""
+        event_store_service = getattr(self, "event_store_service", None)
+        capture_stats_label = getattr(self, "capture_stats_label", None)
+
+        if event_store_service is not None and capture_stats_label is not None:
+            session_id = str(getattr(event_store_service, "session_id", "--------"))[:8]
+            try:
+                event_count = int(getattr(event_store_service, "event_count", 0))
+            except Exception:
+                event_count = 0
+
+            capture_stats_label.config(text=f"Session: {session_id} | Events: {event_count}")
+
+        self.root.after(1000, self._update_capture_stats)
+
+    def _open_debug_terminal(self):
+        """Open (or focus) the WebSocket debug terminal window."""
+        try:
+            if (
+                getattr(self, "_debug_terminal", None)
+                and self._debug_terminal.window.winfo_exists()
+            ):
+                self._debug_terminal.window.deiconify()
+                self._debug_terminal.window.lift()
+                self._debug_terminal.window.focus_force()
+                return
+
+            from services.event_bus import Events
+            from ui.debug_terminal import DebugTerminal
+
+            def on_close():
+                try:
+                    if getattr(self, "_debug_terminal_event_cb", None):
+                        self.event_bus.unsubscribe(
+                            Events.WS_RAW_EVENT, self._debug_terminal_event_cb
+                        )
+                finally:
+                    self._debug_terminal_event_cb = None
+                    self._debug_terminal = None
+
+            terminal = DebugTerminal(self.root, on_close=on_close)
+            self._debug_terminal = terminal
+
+            def handle_ws_event(data):
+                event = data
+                if isinstance(data, dict) and "event" not in data and "data" in data:
+                    if isinstance(data["data"], dict):
+                        event = data["data"]
+
+                if not isinstance(event, dict):
+                    event = {"event": "unknown", "data": event}
+
+                if "timestamp" not in event:
+                    event["timestamp"] = ""
+
+                terminal.log_event(event)
+
+            self._debug_terminal_event_cb = handle_ws_event
+            self.event_bus.subscribe(Events.WS_RAW_EVENT, handle_ws_event, weak=False)
+
+        except Exception as e:
+            logger.error(f"Failed to open debug terminal: {e}", exc_info=True)
+            if getattr(self, "toast", None):
+                self.toast.show("Failed to open debug terminal", "error")
+
+    def _show_about(self):
+        """Show About dialog."""
+        try:
+            from tkinter import messagebox
+
+            messagebox.showinfo(
+                "About VECTRA-PLAYER",
+                "VECTRA-PLAYER\nUnified game replay and live trading platform.",
+            )
+        except Exception as e:
+            logger.error(f"Failed to show About dialog: {e}", exc_info=True)
 
     def _auto_connect_live_feed(self):
         """Auto-connect to live feed on startup."""

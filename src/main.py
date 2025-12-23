@@ -250,6 +250,7 @@ class Application:
         # AUDIT FIX: signal.SIGALRM is Unix-only, guard for Windows portability
         timeout_set = False
         if hasattr(signal, "SIGALRM"):
+
             def timeout_handler(signum, frame):
                 self.logger.warning("Shutdown timeout - forcing exit")
                 os._exit(1)

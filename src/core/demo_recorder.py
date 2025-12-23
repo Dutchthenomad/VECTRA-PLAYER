@@ -244,6 +244,7 @@ class DemoRecorderSink:
 
             # AUDIT FIX: Sanitize game_id to prevent path traversal
             from services.recorders import _sanitize_filename
+
             safe_game_id = _sanitize_filename(game_id)
 
             # Create filename: game_001_gameId.jsonl
