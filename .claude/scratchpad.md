@@ -1,6 +1,6 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-21 18:30 (Phase 5.3 Refactor Complete)
+Last Updated: 2025-12-23 (Schema v2.0.0 Complete)
 
 ---
 
@@ -11,6 +11,7 @@ Last Updated: 2025-12-21 18:30 (Phase 5.3 Refactor Complete)
 Read the following files:
 1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
 2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
+3. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-23-expanded-event-schema-design.md
 
 # Run tests (VECTRA-PLAYER has its own venv now)
 cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
@@ -21,75 +22,83 @@ gh issue list --repo Dutchthenomad/VECTRA-PLAYER
 
 ---
 
-## Active Work
+## Current State
 
-### Current Phase: Refactoring Phase 5.3 - main_window.py (COMPLETE)
+### Schema v2.0.0 COMPLETE
 
-**Branch:** `feat/phase-3-recording-consolidation`
+**Issue #136 CLOSED** - Architecture decisions made:
+1. EventStore is canonical (all events → Parquet)
+2. Legacy recorders → DELETE (~2989 lines)
+3. Schema expanded with player_action, other_player, alerts, sidegames
+4. Latency tracking: client_ts → server_ts → confirmed_ts
 
-**Latest Commit:** Staged (1127 tests passed, awaiting commit after PR automation fix)
+### Codex Working On
 
-### Refactoring Status
+Tasks assigned to Codex agent:
+- **Task A:** Create core event models (player_action.py, other_player.py, alert_trigger.py, ml_episode.py)
+- **Task B:** Create sidegame placeholders (bbc_round.py, candleflip.py, short_position.py)
+- **Task C:** Delete legacy recorders (#137)
+- **Task D:** Update EventStore schema
 
-| Task | Status |
-|------|--------|
-| Phase 5.3: main_window.py modularization | ✅ COMPLETE |
+### Next Session Priority
 
-**Result:** main_window.py reduced from **1968 lines → 616 lines** (68% reduction)
-
-### Extracted Modules
-
-| Module | Location | Lines |
-|--------|----------|-------|
-| keyboard_shortcuts.py | ui/interactions/ | ~100 |
-| theme_manager.py | ui/interactions/ | ~170 |
-| shutdown.py | ui/window/ | ~65 |
-| capture_handlers.py | ui/handlers/ | ~130 |
-| recording_handlers.py | ui/handlers/ | ~135 |
-| balance_handlers.py | ui/handlers/ | ~85 |
-| player_handlers.py | ui/handlers/ | ~100 |
-| event_handlers.py | ui/handlers/ | ~100 |
-| replay_handlers.py | ui/handlers/ | ~120 |
-
-### Phase Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 12A | Event Schemas | ✅ COMPLETE (58 tests) |
-| 12B | Parquet Writer + EventStore | ✅ COMPLETE (84 tests) |
-| 12C | LiveStateProvider | ✅ COMPLETE (20 tests) |
-| 12D | System Validation & Legacy Consolidation | ✅ COMPLETE (8 tasks) |
-| 12E | Protocol Explorer UI | ⏳ PENDING |
-| 5.3 | main_window.py Refactor | ✅ COMPLETE |
+**BotActionInterface design** - Foundation for bot UI interaction:
+- Base interface for all game actions
+- `UIActionExecutor` - Clicks real buttons (live trading)
+- `SimulatedActionExecutor` - Direct state updates (training)
+- Integration with `player_action` schema
 
 ---
 
-## Phase 12D Deliverables (Dec 21, 2025)
+## GitHub Issue Status
 
-### UI Features
-- **Capture Stats Panel** - Session ID (truncated), event count, periodic updates
-- **Live Balance Display** - Server-authoritative cash from LiveStateProvider
-- **LIVE Indicator** - Shows "LIVE: {username}" when CDP connected
+| Issue | Title | Status |
+|-------|-------|--------|
+| #136 | Agent Coordination | ✅ CLOSED |
+| #137 | Remove Legacy Recording Systems | 🔄 Codex working |
+| #138 | Migrate Toast to Socket Events | ⏳ Blocked by #137 |
+| #139 | Path Migration to RUGS_DATA_DIR | ⏳ Pending |
+| #140 | Final Legacy Cleanup | ⏳ Pending |
 
-### CLI Scripts
-- `src/scripts/query_session.py` - DuckDB query tool (--stats, --recent N, --session ID)
-- `src/scripts/export_jsonl.py` - Backwards-compatible JSONL export
+---
 
-### Infrastructure
-- **TRADE_CONFIRMED Event** - Captures latency_ms for trade timing analysis
-- **Legacy Deprecation Flags** - 6 env vars to control each legacy recorder
-- **Migration Guide** - `docs/MIGRATION_GUIDE.md`
+## Schema v2.0.0 Summary
 
-### Legacy Deprecation Flags
-```bash
-export LEGACY_RECORDER_SINK=false       # RecorderSink
-export LEGACY_DEMO_RECORDER=false       # DemoRecorderSink
-export LEGACY_RAW_CAPTURE=false         # RawCaptureRecorder
-export LEGACY_UNIFIED_RECORDER=false    # UnifiedRecorder
-export LEGACY_GAME_STATE_RECORDER=false # GameStateRecorder
-export LEGACY_PLAYER_SESSION_RECORDER=false # PlayerSessionRecorder
-```
-Default: All `true` (backwards compatible)
+### New DocTypes
+| DocType | Purpose |
+|---------|---------|
+| `player_action` | Our button presses with full context |
+| `other_player` | Other players' trades for ML training |
+| `alert_trigger` | Toast notification triggers |
+| `ml_episode` | RL episode boundaries |
+| `bbc_round` | Bull/Bear/Crab sidegame (placeholder) |
+| `candleflip` | Candleflip sidegame (placeholder) |
+| `short_position` | Short position tracking (placeholder) |
+
+### New ActionTypes
+- Main game: BUY, SELL, SIDEBET
+- Shorts: SHORT_OPEN, SHORT_CLOSE
+- Bet adjustment: BET_INCREMENT, BET_DECREMENT, BET_PERCENTAGE
+- Sidegames: BBC_PREDICT, CANDLEFLIP_BET
+
+### Alert Categories
+- Trade: TRADE_SUCCESS, TRADE_FAILED
+- Position: POSITION_PROFIT, POSITION_LOSS, SIDEBET_WON/LOST
+- Game: GAME_START, GAME_RUG, MULTIPLIER_MILESTONE
+- Volatility/Timing: VOLATILITY_SPIKE, SIDEBET_OPTIMAL_ZONE, HIGH_POTENTIAL_ENTRY/EXIT, RUG_WARNING
+- Shorts: SHORT_ENTRY_SIGNAL, SHORT_EXIT_SIGNAL, SHORT_LIQUIDATION_WARNING
+- Sidegames: BBC_ROUND_START, CANDLEFLIP_START
+- Custom signals: CUSTOM_SIGNAL_1/2/3 (placeholders for data exploration)
+
+---
+
+## Key Documentation
+
+| Document | Location |
+|----------|----------|
+| Schema v2.0.0 Design | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
+| Migration Guide | `docs/MIGRATION_GUIDE.md` |
+| GUI Audit Report | `docs/GUI_AUDIT_REPORT.md` |
 
 ---
 
@@ -100,74 +109,15 @@ Default: All `true` (backwards compatible)
 cd /home/nomad/Desktop/VECTRA-PLAYER/src
 ../.venv/bin/python -m pytest tests/ -v --tb=short
 
-# Current: 1127 tests passing
+# Current: 1071 passing, 1 failing (minor test fixture issue)
 ```
-
----
-
-## Data Directories
-
-```
-~/rugs_data/                          # RUGS_DATA_DIR (env var)
-├── events_parquet/                   # Canonical truth store
-│   ├── doc_type=ws_event/
-│   ├── doc_type=game_tick/
-│   ├── doc_type=player_action/
-│   ├── doc_type=server_state/
-│   └── doc_type=system_event/
-├── exports/                          # JSONL exports (optional)
-└── manifests/
-```
-
----
-
-## Key Documentation
-
-| Document | Location |
-|----------|----------|
-| Migration Guide | `docs/MIGRATION_GUIDE.md` |
-| Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
-| Phase 12 Design | `sandbox/2025-12-15-phase-12-unified-data-architecture-design.md` |
-
----
-
-## Next Phase: 12E - Protocol Explorer UI
-
-**Goals:**
-1. Vector indexing with ChromaDB (reuse claude-flow infrastructure)
-2. Protocol Explorer UI panel for querying captured events
-3. Integration with rugs-expert agent
-
-**Prerequisites:**
-- Phase 12D complete ✅
-- ChromaDB MCP server configured ✅
-
----
-
-## GitHub Repository
-
-**URL:** https://github.com/Dutchthenomad/VECTRA-PLAYER
-**Branch:** `feat/phase-3-recording-consolidation`
-**Status:** Up to date with origin
 
 ---
 
 ## Session History
 
-- **2025-12-21**: Phase 5.3 refactor complete - main_window.py 1968→616 lines (68% reduction)
-- **2025-12-21**: Phase 12D complete - All 8 tasks, 1127 tests passing
-- **2025-12-21**: Phase 12C complete - LiveStateProvider implemented
+- **2025-12-23**: Schema v2.0.0 complete, #136 closed, Codex tasks assigned
+- **2025-12-22**: GUI audit issues created (#136-#140), PR #135 merged
+- **2025-12-21**: Phase 12D complete, main_window.py refactored (68% reduction)
 - **2025-12-17**: EventStore/Parquet writer development
-- **2025-12-16**: Phase 12A complete (58 tests), pushed to GitHub
 - **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
-
----
-
-## Related Projects
-
-| Project | Location | Purpose |
-|---------|----------|---------|
-| REPLAYER | `/home/nomad/Desktop/REPLAYER/` | Production system |
-| rugs-rl-bot | `/home/nomad/Desktop/rugs-rl-bot/` | RL training |
-| claude-flow | `/home/nomad/Desktop/claude-flow/` | DevOps layer |
-| Recordings | `/home/nomad/rugs_recordings/` | 929 games |

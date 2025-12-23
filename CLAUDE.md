@@ -1,6 +1,6 @@
 # VECTRA-PLAYER - Unified Data Architecture for Rugs.fun
 
-**Status:** Phase 12D Active | **Date:** December 21, 2025 | **Fork of:** REPLAYER
+**Status:** Schema v2.0.0 | **Date:** December 23, 2025 | **Fork of:** REPLAYER
 
 ---
 
@@ -59,21 +59,31 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/
 └── [collection dirs]                 # Embedding storage
 ```
 
-### Event Schema (v1.0.0)
+### Event Schema (v2.0.0)
 
-**Common Envelope (all doc_types):**
-| Field | Type | Description |
-|-------|------|-------------|
-| `ts` | datetime | Event timestamp (UTC) |
-| `source` | string | 'cdp' \| 'public_ws' \| 'replay' \| 'ui' |
-| `doc_type` | string | ws_event, game_tick, player_action, server_state, system_event |
-| `session_id` | string | Recording session UUID |
-| `game_id` | string? | Game identifier |
-| `player_id` | string? | Player DID |
-| `username` | string? | Player display name |
-| `seq` | int | Sequence number within session |
-| `direction` | string | 'received' \| 'sent' |
-| `raw_json` | string | Full original payload |
+**DocTypes:**
+| DocType | Purpose |
+|---------|---------|
+| `ws_event` | Raw WebSocket events |
+| `game_tick` | Price/tick stream |
+| `player_action` | Our button presses (human/bot) with full context |
+| `other_player` | Other players' trades (from newTrade broadcast) |
+| `server_state` | Server-authoritative snapshots (playerUpdate) |
+| `system_event` | Connection/disconnect/errors |
+| `alert_trigger` | Toast notification triggers |
+| `ml_episode` | RL episode boundaries |
+| `bbc_round` | Bull/Bear/Crab sidegame (placeholder) |
+| `candleflip` | Candleflip sidegame (placeholder) |
+| `short_position` | Short position tracking (placeholder) |
+
+**Latency Tracking Chain:**
+```
+client_ts → server_ts → confirmed_ts
+     ↓          ↓            ↓
+send_latency  confirm_latency  total_latency (for bot timing)
+```
+
+**Full Schema Design:** `docs/plans/2025-12-23-expanded-event-schema-design.md`
 
 ---
 
@@ -127,28 +137,25 @@ mcp__chroma__chroma_query_documents
 | 12A | ✅ COMPLETE | Event schemas (58 tests) |
 | 12B | ✅ COMPLETE | Parquet Writer + EventStore (84 tests) |
 | 12C | ✅ COMPLETE | LiveStateProvider (20 tests) |
-| 12D | ✅ IN PROGRESS | System validation & legacy consolidation |
+| 12D | ✅ COMPLETE | System validation & legacy consolidation |
+| Schema v2.0.0 | ✅ COMPLETE | Expanded schema design (#136) |
+| Legacy Cleanup | 🔄 IN PROGRESS | Delete legacy recorders (#137) |
 | 12E | ⏳ PENDING | Protocol Explorer UI |
 
-### Phase 12D Completed (Dec 21, 2025)
-- ✅ Capture Stats Panel in UI (event count, file count, session ID)
-- ✅ Live Balance Display with visual indicator
-- ✅ DuckDB query script (`src/scripts/query_session.py`)
-- ✅ Trade latency capture (TRADE_CONFIRMED event)
-- ✅ Legacy deprecation flags (6 env vars)
-- ✅ JSONL export CLI (`src/scripts/export_jsonl.py`)
-- ✅ Migration Guide (`docs/MIGRATION_GUIDE.md`)
+### Schema v2.0.0 (Dec 23, 2025)
+- ✅ #136 Architecture decision: EventStore is canonical
+- ✅ `player_action` schema with full latency tracking
+- ✅ `other_player` schema for ML training data
+- ✅ `alert_trigger` schema with 25+ alert types
+- ✅ Sidegame placeholders: BBC, Candleflip, Shorts
+- 🔄 Legacy recorder deletion in progress (#137)
 
-### Legacy Deprecation Flags
-```bash
-export LEGACY_RECORDER_SINK=false       # RecorderSink
-export LEGACY_DEMO_RECORDER=false       # DemoRecorderSink
-export LEGACY_RAW_CAPTURE=false         # RawCaptureRecorder
-export LEGACY_UNIFIED_RECORDER=false    # UnifiedRecorder
-export LEGACY_GAME_STATE_RECORDER=false # GameStateRecorder
-export LEGACY_PLAYER_SESSION_RECORDER=false # PlayerSessionRecorder
-```
-Default: All `true` (backwards compatible)
+### Legacy Recorders (BEING REMOVED)
+These files are deprecated and being deleted:
+- `core/demo_recorder.py` → Replaced by `player_action` schema
+- `core/recorder_sink.py` → Replaced by EventStore
+- `services/unified_recorder.py` → Replaced by EventStore
+- `debug/raw_capture_recorder.py` → No longer needed
 
 ---
 
@@ -174,6 +181,7 @@ Default: All `true` (backwards compatible)
 
 | Document | Location |
 |----------|----------|
+| **Schema v2.0.0 Design** | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
 | Migration Guide | `docs/MIGRATION_GUIDE.md` |
 | Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
 | Storage Migration Plan | `sandbox/duckdb_parquet_lancedb_migration_plan.md` |
@@ -216,4 +224,4 @@ vectra-player index query "What fields are in playerUpdate?"
 
 ---
 
-*December 21, 2025 | Phase 12D - System Validation & Legacy Consolidation*
+*December 23, 2025 | Schema v2.0.0 - Legacy Cleanup In Progress*
