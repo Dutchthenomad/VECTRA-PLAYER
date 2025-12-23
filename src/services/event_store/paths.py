@@ -89,14 +89,19 @@ class EventStorePaths:
                 status[name] = path.exists()
             except PermissionError as e:
                 import logging
-                logging.getLogger(__name__).error(f"Permission denied creating {name}: {path} - {e}")
+
+                logging.getLogger(__name__).error(
+                    f"Permission denied creating {name}: {path} - {e}"
+                )
                 status[name] = False
             except OSError as e:
                 import logging
+
                 logging.getLogger(__name__).error(f"OS error creating {name}: {path} - {e}")
                 status[name] = False
             except Exception as e:
                 import logging
+
                 logging.getLogger(__name__).error(f"Unexpected error creating {name}: {path} - {e}")
                 status[name] = False
         return status
