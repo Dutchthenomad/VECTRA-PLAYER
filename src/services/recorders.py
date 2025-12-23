@@ -36,8 +36,9 @@ def _sanitize_filename(name: str, max_length: int = 50) -> str:
         Sanitized string safe for filenames
     """
     import re
+
     # Keep only alphanumeric, dots, dashes, underscores
-    sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', name)
+    sanitized = re.sub(r"[^a-zA-Z0-9._-]", "_", name)
     # Truncate to max length
     return sanitized[:max_length]
 

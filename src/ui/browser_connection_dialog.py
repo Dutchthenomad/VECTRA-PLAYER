@@ -149,6 +149,7 @@ class BrowserConnectionDialog:
             message: Message to log
             status: "info", "success", "error", "warning"
         """
+
         def _update_ui():
             # Guard against destroyed dialog
             if not self.dialog or not self.dialog.winfo_exists():

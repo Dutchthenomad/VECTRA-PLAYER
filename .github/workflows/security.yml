@@ -44,3 +44,7 @@ jobs:
         uses: github/codeql-action/autobuild@v4
       - name: Analyze
         uses: github/codeql-action/analyze@v4
+        with:
+          # Avoid uploading SARIF from an "advanced configuration" workflow when
+          # GitHub Advanced Security "default setup" is enabled for the repo.
+          upload: never

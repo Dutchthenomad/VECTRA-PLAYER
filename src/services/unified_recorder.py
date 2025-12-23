@@ -598,6 +598,7 @@ class UnifiedRecorder:
         # AUDIT FIX: Sanitize username to prevent path traversal
         # Import the sanitization function from recorders
         from services.recorders import _sanitize_filename
+
         safe_username = _sanitize_filename(username)
         filename = f"{time_str}_{safe_username}_demo.json"
         filepath = demos_dir / filename
