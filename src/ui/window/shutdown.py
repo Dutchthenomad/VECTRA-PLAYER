@@ -33,21 +33,22 @@ class ShutdownMixin:
                     loop.close()
                     asyncio.set_event_loop(None)
 
-        # Close demo recorder (flushes pending data)
-        if self.demo_recorder:
+        # Close demo recorder (flushes pending data) - Legacy system
+        if hasattr(self, "demo_recorder") and self.demo_recorder:
             try:
                 self.demo_recorder.close()
                 logger.info("Demo recorder closed")
             except Exception as e:
                 logger.error(f"Error closing demo recorder: {e}")
 
-        # Stop raw capture if running
-        if self.raw_capture_recorder and self.raw_capture_recorder.is_capturing:
-            try:
-                self.raw_capture_recorder.stop_capture()
-                logger.info("Raw capture stopped during shutdown")
-            except Exception as e:
-                logger.error(f"Error stopping raw capture: {e}")
+        # Stop raw capture if running - Legacy system
+        if hasattr(self, "raw_capture_recorder") and self.raw_capture_recorder:
+            if self.raw_capture_recorder.is_capturing:
+                try:
+                    self.raw_capture_recorder.stop_capture()
+                    logger.info("Raw capture stopped during shutdown")
+                except Exception as e:
+                    logger.error(f"Error stopping raw capture: {e}")
 
         # Stop EventStoreService (flushes remaining Parquet data)
         if hasattr(self, "event_store_service") and self.event_store_service:
