@@ -222,6 +222,22 @@ class TestPriceHistoryHandler:
         # Should not emit
         assert len(received) == 0
 
+    def test_handle_game_end_idempotent(self):
+        """Test calling handle_game_end twice emits only one event"""
+        handler = PriceHistoryHandler()
+        received = []
+
+        def callback(data):
+            received.append(data)
+
+        handler.on("game_prices_complete", callback)
+        handler.handle_tick("game-123", 0, Decimal("1.0"))
+
+        handler.handle_game_end("game-123", [])
+        handler.handle_game_end("game-123", [])  # Second call should be ignored
+
+        assert len(received) == 1
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

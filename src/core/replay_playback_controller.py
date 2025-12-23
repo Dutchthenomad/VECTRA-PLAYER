@@ -71,8 +71,6 @@ class PlaybackController:
                 logger.warning("No game loaded")
                 return
 
-            self.is_playing = True
-
         # AUDIT FIX: Ensure old thread is fully stopped before starting new one
         # Wait outside the lock to prevent deadlock
         if self.playback_thread and self.playback_thread.is_alive():
@@ -81,9 +79,16 @@ class PlaybackController:
                 logger.debug("Waiting for previous playback thread to finish")
                 self.playback_thread.join(timeout=2.0)
 
-        # Start new playback thread
-        self._stop_event.clear()
+        # AUDIT FIX: Under a single lock, update state and start the new playback thread
+        # so callers never observe is_playing == True while playback_thread is None
         with self._lock:
+            # Another caller (pause/cleanup) may have changed state while we waited
+            if self.is_playing:
+                return
+
+            self._stop_event.clear()
+            self.is_playing = True
+
             self.playback_thread = threading.Thread(
                 target=self._playback_loop, name="ReplayEngine-Playback", daemon=True
             )
