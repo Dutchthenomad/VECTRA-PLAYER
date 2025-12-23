@@ -149,6 +149,7 @@ class BrowserConnectionDialog:
             message: Message to log
             status: "info", "success", "error", "warning"
         """
+
         def _update_ui():
             self.progress_text.config(state="normal")
 

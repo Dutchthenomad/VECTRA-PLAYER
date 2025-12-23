@@ -15,6 +15,7 @@ from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
+    from core.demo_recorder import DemoRecorderSink
     from ui.controllers.recording_controller import RecordingController
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class TradingController:
         toast,
         log_callback: Callable[[str], None],
         recording_controller: Optional["RecordingController"] = None,
+        demo_recorder: Optional["DemoRecorderSink"] = None,
     ):
         """
         Initialize TradingController with dependencies.
@@ -52,6 +54,7 @@ class TradingController:
             toast: Toast notification widget
             log_callback: Logging function
             recording_controller: RecordingController for button recording
+            demo_recorder: DemoRecorderSink for imitation learning recording
         """
         self.parent = parent_window
         self.trade_manager = trade_manager
@@ -64,6 +67,7 @@ class TradingController:
         self.toast = toast
         self.log = log_callback
         self.recording_controller = recording_controller
+        self.demo_recorder = demo_recorder
 
         logger.info("TradingController initialized")
 
@@ -71,7 +75,7 @@ class TradingController:
     # RECORDING
     # ========================================================================
 
-    def _record_button_press(self, button: str, amount: Decimal = None):
+    def _record_button_press(self, button: str, amount: Decimal | None = None):
         """
         Record a button press with dual-state validation.
 
@@ -82,34 +86,46 @@ class TradingController:
             button: Button text (e.g., 'BUY', '+0.01', '25%')
             amount: Trade amount (for BUY/SELL/SIDEBET actions)
         """
+        # Get current bet amount from entry (best effort; recording should never break UX).
         try:
-            # Get current bet amount from entry
-            try:
-                bet_amount = Decimal(self.bet_entry.get())
-            except (InvalidOperation, ValueError) as e:
-                logger.warning(f"Invalid bet amount '{self.bet_entry.get()}': {e}")
-                bet_amount = Decimal("0")
-            except Exception as e:
-                logger.error(f"Unexpected error parsing bet amount: {e}")
-                bet_amount = Decimal("0")
+            bet_amount = Decimal(self.bet_entry.get())
+        except (InvalidOperation, ValueError) as e:
+            logger.warning(f"Invalid bet amount '{self.bet_entry.get()}': {e}")
+            bet_amount = Decimal("0")
+        except Exception as e:
+            logger.error(f"Unexpected error parsing bet amount: {e}")
+            bet_amount = Decimal("0")
 
-            if self.recording_controller:
-                # Capture local state snapshot for validation
+        # Unified recording (local/server dual-state validation).
+        if self.recording_controller and hasattr(self.state, "capture_local_snapshot"):
+            try:
                 local_state = self.state.capture_local_snapshot(bet_amount)
 
-                # Get server state for dual-state validation
                 server_state = None
                 if hasattr(self.parent, "get_latest_server_state"):
                     server_state = self.parent.get_latest_server_state()
 
-                # Record to unified recording system
                 self.recording_controller.on_button_press(
-                    button=button, local_state=local_state, amount=amount, server_state=server_state
+                    button=button,
+                    local_state=local_state,
+                    amount=amount,
+                    server_state=server_state,
                 )
-                logger.debug(f"Recorded button press: {button}")
+                logger.debug(f"Recorded button press (unified): {button}")
+            except Exception as e:
+                logger.error(f"Failed to record button press (unified): {e}")
 
-        except Exception as e:
-            logger.error(f"Failed to record button press: {e}")
+        # Demo recording (imitation learning).
+        if self.demo_recorder and hasattr(self.state, "capture_demo_snapshot"):
+            try:
+                if self.demo_recorder.is_game_active():
+                    state_before = self.state.capture_demo_snapshot(bet_amount)
+                    self.demo_recorder.record_button_press(
+                        button=button, state_before=state_before, amount=amount
+                    )
+                    logger.debug(f"Recorded button press (demo): {button}")
+            except Exception as e:
+                logger.error(f"Failed to record button press (demo): {e}")
 
     # ========================================================================
     # TRADE EXECUTION
@@ -323,7 +339,9 @@ class TradingController:
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount halved to {new_amount}")
         except (InvalidOperation, ValueError) as e:
-            logger.warning(f"Invalid bet amount during halve operation '{self.bet_entry.get()}': {e}")
+            logger.warning(
+                f"Invalid bet amount during halve operation '{self.bet_entry.get()}': {e}"
+            )
         except Exception as e:
             logger.error(f"Unexpected error during halve operation: {e}")
 
@@ -345,7 +363,9 @@ class TradingController:
             self.bet_entry.insert(0, str(new_amount))
             logger.debug(f"Bet amount doubled to {new_amount}")
         except (InvalidOperation, ValueError) as e:
-            logger.warning(f"Invalid bet amount during double operation '{self.bet_entry.get()}': {e}")
+            logger.warning(
+                f"Invalid bet amount during double operation '{self.bet_entry.get()}': {e}"
+            )
         except Exception as e:
             logger.error(f"Unexpected error during double operation: {e}")
 
