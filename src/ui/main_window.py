@@ -571,6 +571,8 @@ class MainWindow(
             log_callback=self.log,
         )
 
+        # Note: demo_recorder parameter not passed - imitation learning integration
+        # is prepared but not enabled yet. When ready, pass DemoRecorderSink instance.
         self.trading_controller = TradingController(
             parent_window=self,
             trade_manager=self.trade_manager,

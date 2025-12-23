@@ -86,7 +86,8 @@ class TradingController:
             button: Button text (e.g., 'BUY', '+0.01', '25%')
             amount: Trade amount (for BUY/SELL/SIDEBET actions)
         """
-        # Get current bet amount from entry (best effort; recording should never break UX).
+        # Best effort; recording should never break UX.
+        # All errors in this method are caught and logged, but never raised.
         try:
             bet_amount = Decimal(self.bet_entry.get())
         except (InvalidOperation, ValueError) as e:
