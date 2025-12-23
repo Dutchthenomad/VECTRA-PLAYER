@@ -18,6 +18,9 @@ class DocType(str, Enum):
     WS_EVENT = "ws_event"  # Raw WebSocket events
     GAME_TICK = "game_tick"  # Price/tick stream
     PLAYER_ACTION = "player_action"  # Human/bot trading actions
+    BBC_ROUND = "bbc_round"  # BBC sidegame rounds
+    CANDLEFLIP_ROUND = "candleflip_round"  # Candleflip sidegame rounds
+    SHORT_POSITION = "short_position"  # Short position snapshots
     SERVER_STATE = "server_state"  # Server-authoritative snapshots
     SYSTEM_EVENT = "system_event"  # Connection/disconnect/errors
 

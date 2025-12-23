@@ -8,17 +8,12 @@ Handles:
 - Live mode state management
 - Feed source switching
 - UI updates for live feed status
-- Auto-start/stop recording when connected/disconnected
 """
 
 import logging
 import threading
 import tkinter as tk
 from collections.abc import Callable
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ui.controllers.recording_controller import RecordingController
 
 logger = logging.getLogger(__name__)
 
@@ -70,23 +65,11 @@ class LiveFeedController:
         self._signal_queue = []  # Queue all signals, don't drop any
         self._signal_drain_scheduled = False
 
-        # Recording controller for auto-start/stop
-        self._recording_controller: RecordingController | None = None
-
         # Player identity tracking
         self._player_id: str | None = None
         self._username: str | None = None
 
         logger.info("LiveFeedController initialized")
-
-    def set_recording_controller(self, controller: "RecordingController") -> None:
-        """
-        Set the recording controller for auto-start/stop recording.
-
-        Must be called after RecordingController is created.
-        """
-        self._recording_controller = controller
-        logger.debug("Recording controller set for auto-start/stop")
 
     def _queue_live_signal(self, signal_snapshot) -> None:
         """Queue signal for processing - no signals are dropped."""
@@ -208,14 +191,6 @@ class LiveFeedController:
                     if hasattr(self.parent, "phase_label"):
                         self.parent.phase_label.config(text="PHASE: DISCONNECTED", fg="#ff3366")
 
-                    # Auto-stop recording
-                    if self._recording_controller and self._recording_controller.is_active:
-                        try:
-                            self._recording_controller.stop_session()
-                            self.log("📹 Recording stopped automatically")
-                        except Exception as rec_e:
-                            logger.error(f"Failed to auto-stop recording: {rec_e}")
-
                     # Reset server state UI
                     if hasattr(self.parent, "_reset_server_state"):
                         self.parent._reset_server_state()
@@ -252,10 +227,6 @@ class LiveFeedController:
                     self._username = captured_info.get("username")
                     self.log(f"👤 Logged in as: {self._username}")
 
-                    # Set player info on recording controller
-                    if self._recording_controller:
-                        self._recording_controller.set_player_info(self._player_id, self._username)
-
                     # Publish to EventBus for other consumers
                     self.event_bus.publish(Events.PLAYER_IDENTITY, captured_info)
 
@@ -273,10 +244,6 @@ class LiveFeedController:
 
                     # Create ServerState from WebSocket data
                     server_state = ServerState.from_websocket(captured_data)
-
-                    # Forward to recording controller
-                    if self._recording_controller:
-                        self._recording_controller.update_server_state(server_state)
 
                     # Publish to EventBus for other consumers
                     self.event_bus.publish(

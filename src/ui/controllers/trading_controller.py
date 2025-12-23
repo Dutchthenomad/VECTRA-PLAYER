@@ -5,18 +5,12 @@ Handles:
 - Trade execution (buy/sell/sidebet)
 - Bet amount management (increment, clear, half, double, max)
 - Sell percentage management (10%, 25%, 50%, 100%)
-- Recording button presses with dual-state validation (local vs server)
 """
 
 import logging
 import tkinter as tk
 from collections.abc import Callable
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-    from core.demo_recorder import DemoRecorderSink
-    from ui.controllers.recording_controller import RecordingController
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +30,6 @@ class TradingController:
         ui_dispatcher,
         toast,
         log_callback: Callable[[str], None],
-        recording_controller: Optional["RecordingController"] = None,
-        demo_recorder: Optional["DemoRecorderSink"] = None,
     ):
         """
         Initialize TradingController with dependencies.
@@ -53,8 +45,6 @@ class TradingController:
             ui_dispatcher: TkDispatcher for thread-safe UI updates
             toast: Toast notification widget
             log_callback: Logging function
-            recording_controller: RecordingController for button recording
-            demo_recorder: DemoRecorderSink for imitation learning recording
         """
         self.parent = parent_window
         self.trade_manager = trade_manager
@@ -66,67 +56,8 @@ class TradingController:
         self.ui_dispatcher = ui_dispatcher
         self.toast = toast
         self.log = log_callback
-        self.recording_controller = recording_controller
-        self.demo_recorder = demo_recorder
 
         logger.info("TradingController initialized")
-
-    # ========================================================================
-    # RECORDING
-    # ========================================================================
-
-    def _record_button_press(self, button: str, amount: Decimal | None = None):
-        """
-        Record a button press with dual-state validation.
-
-        Records ALL button presses to RecordingController with local state
-        snapshot for validation against server state.
-
-        Args:
-            button: Button text (e.g., 'BUY', '+0.01', '25%')
-            amount: Trade amount (for BUY/SELL/SIDEBET actions)
-        """
-        # Best effort; recording should never break UX.
-        # All errors in this method are caught and logged, but never raised.
-        try:
-            bet_amount = Decimal(self.bet_entry.get())
-        except (InvalidOperation, ValueError) as e:
-            logger.warning(f"Invalid bet amount '{self.bet_entry.get()}': {e}")
-            bet_amount = Decimal("0")
-        except Exception as e:
-            logger.error(f"Unexpected error parsing bet amount: {e}")
-            bet_amount = Decimal("0")
-
-        # Unified recording (local/server dual-state validation).
-        if self.recording_controller and hasattr(self.state, "capture_local_snapshot"):
-            try:
-                local_state = self.state.capture_local_snapshot(bet_amount)
-
-                server_state = None
-                if hasattr(self.parent, "get_latest_server_state"):
-                    server_state = self.parent.get_latest_server_state()
-
-                self.recording_controller.on_button_press(
-                    button=button,
-                    local_state=local_state,
-                    amount=amount,
-                    server_state=server_state,
-                )
-                logger.debug(f"Recorded button press (unified): {button}")
-            except Exception as e:
-                logger.error(f"Failed to record button press (unified): {e}")
-
-        # Demo recording (imitation learning).
-        if self.demo_recorder and hasattr(self.state, "capture_demo_snapshot"):
-            try:
-                if self.demo_recorder.is_game_active():
-                    state_before = self.state.capture_demo_snapshot(bet_amount)
-                    self.demo_recorder.record_button_press(
-                        button=button, state_before=state_before, amount=amount
-                    )
-                    logger.debug(f"Recorded button press (demo): {button}")
-            except Exception as e:
-                logger.error(f"Failed to record button press (demo): {e}")
 
     # ========================================================================
     # TRADE EXECUTION
@@ -145,8 +76,6 @@ class TradingController:
         if amount is None:
             return  # Validation failed, but browser click already sent
 
-        self._record_button_press("BUY", amount)
-
         result = self.trade_manager.execute_buy(amount)
 
         if result["success"]:
@@ -164,8 +93,6 @@ class TradingController:
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for SELL: {e}")
             # Continue with local trading - browser is optional
-
-        self._record_button_press("SELL")
 
         result = self.trade_manager.execute_sell()
 
@@ -204,8 +131,6 @@ class TradingController:
         if amount is None:
             return  # Validation failed (toast already shown), but browser click already sent
 
-        self._record_button_press("SIDEBET", amount)
-
         result = self.trade_manager.execute_sidebet(amount)
 
         if result["success"]:
@@ -237,9 +162,6 @@ class TradingController:
             self.browser_bridge.on_percentage_clicked(percentage)
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for percentage {percentage}: {e}")
-
-        button_text = f"{int(percentage * 100)}%"
-        self._record_button_press(button_text)
 
         # Update GameState with new percentage
         success = self.state.set_sell_percentage(Decimal(str(percentage)))
@@ -290,8 +212,6 @@ class TradingController:
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for increment {button_text}: {e}")
 
-        self._record_button_press(button_text)
-
         # Then update local UI
         try:
             current_amount = Decimal(self.bet_entry.get())
@@ -315,8 +235,6 @@ class TradingController:
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for clear: {e}")
 
-        self._record_button_press("X")
-
         # Then update local UI
         self.bet_entry.delete(0, tk.END)
         self.bet_entry.insert(0, "0")
@@ -329,8 +247,6 @@ class TradingController:
             self.browser_bridge.on_increment_clicked("1/2")
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for half: {e}")
-
-        self._record_button_press("1/2")
 
         # Then update local UI
         try:
@@ -354,8 +270,6 @@ class TradingController:
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for double: {e}")
 
-        self._record_button_press("X2")
-
         # Then update local UI
         try:
             current = Decimal(self.bet_entry.get())
@@ -377,8 +291,6 @@ class TradingController:
             self.browser_bridge.on_increment_clicked("MAX")
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for MAX: {e}")
-
-        self._record_button_press("MAX")
 
         # Then update local UI
         balance = self.state.get("balance")
