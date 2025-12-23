@@ -151,6 +151,9 @@ class BrowserConnectionDialog:
         """
 
         def _update_ui():
+            # Guard against destroyed dialog
+            if not self.dialog or not self.dialog.winfo_exists():
+                return
             self.progress_text.config(state="normal")
 
             # Color prefixes
@@ -160,7 +163,8 @@ class BrowserConnectionDialog:
             self.progress_text.insert(tk.END, f"{prefix}{message}\n")
             self.progress_text.see(tk.END)
             self.progress_text.config(state="disabled")
-            self.dialog.update()
+            # NOTE: Removed self.dialog.update() - causes reentrancy issues
+            # parent.after(0, ...) already ensures UI updates on next event loop
 
         # Always marshal to main thread for thread safety
         self.parent.after(0, _update_ui)
