@@ -69,7 +69,7 @@ class MenuBarBuilder:
         self._build_live_feed_menu(menubar)
         browser_menu, browser_indices = self._build_browser_menu(menubar)
         self._build_view_menu(menubar)
-        dev_menu, dev_indices = self._build_developer_menu(menubar)
+        dev_menu, _dev_indices = self._build_developer_menu(menubar)
         self._build_help_menu(menubar)
 
         logger.debug("MenuBarBuilder: Menu bar built")
@@ -80,7 +80,6 @@ class MenuBarBuilder:
             "browser_status_item_index": browser_indices["status"],
             "browser_disconnect_item_index": browser_indices["disconnect"],
             "browser_connect_item_index": browser_indices["connect"],
-            "dev_capture_item_index": dev_indices["capture"],
         }
 
     def _build_file_menu(self, menubar: tk.Menu):

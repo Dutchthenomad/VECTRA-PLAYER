@@ -3,10 +3,8 @@ Main Window UI Module - Refactored with Mixins
 """
 
 import logging
-import os
 import tkinter as tk
 from decimal import Decimal
-from pathlib import Path
 from tkinter import ttk
 
 from bot import BotController, BotInterface, list_strategies
@@ -255,7 +253,6 @@ class MainWindow(
         self.browser_status_item_index = refs["browser_status_item_index"]
         self.browser_disconnect_item_index = refs["browser_disconnect_item_index"]
         self.browser_connect_item_index = refs["browser_connect_item_index"]
-        self.dev_capture_item_index = refs["dev_capture_item_index"]
 
     def _create_ui(self):
         """Create UI matching the user's mockup design"""

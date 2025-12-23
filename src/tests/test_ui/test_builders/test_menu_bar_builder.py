@@ -102,4 +102,3 @@ class TestMenuBarBuilder:
         _menubar, refs = builder.build()
         assert "browser_status_item_index" in refs
         assert "browser_disconnect_item_index" in refs
-        assert "dev_capture_item_index" in refs
