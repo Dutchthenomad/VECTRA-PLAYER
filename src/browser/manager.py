@@ -32,6 +32,7 @@ import asyncio
 import logging
 import socket
 import subprocess
+import threading
 from enum import Enum
 from pathlib import Path
 
@@ -212,6 +213,14 @@ class CDPBrowserManager:
                 stderr=subprocess.PIPE,  # Capture errors for debugging
                 start_new_session=True,  # Detach from parent process
             )
+            if self._chrome_process.stderr:
+                # Drain stderr in background to avoid blocking on a full pipe.
+                threading.Thread(
+                    target=self._drain_chrome_stderr,
+                    args=(self._chrome_process.stderr,),
+                    daemon=True,
+                    name="CDPChrome-Stderr",
+                ).start()
 
             # Wait for Chrome to start accepting connections
             for i in range(30):  # Wait up to 15 seconds
@@ -246,6 +255,17 @@ class CDPBrowserManager:
         except Exception as e:
             logger.error(f"Failed to launch Chrome: {e}")
             return False
+
+    @staticmethod
+    def _drain_chrome_stderr(stream):
+        """Continuously drain Chrome stderr to avoid pipe blocking."""
+        try:
+            for line in iter(stream.readline, b""):
+                text = line.decode(errors="replace").strip()
+                if text:
+                    logger.debug(f"Chrome stderr: {text[:500]}")
+        except Exception:
+            pass
 
     async def connect(self) -> bool:
         """

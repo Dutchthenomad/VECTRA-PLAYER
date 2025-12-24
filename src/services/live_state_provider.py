@@ -231,6 +231,28 @@ class LiveStateProvider:
 
     # ========== Event Handlers ==========
 
+    @staticmethod
+    def _normalize_player_update(data: dict[str, Any]) -> dict[str, Any]:
+        """Normalize playerUpdate payloads from multiple producers."""
+        server_state = data.get("server_state")
+        if server_state is not None:
+            return {
+                "cash": getattr(server_state, "cash", None),
+                "positionQty": getattr(server_state, "position_qty", None),
+                "avgCost": getattr(server_state, "avg_cost", None),
+                "cumulativePnL": getattr(server_state, "cumulative_pnl", None),
+                "totalInvested": getattr(server_state, "total_invested", None),
+                "playerId": getattr(server_state, "player_id", None),
+                "username": getattr(server_state, "username", None),
+                "gameId": getattr(server_state, "game_id", None),
+            }
+
+        raw_data = data.get("raw_data")
+        if isinstance(raw_data, dict):
+            return raw_data
+
+        return data
+
     def _on_player_update(self, wrapped: dict[str, Any]) -> None:
         """
         Handle PLAYER_UPDATE events from EventBus.
@@ -243,34 +265,35 @@ class LiveStateProvider:
             data = wrapped.get("data", wrapped)
             if not isinstance(data, dict):
                 return
+            data = self._normalize_player_update(data)
 
             with self._lock:
                 # Update cash/balance
-                if "cash" in data:
+                if data.get("cash") is not None:
                     self._state.cash = Decimal(str(data["cash"]))
 
                 # Update position
-                if "positionQty" in data:
+                if data.get("positionQty") is not None:
                     self._state.position_qty = Decimal(str(data["positionQty"]))
 
-                if "avgCost" in data:
+                if data.get("avgCost") is not None:
                     self._state.avg_cost = Decimal(str(data["avgCost"]))
 
                 # Update P&L tracking
-                if "cumulativePnL" in data:
+                if data.get("cumulativePnL") is not None:
                     self._state.cumulative_pnl = Decimal(str(data["cumulativePnL"]))
 
-                if "totalInvested" in data:
+                if data.get("totalInvested") is not None:
                     self._state.total_invested = Decimal(str(data["totalInvested"]))
 
                 # Update identity
-                if "playerId" in data:
+                if data.get("playerId") is not None:
                     self._state.player_id = data["playerId"]
 
-                if "username" in data:
+                if data.get("username") is not None:
                     self._state.username = data["username"]
 
-                if "gameId" in data:
+                if data.get("gameId") is not None:
                     self._state.game_id = data["gameId"]
 
                 # Track update sequence
@@ -333,8 +356,15 @@ class LiveStateProvider:
                 return
 
             with self._lock:
+                tick_value = data.get("tick")
+                if tick_value is not None and hasattr(tick_value, "tick"):
+                    self._state.current_tick = tick_value.tick
+                    self._state.current_multiplier = Decimal(str(tick_value.price))
+                    self._state.game_id = tick_value.game_id
+                    return
+
                 # Update tick
-                if "tick" in data:
+                if "tick" in data and isinstance(data["tick"], int):
                     self._state.current_tick = data["tick"]
 
                 # Update multiplier/price
