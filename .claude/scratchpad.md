@@ -1,15 +1,15 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-23 22:30 (Codex Work In Progress)
+Last Updated: 2025-12-23 23:45 (BotActionInterface Design Complete)
 
 ---
 
 ## Active Issue
-GitHub Issue #137: Remove Legacy Recording Systems
+GitHub Issue #137: Remove Legacy Recording Systems - ✅ COMMITTED
 Branch: `fix/gui-audit-safety-fixes`
 
 ## Current SDLC Phase
-**Implementation** - Codex completed Tasks A-D, needs review and commit
+**Design Complete** - BotActionInterface design finalized, ready for empirical validation
 
 ---
 
@@ -88,10 +88,13 @@ src/tests/test_ui/test_builders/test_menu_bar_builder.py # Updated
 
 ## Next Steps
 
-1. [ ] Run tests to verify Codex changes work: `../.venv/bin/python -m pytest tests/ -v --tb=short`
-2. [ ] Review new model files match Schema v2.0.0 design
-3. [ ] If tests pass, stage and commit Codex work
-4. [ ] Design BotActionInterface (next priority)
+1. [x] Run tests to verify Codex changes work - ✅ 926 tests passing
+2. [x] Review new model files match Schema v2.0.0 design - ✅ Verified
+3. [x] Stage and commit Codex work - ✅ Committed `6dc13e5`
+4. [x] Design BotActionInterface - ✅ Design complete `df71e9c`
+5. [ ] **NEXT: Empirical Validation** - Run Test Script v1.0, analyze WebSocket traffic
+6. [ ] Create GitHub Issue for BotActionInterface implementation
+7. [ ] Continue with #138 (Toast → Socket Events) or start implementation
 
 ---
 
@@ -143,22 +146,38 @@ total_latency_ms: int | None   # confirmed_ts - client_ts
 
 ---
 
-## After Codex Review: BotActionInterface Design
+## BotActionInterface Design (COMPLETE)
 
-Foundation for bot UI interaction (next priority after #137 merged):
+**Design Doc:** `docs/plans/2025-12-23-bot-action-interface-design.md`
 
-```python
-class BotActionInterface(ABC):
-    """Base interface for all game actions"""
-    @abstractmethod
-    def execute_action(self, action: ActionType, context: ActionContext) -> ActionResult
-
-class UIActionExecutor(BotActionInterface):
-    """Clicks real buttons via browser automation (live trading)"""
-
-class SimulatedActionExecutor(BotActionInterface):
-    """Direct state updates (RL training, replay mode)"""
+### Architecture
 ```
+BotActionInterface (orchestrator)
+├── ActionExecutor      → Press buttons (Tkinter/Puppeteer/Simulated)
+├── ConfirmationMonitor → Watch WebSocket, calculate latency
+└── StateTracker        → Track positions/balance → emit PlayerAction
+```
+
+### Three Execution Modes
+| Mode | Executor | Use Case |
+|------|----------|----------|
+| Live | PuppeteerExecutor | Real browser, real money |
+| Validation | TkinterExecutor | UI animation + real WebSocket |
+| Training | SimulatedExecutor | Instant, no UI overhead |
+
+### Latency Tracking
+```
+client_ts → confirmed_ts → total_latency_ms
+    ↓
+RL model uses avg_latency_ticks to decide if safe to exit
+```
+
+### ⚠️ REQUIRED BEFORE IMPLEMENTATION
+**Empirical Validation Checkpoint** - Run Test Script v1.0:
+1. Execute predetermined button sequence (BUY/SELL/SIDEBET)
+2. Capture WebSocket traffic with Chrome DevTools MCP
+3. Map which events confirm which actions
+4. Document in `docs/specs/CONFIRMATION_EVENT_MAPPING.md`
 
 ---
 
