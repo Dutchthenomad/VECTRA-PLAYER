@@ -1,15 +1,16 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-23 23:45 (BotActionInterface Design Complete)
+Last Updated: 2025-12-24 00:15 (Session End - Ready for Tomorrow)
 
 ---
 
 ## Active Issue
-GitHub Issue #137: Remove Legacy Recording Systems - ✅ COMMITTED
-Branch: `fix/gui-audit-safety-fixes`
+GitHub Issue #137: Remove Legacy Recording Systems - ✅ MERGED via PR #141
+Branch: `fix/gui-audit-safety-fixes` (pushed, PR open)
+PR: https://github.com/Dutchthenomad/VECTRA-PLAYER/pull/141
 
 ## Current SDLC Phase
-**Design Complete** - BotActionInterface design finalized, ready for empirical validation
+**Design Complete** → Ready for **Empirical Validation**
 
 ---
 
@@ -20,92 +21,54 @@ Branch: `fix/gui-audit-safety-fixes`
 Read the following files:
 1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
 2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
-3. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-23-expanded-event-schema-design.md
+3. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-23-bot-action-interface-design.md
 
 # Run tests
 cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
 
-# Check working directory (Codex made changes)
+# Check git status
 git status
 ```
 
 ---
 
-## Codex Work Status (REVIEW NEEDED)
+## Next Steps (Tomorrow)
 
-Codex appears to have completed significant work on #137. Review the following:
-
-### New Model Files Created (untracked)
-```
-src/models/events/player_action.py      # Task A
-src/models/events/other_player.py       # Task A
-src/models/events/alert_trigger.py      # Task A
-src/models/events/ml_episode.py         # Task A
-src/models/events/bbc_round.py          # Task B
-src/models/events/candleflip.py         # Task B
-src/models/events/short_position.py     # Task B
-```
-
-### Legacy Files Deleted (Task C)
-```
-src/core/demo_recorder.py               # DELETED
-src/core/recorder_sink.py               # DELETED
-src/debug/raw_capture_recorder.py       # DELETED
-src/services/recorders.py               # DELETED
-src/services/unified_recorder.py        # DELETED
-src/ui/controllers/recording_controller.py  # DELETED
-src/ui/toast_notification.py            # DELETED
-```
-
-### Tests Deleted (Task C)
-```
-src/tests/test_core/test_demo_recorder.py
-src/tests/test_core/test_recorder_sink.py
-src/tests/test_core/test_thread_safety_stress.py
-src/tests/test_debug/test_raw_capture_recorder.py
-src/tests/test_fixes/test_issue_18_recording_state.py
-src/tests/test_services/test_recorders.py
-src/tests/test_services/test_unified_recorder.py
-src/tests/test_characterization/test_recording_system.py
-```
-
-### Modified Files (need review)
-```
-src/models/events/__init__.py           # Task D - exports new models
-src/services/__init__.py                # Updated exports
-src/ui/main_window.py                   # Recording references removed
-src/ui/builders/menu_bar_builder.py     # Recording menu removed
-src/ui/builders/status_bar_builder.py   # Updated
-src/ui/controllers/__init__.py          # Updated exports
-src/ui/controllers/replay_controller.py # Recording refs removed
-src/ui/handlers/event_handlers.py       # Updated
-src/ui/window/shutdown.py               # Updated
-src/tests/test_services/test_event_store/test_writer.py  # Updated
-src/tests/test_ui/test_builders/test_menu_bar_builder.py # Updated
-```
+1. [ ] **Empirical Validation** - Run Test Script v1.0
+   - Execute predetermined button sequence (BUY/SELL/SIDEBET)
+   - Capture WebSocket traffic with Chrome DevTools MCP
+   - Map which events confirm which actions
+2. [ ] Create `knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md`
+3. [ ] Create GitHub Issue for BotActionInterface implementation
+4. [ ] Continue with #138-140 or start implementation
 
 ---
 
-## Next Steps
+## Session 2025-12-23 Accomplishments
 
-1. [x] Run tests to verify Codex changes work - ✅ 926 tests passing
-2. [x] Review new model files match Schema v2.0.0 design - ✅ Verified
-3. [x] Stage and commit Codex work - ✅ Committed `6dc13e5`
-4. [x] Design BotActionInterface - ✅ Design complete `df71e9c`
-5. [ ] **NEXT: Empirical Validation** - Run Test Script v1.0, analyze WebSocket traffic
-6. [ ] Create GitHub Issue for BotActionInterface implementation
-7. [ ] Continue with #138 (Toast → Socket Events) or start implementation
+### Commits Made
+| Commit | Description |
+|--------|-------------|
+| `6dc13e5` | Schema v2.0.0 + legacy removal (~6154 LOC deleted) |
+| `df71e9c` | BotActionInterface design document |
+| `1a3e4fa` | Scratchpad update |
+| `487eabc` | Knowledge Base Integration section |
+
+### PR Created
+- **PR #141**: Schema v2.0.0: Legacy cleanup + BotActionInterface design
+- 926 tests passing
+- Closes #137
 
 ---
 
 ## Key Decisions Made (Session 2025-12-23)
 
 1. **EventStore is canonical** - All events flow to Parquet via EventStore
-2. **Legacy recorders → DELETE** - ~2989 lines removed (Codex did this)
+2. **Legacy recorders → DELETED** - ~6154 lines removed
 3. **Schema v2.0.0** - Added player_action, other_player, alerts, sidegames
-4. **Latency tracking** - client_ts → server_ts → confirmed_ts chain
-5. **No whale detection** - User corrected: "player position size doesn't affect liquidity"
-6. **Volatility signals instead** - VOLATILITY_SPIKE, SIDEBET_OPTIMAL_ZONE, etc.
+4. **Latency tracking** - client_ts → confirmed_ts chain for RL model
+5. **BotActionInterface** - 3-layer architecture (Executor, Monitor, Tracker)
+6. **Knowledge Base Integration** - Validation findings go to rugs-expert RAG
 
 ---
 
@@ -114,35 +77,10 @@ src/tests/test_ui/test_builders/test_menu_bar_builder.py # Updated
 | Issue | Title | Status |
 |-------|-------|--------|
 | #136 | Agent Coordination | ✅ CLOSED |
-| #137 | Remove Legacy Recording Systems | 🔄 Codex DONE, needs commit |
+| #137 | Remove Legacy Recording Systems | ✅ PR #141 |
 | #138 | Migrate Toast to Socket Events | ⏳ Pending |
 | #139 | Path Migration to RUGS_DATA_DIR | ⏳ Pending |
 | #140 | Final Legacy Cleanup | ⏳ Pending |
-
----
-
-## Schema v2.0.0 Summary
-
-### New DocTypes
-| DocType | Purpose |
-|---------|---------|
-| `player_action` | Our button presses with full context |
-| `other_player` | Other players' trades for ML training |
-| `alert_trigger` | Toast notification triggers |
-| `ml_episode` | RL episode boundaries |
-| `bbc_round` | Bull/Bear/Crab sidegame (placeholder) |
-| `candleflip` | Candleflip sidegame (placeholder) |
-| `short_position` | Short position tracking (placeholder) |
-
-### Latency Tracking Fields
-```python
-client_ts: int          # When we clicked (ms epoch)
-server_ts: int | None   # Server timestamp from response
-confirmed_ts: int | None # When we got confirmation
-send_latency_ms: int | None    # server_ts - client_ts
-confirm_latency_ms: int | None # confirmed_ts - server_ts
-total_latency_ms: int | None   # confirmed_ts - client_ts
-```
 
 ---
 
@@ -165,19 +103,13 @@ BotActionInterface (orchestrator)
 | Validation | TkinterExecutor | UI animation + real WebSocket |
 | Training | SimulatedExecutor | Instant, no UI overhead |
 
-### Latency Tracking
-```
-client_ts → confirmed_ts → total_latency_ms
-    ↓
-RL model uses avg_latency_ticks to decide if safe to exit
-```
-
 ### ⚠️ REQUIRED BEFORE IMPLEMENTATION
-**Empirical Validation Checkpoint** - Run Test Script v1.0:
+**Empirical Validation Checkpoint** - Test Script v1.0:
 1. Execute predetermined button sequence (BUY/SELL/SIDEBET)
 2. Capture WebSocket traffic with Chrome DevTools MCP
 3. Map which events confirm which actions
-4. Document in `docs/specs/CONFIRMATION_EVENT_MAPPING.md`
+4. Document in `knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md`
+5. Run ChromaDB ingestion for rugs-expert
 
 ---
 
@@ -185,16 +117,17 @@ RL model uses avg_latency_ticks to decide if safe to exit
 
 | Document | Location |
 |----------|----------|
+| BotActionInterface Design | `docs/plans/2025-12-23-bot-action-interface-design.md` |
 | Schema v2.0.0 Design | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
 | Migration Guide | `docs/MIGRATION_GUIDE.md` |
-| GUI Audit Report | `docs/GUI_AUDIT_REPORT.md` |
 
 ---
 
 ## Session History
 
-- **2025-12-23 (evening)**: Codex completed Tasks A-D, awaiting review/commit
-- **2025-12-23 (afternoon)**: Schema v2.0.0 complete, #136 closed, Codex tasks assigned
+- **2025-12-23 (night)**: PR #141 created, BotActionInterface design complete
+- **2025-12-23 (evening)**: Codex work verified, committed, design brainstorming
+- **2025-12-23 (afternoon)**: Schema v2.0.0 complete, #136 closed
 - **2025-12-22**: GUI audit issues created (#136-#140), PR #135 merged
 - **2025-12-21**: Phase 12D complete, main_window.py refactored (68% reduction)
 - **2025-12-17**: EventStore/Parquet writer development
