@@ -189,6 +189,8 @@ Please report security vulnerabilities to [@Dutchthenomad](https://github.com/Du
 
 ## 📚 Documentation
 
+- **[Status](docs/STATUS.md)**: Current development status and priorities
+- **[Roadmap](docs/ROADMAP.md)**: Unified plan for remaining goals and cleanup
 - **[CI/CD Guide](docs/CI_CD_GUIDE.md)**: Complete guide to automated workflows
 - **[WebSocket Events Spec](docs/specs/WEBSOCKET_EVENTS_SPEC.md)**: Event schema documentation
 - **[CLAUDE.md](CLAUDE.md)**: Claude AI development context
@@ -229,7 +231,8 @@ Please report security vulnerabilities to [@Dutchthenomad](https://github.com/Du
 
 ## 🎯 Roadmap
 
-See our [GitHub Issues](https://github.com/Dutchthenomad/VECTRA-PLAYER/issues) for detailed roadmap and feature requests.
+See `docs/ROADMAP.md` for the unified plan and our
+[GitHub Issues](https://github.com/Dutchthenomad/VECTRA-PLAYER/issues) for feature requests.
 
 ---
 

@@ -96,7 +96,7 @@ The PR should now show:
 
 The original PR #120 contained audit fixes for:
 - Null pointer checks
-- Memory leak prevention  
+- Memory leak prevention
 - Error handling improvements
 - Logging enhancements
 

@@ -68,6 +68,10 @@ class LiveFeedController:
         # Player identity tracking
         self._player_id: str | None = None
         self._username: str | None = None
+        # Connection sequencing to ignore stale async callbacks
+        self._connection_seq = 0
+        self._active_connection_seq = 0
+        self._live_feed_requested = False
 
         logger.info("LiveFeedController initialized")
 
@@ -123,6 +127,11 @@ class LiveFeedController:
             return
 
         try:
+            self._connection_seq += 1
+            connection_seq = self._connection_seq
+            self._active_connection_seq = connection_seq
+            self._live_feed_requested = True
+
             self.log("Connecting to live feed...")
             # Show connecting toast for user feedback
             if self.toast:
@@ -153,6 +162,11 @@ class LiveFeedController:
 
                 # Marshal to Tkinter main thread with captured value
                 def handle_connected(captured_info=info_snapshot):
+                    if (
+                        not self._live_feed_requested
+                        or connection_seq != self._active_connection_seq
+                    ):
+                        return
                     socket_id = captured_info.get("socketId")
 
                     # Skip first connection event (Socket ID not yet assigned)
@@ -181,6 +195,8 @@ class LiveFeedController:
 
                 # Marshal to Tkinter main thread with captured value
                 def handle_disconnected(captured_info=info_snapshot):
+                    if connection_seq != self._active_connection_seq:
+                        return
                     reason = captured_info.get("reason", "unknown")
                     self.parent.live_feed_connected = False
                     # Sync menu checkbox state (disconnected)
@@ -204,6 +220,8 @@ class LiveFeedController:
 
                 # Marshal to Tkinter main thread with captured value
                 def handle_game_complete(captured_data=data_snapshot):
+                    if connection_seq != self._active_connection_seq:
+                        return
                     game_num = captured_data.get("gameNumber", 0)
                     seed_data = captured_data.get("seedData")
                     self.log(f"💥 Game {game_num} complete")
@@ -221,6 +239,8 @@ class LiveFeedController:
                 info_snapshot = dict(info) if hasattr(info, "items") else {}
 
                 def handle_identity(captured_info=info_snapshot):
+                    if connection_seq != self._active_connection_seq:
+                        return
                     from services.event_bus import Events
 
                     self._player_id = captured_info.get("player_id")
@@ -239,6 +259,8 @@ class LiveFeedController:
                 data_snapshot = dict(data) if hasattr(data, "items") else {}
 
                 def handle_update(captured_data=data_snapshot):
+                    if connection_seq != self._active_connection_seq:
+                        return
                     from models.recording_models import ServerState
                     from services.event_bus import Events
 
@@ -266,6 +288,8 @@ class LiveFeedController:
 
                     # Marshal error handling to main thread
                     def handle_error():
+                        if connection_seq != self._active_connection_seq:
+                            return
                         self.log(f"Failed to connect to live feed: {error_msg}")
                         if self.toast:
                             self.toast.show(f"Live feed error: {error_msg}", "error")
@@ -279,6 +303,7 @@ class LiveFeedController:
             connection_thread.start()
 
         except Exception as e:
+            self._live_feed_requested = False
             logger.error(f"Failed to enable live feed: {e}", exc_info=True)
             self.log(f"Failed to connect to live feed: {e}")
             if self.toast:
@@ -292,9 +317,15 @@ class LiveFeedController:
         """Disable WebSocket live feed"""
         if not self.parent.live_feed:
             self.log("Live feed not active")
+            self._connection_seq += 1
+            self._active_connection_seq = self._connection_seq
+            self._live_feed_requested = False
             return
 
         try:
+            self._connection_seq += 1
+            self._active_connection_seq = self._connection_seq
+            self._live_feed_requested = False
             self.log("Disconnecting from live feed...")
             self.parent.live_feed.disconnect()
             self.parent.live_feed = None

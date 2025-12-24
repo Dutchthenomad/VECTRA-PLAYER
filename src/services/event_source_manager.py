@@ -62,26 +62,34 @@ class EventSourceManager:
 
         Prefers CDP when available, falls back otherwise.
         """
+        new_source = None
+        old_source = None
+        on_source_changed = None
+
         with self._lock:
-            new_source = EventSource.CDP if self.is_cdp_available else EventSource.FALLBACK
-
-            if new_source != self.active_source:
+            desired_source = EventSource.CDP if self.is_cdp_available else EventSource.FALLBACK
+            if desired_source != self.active_source:
                 old_source = self.active_source
-                self.active_source = new_source
+                self.active_source = desired_source
+                new_source = desired_source
+                on_source_changed = self.on_source_changed
 
-                logger.info(f"Event source: {old_source.value} -> {new_source.value}")
+        if new_source is None:
+            return
 
-                # Publish for UI/monitoring
-                try:
-                    event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": new_source.value})
-                except Exception:
-                    pass
+        logger.info(f"Event source: {old_source.value} -> {new_source.value}")
 
-                if self.on_source_changed:
-                    try:
-                        self.on_source_changed(new_source)
-                    except Exception as e:
-                        logger.error(f"Error in source changed callback: {e}")
+        # Publish outside the lock to avoid re-entrancy issues.
+        try:
+            event_bus.publish(Events.WS_SOURCE_CHANGED, {"source": new_source.value})
+        except Exception:
+            pass
+
+        if on_source_changed:
+            try:
+                on_source_changed(new_source)
+            except Exception as e:
+                logger.error(f"Error in source changed callback: {e}")
 
     def get_status(self) -> dict[str, Any]:
         """Get current status."""
