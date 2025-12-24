@@ -1,6 +1,16 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-21 18:30 (Phase 5.3 Refactor Complete)
+Last Updated: 2025-12-24 00:15 (Session End - Ready for Tomorrow)
+
+---
+
+## Active Issue
+GitHub Issue #137: Remove Legacy Recording Systems - ✅ MERGED via PR #141
+Branch: `fix/gui-audit-safety-fixes` (pushed, PR open)
+PR: https://github.com/Dutchthenomad/VECTRA-PLAYER/pull/141
+
+## Current SDLC Phase
+**Design Complete** → Ready for **Empirical Validation**
 
 ---
 
@@ -11,113 +21,95 @@ Last Updated: 2025-12-21 18:30 (Phase 5.3 Refactor Complete)
 Read the following files:
 1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
 2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
+3. /home/nomad/Desktop/VECTRA-PLAYER/docs/plans/2025-12-23-bot-action-interface-design.md
 
-# Run tests (VECTRA-PLAYER has its own venv now)
+# Run tests
 cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
 
-# Check GitHub issues
-gh issue list --repo Dutchthenomad/VECTRA-PLAYER
+# Check git status
+git status
 ```
 
 ---
 
-## Active Work
+## Next Steps (Tomorrow)
 
-### Current Phase: Refactoring Phase 5.3 - main_window.py (COMPLETE)
-
-**Branch:** `feat/phase-3-recording-consolidation`
-
-**Latest Commit:** Staged (1127 tests passed, awaiting commit after PR automation fix)
-
-### Refactoring Status
-
-| Task | Status |
-|------|--------|
-| Phase 5.3: main_window.py modularization | ✅ COMPLETE |
-
-**Result:** main_window.py reduced from **1968 lines → 616 lines** (68% reduction)
-
-### Extracted Modules
-
-| Module | Location | Lines |
-|--------|----------|-------|
-| keyboard_shortcuts.py | ui/interactions/ | ~100 |
-| theme_manager.py | ui/interactions/ | ~170 |
-| shutdown.py | ui/window/ | ~65 |
-| capture_handlers.py | ui/handlers/ | ~130 |
-| recording_handlers.py | ui/handlers/ | ~135 |
-| balance_handlers.py | ui/handlers/ | ~85 |
-| player_handlers.py | ui/handlers/ | ~100 |
-| event_handlers.py | ui/handlers/ | ~100 |
-| replay_handlers.py | ui/handlers/ | ~120 |
-
-### Phase Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 12A | Event Schemas | ✅ COMPLETE (58 tests) |
-| 12B | Parquet Writer + EventStore | ✅ COMPLETE (84 tests) |
-| 12C | LiveStateProvider | ✅ COMPLETE (20 tests) |
-| 12D | System Validation & Legacy Consolidation | ✅ COMPLETE (8 tasks) |
-| 12E | Protocol Explorer UI | ⏳ PENDING |
-| 5.3 | main_window.py Refactor | ✅ COMPLETE |
+1. [ ] **Empirical Validation** - Run Test Script v1.0
+   - Execute predetermined button sequence (BUY/SELL/SIDEBET)
+   - Capture WebSocket traffic with Chrome DevTools MCP
+   - Map which events confirm which actions
+2. [ ] Create `knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md`
+3. [ ] Create GitHub Issue for BotActionInterface implementation
+4. [ ] Continue with #138-140 or start implementation
 
 ---
 
-## Phase 12D Deliverables (Dec 21, 2025)
+## Session 2025-12-23 Accomplishments
 
-### UI Features
-- **Capture Stats Panel** - Session ID (truncated), event count, periodic updates
-- **Live Balance Display** - Server-authoritative cash from LiveStateProvider
-- **LIVE Indicator** - Shows "LIVE: {username}" when CDP connected
+### Commits Made
+| Commit | Description |
+|--------|-------------|
+| `6dc13e5` | Schema v2.0.0 + legacy removal (~6154 LOC deleted) |
+| `df71e9c` | BotActionInterface design document |
+| `1a3e4fa` | Scratchpad update |
+| `487eabc` | Knowledge Base Integration section |
 
-### CLI Scripts
-- `src/scripts/query_session.py` - DuckDB query tool (--stats, --recent N, --session ID)
-- `src/scripts/export_jsonl.py` - Backwards-compatible JSONL export
-
-### Infrastructure
-- **TRADE_CONFIRMED Event** - Captures latency_ms for trade timing analysis
-- **Legacy Deprecation Flags** - 6 env vars to control each legacy recorder
-- **Migration Guide** - `docs/MIGRATION_GUIDE.md`
-
-### Legacy Deprecation Flags
-```bash
-export LEGACY_RECORDER_SINK=false       # RecorderSink
-export LEGACY_DEMO_RECORDER=false       # DemoRecorderSink
-export LEGACY_RAW_CAPTURE=false         # RawCaptureRecorder
-export LEGACY_UNIFIED_RECORDER=false    # UnifiedRecorder
-export LEGACY_GAME_STATE_RECORDER=false # GameStateRecorder
-export LEGACY_PLAYER_SESSION_RECORDER=false # PlayerSessionRecorder
-```
-Default: All `true` (backwards compatible)
+### PR Created
+- **PR #141**: Schema v2.0.0: Legacy cleanup + BotActionInterface design
+- 926 tests passing
+- Closes #137
 
 ---
 
-## Test Coverage
+## Key Decisions Made (Session 2025-12-23)
 
-```bash
-# Run all tests
-cd /home/nomad/Desktop/VECTRA-PLAYER/src
-../.venv/bin/python -m pytest tests/ -v --tb=short
-
-# Current: 1127 tests passing
-```
+1. **EventStore is canonical** - All events flow to Parquet via EventStore
+2. **Legacy recorders → DELETED** - ~6154 lines removed
+3. **Schema v2.0.0** - Added player_action, other_player, alerts, sidegames
+4. **Latency tracking** - client_ts → confirmed_ts chain for RL model
+5. **BotActionInterface** - 3-layer architecture (Executor, Monitor, Tracker)
+6. **Knowledge Base Integration** - Validation findings go to rugs-expert RAG
 
 ---
 
-## Data Directories
+## GitHub Issue Status
 
+| Issue | Title | Status |
+|-------|-------|--------|
+| #136 | Agent Coordination | ✅ CLOSED |
+| #137 | Remove Legacy Recording Systems | ✅ PR #141 |
+| #138 | Migrate Toast to Socket Events | ⏳ Pending |
+| #139 | Path Migration to RUGS_DATA_DIR | ⏳ Pending |
+| #140 | Final Legacy Cleanup | ⏳ Pending |
+
+---
+
+## BotActionInterface Design (COMPLETE)
+
+**Design Doc:** `docs/plans/2025-12-23-bot-action-interface-design.md`
+
+### Architecture
 ```
-~/rugs_data/                          # RUGS_DATA_DIR (env var)
-├── events_parquet/                   # Canonical truth store
-│   ├── doc_type=ws_event/
-│   ├── doc_type=game_tick/
-│   ├── doc_type=player_action/
-│   ├── doc_type=server_state/
-│   └── doc_type=system_event/
-├── exports/                          # JSONL exports (optional)
-└── manifests/
+BotActionInterface (orchestrator)
+├── ActionExecutor      → Press buttons (Tkinter/Puppeteer/Simulated)
+├── ConfirmationMonitor → Watch WebSocket, calculate latency
+└── StateTracker        → Track positions/balance → emit PlayerAction
 ```
+
+### Three Execution Modes
+| Mode | Executor | Use Case |
+|------|----------|----------|
+| Live | PuppeteerExecutor | Real browser, real money |
+| Validation | TkinterExecutor | UI animation + real WebSocket |
+| Training | SimulatedExecutor | Instant, no UI overhead |
+
+### ⚠️ REQUIRED BEFORE IMPLEMENTATION
+**Empirical Validation Checkpoint** - Test Script v1.0:
+1. Execute predetermined button sequence (BUY/SELL/SIDEBET)
+2. Capture WebSocket traffic with Chrome DevTools MCP
+3. Map which events confirm which actions
+4. Document in `knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md`
+5. Run ChromaDB ingestion for rugs-expert
 
 ---
 
@@ -125,49 +117,18 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src
 
 | Document | Location |
 |----------|----------|
+| BotActionInterface Design | `docs/plans/2025-12-23-bot-action-interface-design.md` |
+| Schema v2.0.0 Design | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
 | Migration Guide | `docs/MIGRATION_GUIDE.md` |
-| Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
-| Phase 12 Design | `sandbox/2025-12-15-phase-12-unified-data-architecture-design.md` |
-
----
-
-## Next Phase: 12E - Protocol Explorer UI
-
-**Goals:**
-1. Vector indexing with ChromaDB (reuse claude-flow infrastructure)
-2. Protocol Explorer UI panel for querying captured events
-3. Integration with rugs-expert agent
-
-**Prerequisites:**
-- Phase 12D complete ✅
-- ChromaDB MCP server configured ✅
-
----
-
-## GitHub Repository
-
-**URL:** https://github.com/Dutchthenomad/VECTRA-PLAYER
-**Branch:** `feat/phase-3-recording-consolidation`
-**Status:** Up to date with origin
 
 ---
 
 ## Session History
 
-- **2025-12-21**: Phase 5.3 refactor complete - main_window.py 1968→616 lines (68% reduction)
-- **2025-12-21**: Phase 12D complete - All 8 tasks, 1127 tests passing
-- **2025-12-21**: Phase 12C complete - LiveStateProvider implemented
+- **2025-12-23 (night)**: PR #141 created, BotActionInterface design complete
+- **2025-12-23 (evening)**: Codex work verified, committed, design brainstorming
+- **2025-12-23 (afternoon)**: Schema v2.0.0 complete, #136 closed
+- **2025-12-22**: GUI audit issues created (#136-#140), PR #135 merged
+- **2025-12-21**: Phase 12D complete, main_window.py refactored (68% reduction)
 - **2025-12-17**: EventStore/Parquet writer development
-- **2025-12-16**: Phase 12A complete (58 tests), pushed to GitHub
 - **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
-
----
-
-## Related Projects
-
-| Project | Location | Purpose |
-|---------|----------|---------|
-| REPLAYER | `/home/nomad/Desktop/REPLAYER/` | Production system |
-| rugs-rl-bot | `/home/nomad/Desktop/rugs-rl-bot/` | RL training |
-| claude-flow | `/home/nomad/Desktop/claude-flow/` | DevOps layer |
-| Recordings | `/home/nomad/rugs_recordings/` | 929 games |

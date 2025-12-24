@@ -24,11 +24,6 @@ def callbacks():
         "exit_app": lambda: None,
         "toggle_playback": lambda: None,
         "reset_game": lambda: None,
-        "show_recording_config": lambda: None,
-        "stop_recording": lambda: None,
-        "toggle_recording": lambda: None,
-        "open_recordings_folder": lambda: None,
-        "show_recording_status": lambda: None,
         "start_demo_session": lambda: None,
         "end_demo_session": lambda: None,
         "start_demo_game": lambda: None,
@@ -55,7 +50,6 @@ def callbacks():
 def variables(root):
     """Create UI variables"""
     return {
-        "recording_var": tk.BooleanVar(value=False),
         "bot_var": tk.BooleanVar(value=False),
         "live_feed_var": tk.BooleanVar(value=False),
         "timing_overlay_var": tk.BooleanVar(value=False),

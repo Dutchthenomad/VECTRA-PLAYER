@@ -79,8 +79,6 @@ class MainWindow(
         self.browser_connected = False
 
         # Optional tooling (initialized for shutdown safety)
-        self.demo_recorder = None
-        self.raw_capture_recorder = None
         self._debug_terminal = None
         self._debug_terminal_event_cb = None
 
@@ -227,7 +225,6 @@ class MainWindow(
         }
 
         variables = {
-            "recording_var": self.recording_var,
             "bot_var": self.bot_var,
             "live_feed_var": self.live_feed_var,
             "timing_overlay_var": self.timing_overlay_var,
@@ -246,21 +243,17 @@ class MainWindow(
         """Create UI matching the user's mockup design"""
         # Create UI variables
         self.bot_var = tk.BooleanVar(value=self.bot_enabled)
-        self.recording_var = tk.BooleanVar(value=self.replay_engine.auto_recording)
         self.live_feed_var = tk.BooleanVar(value=self.live_feed_connected)
         self.timing_overlay_var = tk.BooleanVar(value=False)
 
         # ROW 1: STATUS BAR
-        status_widgets = StatusBarBuilder(
-            self.root, toggle_recording=self._toggle_recording_from_button
-        ).build()
+        status_widgets = StatusBarBuilder(self.root).build()
         self.tick_label = status_widgets["tick_label"]
         self.price_label = status_widgets["price_label"]
         self.phase_label = status_widgets["phase_label"]
         self.player_profile_label = status_widgets["player_profile_label"]
         self.browser_status_label = status_widgets["browser_status_label"]
         self.source_label = status_widgets["source_label"]
-        self.recording_toggle = status_widgets["recording_toggle"]
         self.capture_stats_label = status_widgets["capture_stats_label"]
 
         # ROW 2: CHART
@@ -566,13 +559,10 @@ class MainWindow(
             reset_button=self.reset_button,
             bot_toggle_button=self.bot_toggle_button,
             speed_label=self.speed_label,
-            recording_var=self.recording_var,
             toast=self.toast,
             log_callback=self.log,
         )
 
-        # Note: demo_recorder parameter not passed - imitation learning integration
-        # is prepared but not enabled yet. When ready, pass DemoRecorderSink instance.
         self.trading_controller = TradingController(
             parent_window=self,
             trade_manager=self.trade_manager,
@@ -595,9 +585,6 @@ class MainWindow(
             toast=self.toast,
             log_callback=self.log,
         )
-
-        # Legacy RecordingController disabled - EventStore handles all recording now
-        self.recording_controller = None
 
         self._create_menu_bar()
 

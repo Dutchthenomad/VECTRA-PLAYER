@@ -12,11 +12,11 @@
 |----------|-------------|-------|------------|
 | `src/` | `SRC_CODEBASE_AUDIT.md` | 122 | Entry points (config.py, main.py) |
 | `src/browser/` | `BROWSER_CODEBASE_AUDIT.md` | 166 | CDP/Playwright automation |
-| `src/core/` | `CORE_CODEBASE_AUDIT.md` | 208 | Game state, recorders, replay engine |
-| `src/debug/` | `DEBUG_CODE_AUDIT.md` | 111 | RawCaptureRecorder |
+| `src/core/` | `CORE_CODEBASE_AUDIT.md` | 208 | Game state, replay engine |
+| `src/debug/` | `DEBUG_CODE_AUDIT.md` | 111 | Debug tooling |
 | `src/ml/` | `ML_CODE_AUDIT.md` | 164 | Sidebet predictor, training |
 | `src/models/` | `MODELS_CODE_AUDIT.md` | 169 | Dataclasses, Pydantic schemas |
-| `src/services/` | `SERVICES_CODE_AUDIT.md` | 240 | EventBus, EventStore, recorders |
+| `src/services/` | `SERVICES_CODE_AUDIT.md` | 240 | EventBus, EventStore |
 | `src/sources/` | `SOURCES_CODE_AUDIT.md` | 167 | WebSocket feed, CDP interceptor |
 | `src/ui/` | `UI_CODEBASE_AUDIT.md` | 188 | Controllers, handlers, widgets |
 | `src/utils/` | `UTILS_CODE_AUDIT.md` | 121 | Decimal utilities |
@@ -39,7 +39,6 @@
 | `BotManager.show_bot_config()` uses invalid kwargs | `ui/controllers/bot_manager.py:176` | `TypeError: bootstyle` |
 | `LiveFeedController` calls nonexistent `set_seed_data()` | `ui/controllers/live_feed_controller.py:238` | `AttributeError` |
 | `BrowserConnectionDialog` constructor signature wrong | `ui/controllers/browser_bridge_controller.py:73` | `TypeError` on dialog open |
-| `RecordingController` calls nonexistent `toast.show()` | `ui/controllers/recording_controller.py:160` | `AttributeError` in EventStore mode |
 
 ### 2. Import-Time Crashes
 
@@ -70,7 +69,7 @@
 ### Data Integrity
 
 1. **Double game finalization** - `PriceHistoryHandler` emits "game complete" twice (`sources/price_history_handler.py`)
-2. **Filename path traversal** - Unsanitized `username` in filenames (`services/recorders.py`, `services/unified_recorder.py`)
+2. **Filename path traversal** - Unsanitized `username` in filenames (legacy recorders)
 3. **SQL injection risk** - String interpolation in DuckDB queries (`services/event_store/duckdb.py`)
 4. **Unreachable duplicate code** - Dead code in `socketio_parser.py` after `return`
 5. **CDP connection state** - `is_connected` not updated on WebSocket close (`sources/cdp_websocket_interceptor.py`)
@@ -101,10 +100,8 @@
 
 ### Behavioral Gaps
 
-- `RecordingController` game-in-progress detection always true
 - Backtester enforces 50-tick spacing, not documented 45
 - ML training crashes on single-class datasets
-- `DemoRecorderSink` doesn't flush confirmations until next action
 
 ---
 
@@ -160,7 +157,7 @@ The `/src/scripts/` directory was not covered by any agent report:
 
 ### Wave 3: Data Integrity (1-2 days)
 1. Fix double game finalization in `PriceHistoryHandler`
-2. Sanitize filenames in recorders
+2. Sanitize filenames in legacy outputs (if any remain)
 3. Use parameterized queries in DuckDB
 4. Remove unreachable code in `socketio_parser.py`
 

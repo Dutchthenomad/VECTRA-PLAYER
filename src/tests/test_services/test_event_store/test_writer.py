@@ -18,6 +18,7 @@ import pytest
 
 from services.event_store.paths import EventStorePaths
 from services.event_store.schema import (
+    Direction,
     DocType,
     EventEnvelope,
     EventSource,
@@ -133,6 +134,17 @@ def make_event(
             game_id=game_id,
             player_id="player-1",
             cash=Decimal("100.00"),
+        )
+    elif doc_type in (DocType.BBC_ROUND, DocType.CANDLEFLIP_ROUND, DocType.SHORT_POSITION):
+        return EventEnvelope(
+            ts=datetime.utcnow(),
+            source=EventSource.CDP,
+            doc_type=doc_type,
+            session_id=session_id,
+            seq=seq,
+            direction=Direction.RECEIVED,
+            raw_json=json.dumps({"seq": seq, "doc_type": doc_type.value}),
+            game_id=game_id,
         )
     else:  # SYSTEM_EVENT
         return EventEnvelope.from_system_event(

@@ -38,10 +38,8 @@ Since Phase 12C integrated LiveStateProvider for server-authoritative state via 
 2. **Toast Notifications: FRAGMENTED**
    - Two implementations:
      - `src/ui/widgets/toast_notification.py` (79 lines, Toplevel-based)
-     - `src/ui/toast_notification.py` (224 lines, Frame-based + RecordingToastManager)
    - Issues:
      - BotManager crashes calling `toast.show()` with invalid `bootstyle` kwarg
-     - RecordingController crashes calling nonexistent `RecordingToastManager.show()`
      - API incompatibility between implementations
 
 3. **Local Balance Validation: DEPRECATED**
@@ -121,7 +119,6 @@ class ActionBuilder:
 **Files to Modify:**
 - `src/ui/widgets/toast_notification.py` - Add socket event handlers
 - `src/ui/main_window.py` - Wire socket events to toasts
-- `src/ui/controllers/recording_controller.py` - Remove RecordingToastManager usage
 - `src/bot/bot_controller.py` - Fix invalid `bootstyle` kwarg
 
 **Socket Events to Wire:**
@@ -141,7 +138,6 @@ Events.GAME_ENDED → "Game ended" (info)
 **Migration:**
 1. Add event subscription method to ToastNotification
 2. Subscribe to events in MainWindow init
-3. Remove RecordingToastManager class
 4. Update all callers to use unified toast
 
 **Tests to Add:**
@@ -317,8 +313,6 @@ def update_balance(self, amount: Decimal, reason: str = "") -> bool:
 - `src/core/game_state.py` - Add deprecation warnings
 
 ### Files to Delete
-- `src/ui/toast_notification.py` - Remove duplicate implementation
-- `src/ui/toast_notification.py:RecordingToastManager` - Remove class
 
 ---
 

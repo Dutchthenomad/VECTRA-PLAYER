@@ -16,7 +16,6 @@ from services import Events, event_bus
 
 from .game_state import GameState
 from .live_ring_buffer import LiveRingBuffer
-from .recorder_sink import RecorderSink
 from .replay_playback_controller import PlaybackController
 
 logger = logging.getLogger(__name__)
@@ -56,15 +55,8 @@ class ReplayEngine:
 
         # Validate configuration before using
         ring_buffer_size = max(1, config.LIVE_FEED.get("ring_buffer_size", 5000))
-        recording_buffer_size = max(1, config.LIVE_FEED.get("recording_buffer_size", 100))
-
         # Live feed infrastructure with validated settings
         self.live_ring_buffer = LiveRingBuffer(max_size=ring_buffer_size)
-        self.recorder_sink = RecorderSink(
-            recordings_dir=config.FILES["recordings_dir"], buffer_size=recording_buffer_size
-        )
-        # Default to disabled - user must explicitly enable recording from menu
-        self.auto_recording = config.LIVE_FEED.get("auto_recording", False)
 
         # Thread safety with proper initialization
         self._lock = threading.RLock()
@@ -82,9 +74,7 @@ class ReplayEngine:
         # Register cleanup handler
         self._register_cleanup()
 
-        logger.info(
-            f"ReplayEngine initialized (ring_buffer={ring_buffer_size}, recording_buffer={recording_buffer_size})"
-        )
+        logger.info(f"ReplayEngine initialized (ring_buffer={ring_buffer_size})")
 
     def _register_cleanup(self):
         """Register cleanup handler to ensure resources are freed"""
@@ -130,11 +120,6 @@ class ReplayEngine:
             # Clean up playback controller
             if hasattr(self, "_playback"):
                 self._playback.cleanup()
-
-            # Stop recording if active
-            if self.recorder_sink.is_recording():
-                summary = self.recorder_sink.stop_recording()
-                self._safe_log("info", f"Stopped recording on cleanup: {summary}")
 
             # Clear buffers
             self.live_ring_buffer.clear()
@@ -203,10 +188,6 @@ class ReplayEngine:
         """
         try:
             logger.info(f"Loading game file: {filepath}")
-
-            # Stop any current recording
-            if self.recorder_sink.is_recording():
-                self.recorder_sink.stop_recording()
 
             # Use replay source to load ticks
             loaded_ticks, game_id = self.replay_source.load(str(filepath))
@@ -344,18 +325,7 @@ class ReplayEngine:
                         {"game_id": self.game_id, "tick_count": 0, "live_mode": True},
                     )
 
-                    # Start recording if auto-recording enabled
-                    if self.auto_recording:
-                        try:
-                            recording_file = self.recorder_sink.start_recording(self.game_id)
-                            logger.info(
-                                f"Started live game: {self.game_id}, recording to {recording_file.name}"
-                            )
-                        except Exception as e:
-                            logger.error(f"Failed to start recording: {e}")
-                            # Continue without recording
-                    else:
-                        logger.info(f"Started live game: {self.game_id} (recording disabled)")
+                    logger.info(f"Started live game: {self.game_id}")
 
                 # Detect new game starting (game_id changed) - LIVE FEED MULTI-GAME SUPPORT
                 if tick.game_id != self.game_id:
@@ -383,28 +353,10 @@ class ReplayEngine:
                         {"game_id": self.game_id, "tick_count": 0, "live_mode": True},
                     )
 
-                    # Start recording new game
-                    if self.auto_recording:
-                        try:
-                            recording_file = self.recorder_sink.start_recording(self.game_id)
-                            logger.info(
-                                f"Started live game: {self.game_id}, recording to {recording_file.name}"
-                            )
-                        except Exception as e:
-                            logger.error(f"Failed to start recording: {e}")
-                    else:
-                        logger.info(f"Started live game: {self.game_id} (recording disabled)")
+                    logger.info(f"Started live game: {self.game_id}")
 
                 # Add tick to ring buffer ONLY (no unbounded list growth)
                 self.live_ring_buffer.append(tick)
-
-                # Record tick to disk if recording enabled
-                if self.auto_recording and self.recorder_sink.is_recording():
-                    try:
-                        self.recorder_sink.record_tick(tick)
-                    except Exception as e:
-                        logger.error(f"Failed to record tick: {e}")
-                        # Continue processing even if recording fails
 
                 # Update current index to latest
                 self.current_index = self.live_ring_buffer.get_size() - 1
@@ -548,11 +500,6 @@ class ReplayEngine:
 
     def _handle_game_end(self):
         """Handle reaching end of game"""
-        # Stop recording if in live mode
-        if self.is_live_mode and self.recorder_sink.is_recording():
-            summary = self.recorder_sink.stop_recording()
-            logger.info(f"Live game ended, recording stopped: {summary}")
-
         # Only pause if NOT in multi-game mode
         if not self.multi_game_mode:
             self.pause()
@@ -626,73 +573,6 @@ class ReplayEngine:
             "mode": "live" if self.is_live_mode else "file",
             "ring_buffer_size": self.live_ring_buffer.get_size() if self.is_live_mode else 0,
         }
-
-    # ========================================================================
-    # LIVE FEED CONTROL
-    # ========================================================================
-
-    def enable_recording(self) -> bool:
-        """Enable auto-recording of live feeds"""
-        with self._acquire_lock():
-            if self.auto_recording:
-                logger.info("Recording already enabled")
-                return False
-
-            self.auto_recording = True
-
-            # Start recording if live game is in progress
-            if (
-                self.is_live_mode
-                and self.live_ring_buffer
-                and not self.recorder_sink.is_recording()
-            ):
-                try:
-                    self.recorder_sink.start_recording(self.game_id)
-                    logger.info("Recording enabled and started for current game")
-                except Exception as e:
-                    logger.error(f"Failed to start recording: {e}")
-                    return False
-            else:
-                logger.info("Recording enabled (will start on next game)")
-
-            return True
-
-    def disable_recording(self) -> bool:
-        """Disable auto-recording of live feeds"""
-        with self._acquire_lock():
-            if not self.auto_recording:
-                logger.info("Recording already disabled")
-                return False
-
-            self.auto_recording = False
-
-            # Stop current recording if active
-            if self.recorder_sink.is_recording():
-                try:
-                    summary = self.recorder_sink.stop_recording()
-                    logger.info(f"Recording disabled and stopped: {summary}")
-                except Exception as e:
-                    logger.error(f"Failed to stop recording: {e}")
-            else:
-                logger.info("Recording disabled")
-
-            return True
-
-    def is_recording(self) -> bool:
-        """Check if currently recording"""
-        return self.recorder_sink.is_recording()
-
-    def get_recording_info(self) -> dict:
-        """Get current recording status"""
-        with self._acquire_lock():
-            current_file = self.recorder_sink.get_current_file()
-            return {
-                "enabled": self.auto_recording,
-                "active": self.recorder_sink.is_recording(),
-                "filepath": str(current_file) if current_file else None,
-                "tick_count": self.recorder_sink.get_tick_count(),
-                "mode": "live" if self.is_live_mode else "file",
-            }
 
     def get_ring_buffer_info(self) -> dict:
         """Get ring buffer status"""

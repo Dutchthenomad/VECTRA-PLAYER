@@ -23,8 +23,6 @@ class EventHandlersMixin:
         self.event_bus.subscribe(Events.TRADE_FAILED, self._handle_trade_failed)
         self.event_bus.subscribe(Events.FILE_LOADED, self._handle_file_loaded)
         self.event_bus.subscribe(Events.WS_SOURCE_CHANGED, self._handle_ws_source_changed)
-        self.event_bus.subscribe(Events.GAME_START, self._handle_game_start_for_recording)
-        self.event_bus.subscribe(Events.GAME_END, self._handle_game_end_for_recording)
         self.event_bus.subscribe(Events.PLAYER_IDENTITY, self._handle_player_identity)
         self.event_bus.subscribe(Events.PLAYER_UPDATE, self._handle_player_update)
 
@@ -38,14 +36,6 @@ class EventHandlersMixin:
         )
         self.state.subscribe(StateEvents.POSITION_REDUCED, self._handle_position_reduced)
 
-    def _handle_game_tick(self: "MainWindow", event):
-        """Handle game tick event."""
-        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
-            data = event.get("data", {})
-            game_tick = data.get("tick")
-            if game_tick and hasattr(game_tick, "tick") and hasattr(game_tick, "price"):
-                self.recording_controller.on_tick(game_tick.tick, game_tick.price)
-
     def _handle_trade_executed(self: "MainWindow", event):
         """Handle successful trade"""
         self.log(f"Trade executed: {event.get('data')}")
@@ -53,24 +43,6 @@ class EventHandlersMixin:
     def _handle_trade_failed(self: "MainWindow", event):
         """Handle failed trade"""
         self.log(f"Trade failed: {event.get('data')}")
-
-    def _handle_game_start_for_recording(self: "MainWindow", event):
-        """Handle game start event for recording - Phase 10.5"""
-        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
-            data = event.get("data", {})
-            game_id = data.get("game_id", "unknown")
-            logger.debug(f"Recording: Game started - {game_id}")
-            self.recording_controller.on_game_start(game_id)
-
-    def _handle_game_end_for_recording(self: "MainWindow", event):
-        """Handle game end event for recording - Phase 10.5"""
-        if hasattr(self, "recording_controller") and self.recording_controller.is_active:
-            data = event.get("data", {})
-            game_id = data.get("game_id", "unknown")
-            seed_data = data.get("seed_data")
-            clean = data.get("clean", True)
-            logger.debug(f"Recording: Game ended - {game_id}")
-            self.recording_controller.on_game_end(game_id=game_id, clean=clean, seed_data=seed_data)
 
     def _handle_file_loaded(self: "MainWindow", event):
         """Handle file loaded event"""

@@ -123,27 +123,7 @@ def test_analyze_capture_nonblocking():
 
 ### 2.1 Remove Legacy Recorder Initialization
 
-**File:** `src/ui/main_window.py`
-
-**Changes:**
-```python
-# REMOVE Lines 21, 23 (imports)
-from core.demo_recorder import DemoRecorderSink
-from debug.raw_capture_recorder import RawCaptureRecorder
-
-# REMOVE Lines 108-121 (initialization)
-if LEGACY_RECORDERS_ENABLED:
-    demo_dir = Path(config.FILES.get("recordings_dir", "rugs_recordings")) / "demonstrations"
-    self.demo_recorder = DemoRecorderSink(demo_dir)
-    self.raw_capture_recorder = RawCaptureRecorder()
-    # ... callbacks
-```
-
-**Replace with:**
-```python
-# All recording now handled by EventStore (no manual initialization needed)
-# Events flow: UI → EventBus → EventStore → Parquet
-```
+Legacy recorder initialization is no longer required. EventStore is the canonical capture path.
 
 ---
 
@@ -154,7 +134,6 @@ if LEGACY_RECORDERS_ENABLED:
 **Action:** Delete entire file (171 lines)
 
 **Rationale:**
-- RawCaptureRecorder is deprecated
 - EventStore captures all WebSocket events automatically
 - "Raw Capture" developer tool should be removed from menu
 
@@ -197,39 +176,6 @@ class MainWindow(
     RecordingHandlersMixin,  # ❌ REMOVE THIS
     # ... other mixins
 ):
-```
-
----
-
-### 2.4 Deprecate RecordingController
-
-**File:** `src/ui/controllers/recording_controller.py`
-
-**Option 1 (Immediate):** Delete entire file (403 lines)
-
-**Option 2 (Gradual):** Add deprecation warning
-```python
-import warnings
-
-class RecordingController:
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "RecordingController is deprecated. All recording is now handled by EventStore.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        # ... existing code (no-op)
-```
-
-**Recommended:** Option 1 (delete immediately)
-
-**Update main_window.py:**
-```python
-# REMOVE import
-from ui.controllers.recording_controller import RecordingController
-
-# REMOVE initialization (Line ~150)
-self.recording_controller = RecordingController(...)
 ```
 
 ---
@@ -311,53 +257,6 @@ def _open_data_directory(self):
 
 ---
 
-## Phase 4: API Standardization (Priority: MEDIUM)
-
-### 4.1 Standardize Toast API
-
-**Problem:** Two incompatible toast implementations
-
-**Solution:** Consolidate to single API
-
-**File:** `src/ui/toast_notification.py` (keep this one, more feature-rich)
-
-**Action:**
-1. Delete `src/ui/widgets/toast_notification.py`
-2. Move `src/ui/toast_notification.py` → `src/ui/widgets/toast.py`
-3. Update all imports
-
-**Unified API:**
-```python
-# src/ui/widgets/toast.py
-class Toast:
-    def show(self, message: str, msg_type: str = "info", duration: int = 3000):
-        """
-        Show a toast notification
-
-        Args:
-            message: Text to display
-            msg_type: "success", "info", "warning", "error"
-            duration: Display time in milliseconds
-        """
-        pass
-
-    # Convenience methods
-    def success(self, message: str):
-        self.show(message, "success", 3000)
-
-    def error(self, message: str):
-        self.show(message, "error", 5000)
-
-    def info(self, message: str):
-        self.show(message, "info", 2000)
-```
-
-**Fix bot_manager.py:**
-```python
-# BEFORE (Line 176-181)
-self.toast.show("Config updated", "success", bootstyle="success")  # ❌ bootstyle doesn't exist
-
-# AFTER
 self.toast.success("Config updated")  # ✅ Use convenience method
 ```
 
@@ -683,7 +582,6 @@ LIMIT 10""")
 4. ✅ Remove legacy recorder initialization
 5. ✅ Delete CaptureHandlersMixin
 6. ✅ Delete RecordingHandlersMixin
-7. ✅ Delete/deprecate RecordingController
 8. ✅ Update menu bar (remove legacy items)
 
 ### Week 3: Cleanup & Enhancement

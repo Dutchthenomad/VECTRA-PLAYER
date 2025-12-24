@@ -26,10 +26,6 @@
 
 | Recorder | Lines | Purpose | Migration Status |
 |----------|-------|---------|------------------|
-| RecorderSink | 546 | Tick-by-tick JSONL recording | → EventStore.GAME_TICK ✅ |
-| DemoRecorderSink | 556 | Human demo + latency tracking | → EventStore + UI enhancement |
-| RawCaptureRecorder | 328 | Protocol debugging (raw WS) | → EventStore.WS_RAW_EVENT ✅ |
-| UnifiedRecorder | 634 | Orchestrates game+player recording | → EventStore (data) + UI (orchestration) |
 | GameStateRecorder | 146 | Game prices to JSON | → EventStore.GAME_TICK ✅ |
 | PlayerSessionRecorder | 103 | Player actions to JSON | → EventStore.PLAYER_UPDATE ✅ |
 
@@ -37,12 +33,7 @@
 
 | Feature | Old System | New System | Gap |
 |---------|------------|------------|-----|
-| Raw WS capture | RawCaptureRecorder | EventStore.WS_RAW_EVENT | ✅ None |
-| Game ticks | RecorderSink, GameStateRecorder | EventStore.GAME_TICK | ✅ None |
 | Player state | PlayerSessionRecorder | EventStore.PLAYER_UPDATE | ✅ None |
-| Trade latency | DemoRecorderSink | Not captured | ⚠️ Add to EventStore |
-| Drift detection | UnifiedRecorder | UI-side validation | ⚠️ Move to UI |
-| State machine | UnifiedRecorder | No equivalent | 🔶 Not needed |
 
 ---
 
@@ -665,7 +656,6 @@ git commit -m "feat(Phase 12D): Add trade latency capture to EventStore
 
 - Subscribe to TRADE_CONFIRMED events
 - Capture timestamp_submitted, timestamp_confirmed, latency_ms
-- Preserves DemoRecorderSink's latency tracking functionality"
 ```
 
 ---
@@ -955,10 +945,6 @@ Phase 12D consolidates 6 legacy recorders into a single EventStoreService. This 
 
 | Legacy Recorder | Replacement | Data Access |
 |-----------------|-------------|-------------|
-| RecorderSink | EventStore.GAME_TICK | DuckDB: `doc_type='game_tick'` |
-| DemoRecorderSink | EventStore + TRADE_CONFIRMED | DuckDB: `doc_type='player_action'` |
-| RawCaptureRecorder | EventStore.WS_RAW_EVENT | DuckDB: `doc_type='ws_event'` |
-| UnifiedRecorder | EventStore (all types) | DuckDB: All doc_types |
 | GameStateRecorder | EventStore.GAME_TICK | DuckDB: `doc_type='game_tick'` |
 | PlayerSessionRecorder | EventStore.PLAYER_UPDATE | DuckDB: `doc_type='server_state'` |
 
@@ -971,12 +957,10 @@ SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE session_id = 'abc-123'
 ORDER BY ts;
 
--- Game ticks (replaces RecorderSink)
 SELECT tick, price, game_id FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE doc_type = 'game_tick'
 ORDER BY ts;
 
--- Player actions (replaces DemoRecorderSink)
 SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet'
 WHERE doc_type = 'player_action'
 ORDER BY ts;

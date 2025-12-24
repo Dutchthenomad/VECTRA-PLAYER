@@ -61,12 +61,6 @@ However, there are multiple **high-risk runtime bugs** and **UI thread-safety vi
 - What: `BrowserConnectionDialog.__init__` requires `browser_executor` (`src/ui/browser_connection_dialog.py:25`), but caller does not pass it.
 - Impact: calling the legacy dialog will raise `TypeError` immediately.
 
-5) `RecordingController.start_session()` calls nonexistent `RecordingToastManager.show()`
-
-- Where: `src/ui/controllers/recording_controller.py:157-161`
-- What: `RecordingToastManager` (from `src/ui/toast_notification.py`) has methods like `recording_started()`, not `show()`.
-- Impact: if `RUGS_LEGACY_RECORDERS=false`, the “EventStore-only mode” path will raise `AttributeError`.
-
 ### B) UI Thread-Safety / Concurrency Hazards
 
 1) `BrowserConnectionDialog` performs Tk operations from a background thread
@@ -118,21 +112,6 @@ However, there are multiple **high-risk runtime bugs** and **UI thread-safety vi
   - This prevented UI tests from collecting (`tests/test_ui/test_capture_stats.py` import path).
 - Recommendation: if `duckdb` is optional, delay-import or guard behind feature flags; otherwise ensure it is an explicit runtime dependency.
 
-3) `RecordingController.start_session()` “game in progress” detection is likely wrong
-
-- Where: `src/ui/controllers/recording_controller.py:185-191`
-- What: uses `self.game_state.get_current_tick() is not None`, but `GameState.get_current_tick()` always constructs a `GameTick` even when no game is loaded.
-- Impact: recorder may always start as “game in progress”, affecting session state machine behavior.
-
-4) Mixed toast implementations create inconsistent call sites
-
-- `src/ui/widgets/toast_notification.py` (simple Toplevel toasts) vs `src/ui/toast_notification.py` (stacking Frame + `RecordingToastManager`).
-- Evidence:
-  - Main window uses `ui.widgets.ToastNotification` (`src/ui/main_window.py:38`)
-  - Recording uses `RecordingToastManager` (`src/ui/controllers/recording_controller.py:31-33`)
-  - Bot manager tries to call a third-party style (`bootstyle`) on the widgets toast (`src/ui/controllers/bot_manager.py:176-181`)
-- Impact: API mismatches and inconsistent UX.
-
 ### D) Data Integrity / Safety / Portability
 
 1) Non-portable shell integration
@@ -164,7 +143,6 @@ However, there are multiple **high-risk runtime bugs** and **UI thread-safety vi
    - toast API mismatch (`src/ui/controllers/bot_manager.py:176`)
    - remove/implement `ReplayEngine.set_seed_data` call (`src/ui/controllers/live_feed_controller.py:238`)
    - fix `BrowserConnectionDialog` construction (`src/ui/controllers/browser_bridge_controller.py:73`)
-   - fix `_toast.show` in `RecordingController` (`src/ui/controllers/recording_controller.py:160`)
 2) Enforce Tkinter thread confinement:
    - refactor `BrowserConnectionDialog` so `_connect_async()` never touches widgets off the main thread.
 3) Decide the live tick ingestion contract:

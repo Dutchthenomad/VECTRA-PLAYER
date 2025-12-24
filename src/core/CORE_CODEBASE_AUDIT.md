@@ -7,11 +7,9 @@ Date: 2025-12-22
 Audited Python modules in `src/core/`:
 
 - `__init__.py`
-- `demo_recorder.py`
 - `game_queue.py`
 - `game_state.py`
 - `live_ring_buffer.py`
-- `recorder_sink.py`
 - `replay_engine.py`
 - `replay_playback_controller.py`
 - `replay_source.py`
@@ -38,8 +36,6 @@ However, there are several **high-risk correctness and concurrency issues** that
 - **Confirmed runtime bug**: `TradeManager` treats `GameState.sidebet` as an object with attributes, but `GameState` stores sidebets as dicts.
 - **Thread lifecycle hazards** in `PlaybackController` that can lead to duplicate playback threads or deadlocks.
 - **Observer/event dispatch under lock** patterns in `GameState` (and event publishing under engine locks) that are safe in trivial handlers but can deadlock when handlers interact with UI / other locks.
-- **Demo recording durability gaps**: confirmation updates can remain only in-memory for long periods and can be lost on crash.
-
 ## Findings (Prioritized)
 
 ### A) Confirmed Bugs / Likely Runtime Errors
@@ -101,49 +97,16 @@ However, there are several **high-risk correctness and concurrency issues** that
   If those subscribers touch Tkinter widgets directly, this is unsafe unless the event bus explicitly marshals to the UI thread.
 - Note: this is a cross-module concern; confirm `src/services/event_bus` threading semantics.
 
-4) `RecorderSink._safe_file_operation()` can re-enter `stop_recording()` during stop/flush
-
-- Where: `src/core/recorder_sink.py:109-124`.
-- What:
-  - On repeated `OSError`, `_safe_file_operation` calls `self.stop_recording()` while already in a recording workflow.
-  - If the error occurs while `stop_recording()` itself is flushing inside `_safe_file_operation`, this can recurse.
-- Impact: risk of deep recursion/stack growth or inconsistent teardown in pathological disk-error scenarios.
-
 ### C) Data Integrity / File I/O Durability
 
-1) `DemoRecorderSink.record_confirmation()` does not flush confirmed actions
-
-- Where: `src/core/demo_recorder.py:395-435`.
-- What:
-  - Confirmation data is applied only to the in-memory `_buffer`.
-  - Confirmed actions are written to disk only when `_flush()` is triggered by later button presses or at game end.
-- Impact: if the app crashes or is killed after confirmations but before the next flush condition, confirmation timing/metadata can be lost.
-- Possible mitigations:
-  - call `_flush()` opportunistically after applying confirmation (when the confirmed action is no longer pending), or
-  - add a time-based flush like `RecorderSink` (`src/core/recorder_sink.py:319-323`).
-
-2) `DemoRecorderSink` filename uses raw `game_id`
-
-- Where: `src/core/demo_recorder.py:245-248`.
-- Risk:
-  - If `game_id` contains path separators or `..`, it can create unintended paths or invalid filenames (depending on platform/filesystem).
-  - Even if `game_id` is “trusted” today, this is a hard-to-debug footgun.
-- Recommendation: sanitize to a safe filename component (allowlist `[a-zA-Z0-9._-]`, replace others with `_`) and optionally truncate.
-
-3) `FileDirectorySource` path resolution allows directory traversal
+1) `FileDirectorySource` path resolution allows directory traversal
 
 - Where: `src/core/replay_source.py:177-186`.
 - What: `_resolve_path()` returns `self.directory / identifier` for non-absolute identifiers, without preventing `../`.
 - Impact: a caller could read arbitrary files relative to the recordings directory if identifier comes from user input.
 - Recommendation: resolve and verify `resolved_path.is_relative_to(self.directory.resolve())` (Python 3.9+ via `.resolve()` + manual check) before allowing the read.
 
-4) `RecorderSink.total_bytes_written` counts characters, not bytes
-
-- Where: `src/core/recorder_sink.py:363-367`.
-- What: `file_handle.write()` returns character count for text files, not bytes.
-- Impact: metrics may be misleading (not a correctness issue for recording itself).
-
-5) `SessionState` atomic write is good; corruption handling could be improved
+2) `SessionState` atomic write is good; corruption handling could be improved
 
 - Good: atomic replace (`src/core/session_state.py:121-134`) prevents partial writes.
 - Potential improvement: on `JSONDecodeError` in `load()` (`src/core/session_state.py:93-99`), consider backing up the corrupt file and rewriting defaults to restore persistence.
@@ -169,20 +132,11 @@ However, there are several **high-risk correctness and concurrency issues** that
   - if `amount` is “exposure units”, rename it (`units`, `qty`) and validate affordability using `amount * price`;
   - if `amount` is “SOL invested”, update open/close math to match that model.
 
-3) Heavy reliance on broad exception handling
-
-- Notable locations:
-  - `src/core/demo_recorder.py:117-121`, `src/core/recorder_sink.py:102-107`, destructors in both recorders.
-- Tradeoff: avoids crashing during shutdown, but can hide real operational failures (especially during normal runtime).
-- Recommendation: restrict broad `except Exception` to shutdown paths; otherwise log with `exc_info=True` and include contextual identifiers (game_id, file path).
-
 ## Strengths / Improvements Observed
 
 - Memory bounding:
   - `LiveRingBuffer` prevents unbounded tick growth (`src/core/live_ring_buffer.py`).
   - `GameState` uses bounded `deque` history/logs (`src/core/game_state.py:84-90`).
-- Recording durability improvements:
-  - `RecorderSink` validates file handle (`src/core/recorder_sink.py:324-342`) and fsyncs on flush (`src/core/recorder_sink.py:368-369`).
 - Clear separation of responsibilities:
   - playback logic extracted to `PlaybackController`.
   - replay source abstraction via `ReplaySource`.
@@ -195,7 +149,7 @@ However, there are several **high-risk correctness and concurrency issues** that
    - prevent starting a new thread if the previous one is still alive,
    - add self-join guard in `cleanup()`.
 3) Correct `GameState.get_current_tick()` to map `rugged` from `self._state["rugged"]`.
-4) Sanitize demo recording filenames and tighten replay source path resolution.
+4) Tighten replay source path resolution.
 5) Decide and document the canonical meaning of `amount` vs `price` across `GameTick`, `Position`, `validators`, and `GameState`.
 
 ## Appendix
