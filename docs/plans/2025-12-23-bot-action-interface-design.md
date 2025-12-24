@@ -466,10 +466,12 @@ Each line: { action, client_ts, params, expected_result }
    - What's the typical latency distribution?
    - Are there ack callbacks we're missing?
 
-3. **DOCUMENT**: Create precise event-to-confirmation mapping
-   - `docs/specs/CONFIRMATION_EVENT_MAPPING.md`
-   - Include real payload examples
-   - Document edge cases (failed trades, partial fills, etc.)
+3. **DOCUMENT**: Create knowledge base artifacts
+   - `knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md` (CANONICAL)
+   - Include real payload examples with YAML frontmatter
+   - Cross-reference to `L1-game-mechanics/trade-mechanics.md`
+   - Document edge cases (failed trades, timeouts, partial fills)
+   - Run ChromaDB ingestion after creating
 
 4. **VALIDATE**: Update design if needed
    - Adjust ConfirmationMonitor detection logic
@@ -477,6 +479,68 @@ Each line: { action, client_ts, params, expected_result }
 
 **Tools:** Chrome DevTools MCP, CDP capture scripts
 **Time Estimate:** 1-2 hours
+
+---
+
+## Knowledge Base Integration
+
+All empirical findings from validation MUST be documented for the rugs-expert RAG knowledge base.
+
+### Documentation Outputs
+
+| Artifact | Target Location | Validation Tier |
+|----------|-----------------|-----------------|
+| `CONFIRMATION_EVENT_MAPPING.md` | `knowledge/rugs-strategy/L2-protocol/` | CANONICAL |
+| `latency-distribution.md` | `knowledge/rugs-strategy/L6-statistical-baselines/` | VERIFIED |
+| `action-timing-baselines.md` | `knowledge/rugs-strategy/L6-statistical-baselines/` | VERIFIED |
+| Test recordings (JSONL) | `~/rugs_data/validation_recordings/` | RAW DATA |
+
+### YAML Frontmatter Template
+
+All generated docs MUST include:
+
+```yaml
+---
+layer: 2  # or 6
+domain: protocol/confirmation-mapping
+source: bot-action-interface-validation
+validation_tier: canonical
+generated_date: YYYY-MM-DD
+bot_relevant: true
+cross_refs:
+  - L1-game-mechanics/trade-mechanics.md
+  - L2-protocol/websocket-spec.md
+---
+```
+
+### Single Source of Truth Chain
+
+```
+Empirical Test Script
+        │
+        ▼
+Raw Recording (JSONL)
+        │
+        ▼
+Analysis → CONFIRMATION_EVENT_MAPPING.md (L2-protocol/)
+        │
+        ▼
+ChromaDB Ingestion
+        │
+        ▼
+rugs-expert queries
+```
+
+### Knowledge Generation Checklist
+
+After each validation session:
+
+- [ ] Raw recordings saved to `~/rugs_data/validation_recordings/`
+- [ ] CONFIRMATION_EVENT_MAPPING.md updated with new patterns
+- [ ] Latency baselines updated (if significantly changed)
+- [ ] YAML frontmatter includes `generated_date` and `source`
+- [ ] ChromaDB re-indexed: `python -m ingestion.ingest`
+- [ ] rugs-expert query test: "What confirms a BUY action?"
 
 ---
 
@@ -490,6 +554,7 @@ Each line: { action, client_ts, params, expected_result }
 | `BotActionInterface` | Orchestrate all layers, unified API |
 | `BotActionInterfaceFactory` | Create appropriate mode (live/validation/training) |
 | `RLObservationProvider` | Latency-aware observations for RL model |
+| `KnowledgeGenerator` | Generate docs from validation data for RAG ingestion |
 
 ---
 
