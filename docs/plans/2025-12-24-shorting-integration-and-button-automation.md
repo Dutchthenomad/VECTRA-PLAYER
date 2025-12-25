@@ -1,14 +1,30 @@
 # Shorting Integration & Button Automation Planning
 
 **Date**: December 24, 2025
-**Status**: DESIGN PHASE
-**Scope**: New shorting mechanic + comprehensive button automation + toast redesign
+**Status**: ⛔ SHORTING DEFERRED | Button automation ACTIVE
+**Scope**: Button automation for known features (shorting removed from v1.0)
+
+---
+
+## ⚠️ DEFERRAL NOTICE (2025-12-24 Late Night)
+
+**Shorting sections of this document are SPECULATIVE and NOT IMPLEMENTED.**
+
+rugs-expert agent confirmed NO empirical data exists for shorting:
+- `shortPosition` field always `null` in all WebSocket captures
+- No `shortOrder` request/response events documented
+- UI buttons and XPaths unknown
+- All mechanics (leverage, liquidation, amounts) undocumented
+
+**Decision**: Shorting removed from v1.0 scope. Research continues in claude-flow.
+Only the **Button Automation** sections (Sections 5-7) remain active for v1.0.
 
 ---
 
 ## Overview
 
-This document plans the integration of rugs.fun's NEW SHORTING FEATURE into VECTRA-PLAYER's bot framework, plus comprehensive button automation for Puppeteer execution.
+This document plans button automation for VECTRA-PLAYER's bot framework.
+**Shorting sections are preserved for future reference but are NOT active.**
 
 **Key Objectives**:
 1. Document the shorting mechanic and WebSocket protocol

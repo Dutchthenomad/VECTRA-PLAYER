@@ -9,7 +9,7 @@
 ## Overview
 
 A layered architecture for bot action execution with latency tracking, designed to serve:
-- **Live automated trading** (Puppeteer + real WebSocket)
+- **Live automated trading (simulated-gameified trading)** (Puppeteer + real WebSocket)
 - **Validation/demo mode** (Tkinter UI + real WebSocket)
 - **RL training** (Simulated, instant execution)
 
@@ -46,7 +46,7 @@ A layered architecture for bot action execution with latency tracking, designed 
 ```
 
 **Three Layers:**
-1. **ActionExecutor** - Presses buttons (UI animation OR Puppeteer XPaths)
+1. **ActionExecutor** - Presses buttons (UI animation AND Puppeteer XPaths)
 2. **ConfirmationMonitor** - Watches WebSocket for server-side confirmation
 3. **StateTracker** - Tracks trade outcomes, feeds RL training data
 

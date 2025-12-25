@@ -1,142 +1,116 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-24 21:30 (Session End - Phase 1 & 2 Verified Complete)
+Last Updated: 2025-12-25 (BotActionInterface COMPLETE)
 
 ---
 
-## Active Issue
-No active issue - ready to start Phase 6 implementation
-Branch: `main` (current)
+## Active Work
+**Phase 6: BotActionInterface** - ✅ COMPLETE
+Branch: `main`
 
-**Issues Open:** claude-flow #24, VECTRA-PLAYER #138-140
+**Open Issues:** claude-flow #24, VECTRA-PLAYER #138-140
+
+---
 
 ## Current SDLC Phase
-**Phase 1 & 2 COMPLETE** → **Phase 6-8 Implementation Ready** → Start **BotActionInterface**
+**Phase 6: BotActionInterface** → ✅ COMPLETE (2025-12-25)
+**Next:** Project chores (#138-140) + Documentation planning
 
 ---
 
-## 🎯 Session 2025-12-24 Evening Accomplishments
+## Session 2025-12-25: BotActionInterface COMPLETE
 
-### Phase 2 Stabilization Complete
-- **PR #142 merged** - Phase 2 Stabilization + Canonical Docs (36 files, 498 insertions)
-- Fixed event_source_manager.py, browser/manager.py, live_feed_controller.py, live_state_provider.py
-- Archived 26 legacy docs to `sandbox/DEVELOPMENT DEPRECATIONS/`
+### Implementation Summary
 
-### Bug Fix
-- **Fixed `_handle_game_tick` crash** - App was crashing on startup
-- Added missing handler method to `event_handlers.py`
-- Commit 3b5c7d5, 926 tests passing
+All 8 phases implemented and tested:
 
-### Documentation Consolidation
-- **Consolidated 6 debugging docs** (~2000 lines) into single `docs/DEBUGGING_GUIDE.md` (~160 lines)
-- Archived: debugging_checklist.md, event_troubleshooting.md, live_feed_debugging.md, quick_debugging.md, raw_capture_guide.md, socket_debugging.md
-- Commit 79e2c00
+| Phase | Component | Tests |
+|-------|-----------|-------|
+| 1 | `types.py` - ActionParams, ActionResult, ExecutionMode, GameContext | 20 |
+| 2 | `executors/base.py` + `simulated.py` - ABC and SimulatedExecutor | 21 |
+| 3 | `executors/tkinter.py` - TkinterExecutor wrapping BotUIController | 21 |
+| 4 | `confirmation/monitor.py` + `mock.py` - ConfirmationMonitor | 21 |
+| 5 | `state/tracker.py` - HYBRID StateTracker | 12 |
+| 6 | `interface.py` - BotActionInterface orchestrator | 17 |
+| 7 | `factory.py` - Factory functions for all 4 modes | 17 |
+| 8 | `recording/human_interceptor.py` - HumanActionInterceptor | 37 |
 
-### rugs-expert Plans Created
-- `docs/plans/2025-12-24-shorting-integration-and-button-automation.md` - Shorting + 24 button XPaths
-- Updated ROADMAP.md with Phase 6-8 (BotActionInterface, Shorting, Button XPaths)
-- Updated STATUS.md with current phase state
+**Total:** 166 new tests, 1092 total tests passing (exit code 0)
 
-### Phase 1 P0 Crash Fixes Verified Complete
-- **All 12 P0 items** have AUDIT FIX comments in codebase
-- Verified via grep: PlaybackController deadlock, BotManager tick.active, Toast bootstyle, etc.
-- RecordingController removed entirely (legacy cleanup)
-- 926 tests passing
-- Commits: eff9f5b, 54acf74
-
----
-
-## 🎯 Session 2025-12-24 Morning Accomplishments
-
-### Empirical Validation
-- **23,194 events** captured via CDP WebSocket interception
-- **11 games** observed with authenticated user "Dutch"
-- **104 MB** raw capture saved to staging
-
-### rugs-expert Agent Analysis
-| Discovery | Count | Action Required |
-|-----------|-------|-----------------|
-| Novel events | 10 | Add to WEBSOCKET_EVENTS_SPEC.md |
-| Undocumented fields | 22 | Expand `playerUpdate` docs |
-| Sidebet events | 3 | Critical gap - P1 priority |
-
-### Documentation Created
-1. `claude-flow/knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md` - Action→Event mapping
-2. `claude-flow/knowledge/rugs-events/staging/2025-12-24-empirical-validation/` - Full staging package
-3. `claude-flow/knowledge/rugs-events/CAPTURE_ANALYSIS_2025-12-24.md` - Detailed analysis
-4. Updated `VECTRA-PLAYER/docs/CROSS_REPO_COORDINATION.md` - Ownership clarification
-
-### GitHub Issue Created
-- **claude-flow #24**: Ingest 2025-12-24 Empirical Validation Capture & Update Canonical Spec
-- Tracks all pending ingestion tasks
-
-### Ownership Clarification
-| Responsibility | Owner |
-|----------------|-------|
-| Data capture, EventStore, UI | VECTRA-PLAYER |
-| Knowledge base, RAG, agents | **claude-flow** |
-| Protocol documentation | **claude-flow** |
-| ML models, RL bot | rugs-rl-bot |
-
----
-
-## Staging Location (claude-flow)
+### Files Created
 
 ```
-claude-flow/knowledge/rugs-events/staging/2025-12-24-empirical-validation/
-├── README.md
-├── methodology/COLLECTION_METHODOLOGY.md
-├── raw_captures/full_game_capture_20251224_105411.jsonl (104MB)
-└── analysis/
-    ├── CAPTURE_ANALYSIS_2025-12-24.md
-    ├── CAPTURE_ANALYSIS_SUMMARY.md
-    └── confirmation-mapping.md
+src/bot/action_interface/
+├── __init__.py
+├── types.py                    # ActionParams, ActionResult, ExecutionMode, GameContext
+├── interface.py                # BotActionInterface orchestrator
+├── factory.py                  # create_for_training/recording/validation/live
+├── executors/
+│   ├── __init__.py
+│   ├── base.py                 # ActionExecutor ABC
+│   ├── simulated.py            # SimulatedExecutor (TradeManager)
+│   └── tkinter.py              # TkinterExecutor (UI layer)
+├── confirmation/
+│   ├── __init__.py
+│   ├── monitor.py              # ConfirmationMonitor (latency via EventBus)
+│   └── mock.py                 # MockConfirmationMonitor
+├── state/
+│   ├── __init__.py
+│   └── tracker.py              # StateTracker (HYBRID: LiveStateProvider + GameState)
+└── recording/
+    ├── __init__.py
+    └── human_interceptor.py    # HumanActionInterceptor (async recording)
 ```
 
----
+### Key Architecture: Player Piano
 
-## Quick Start for Fresh Sessions
-
-```bash
-# Read key context files
-Read the following files:
-1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
-2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
-3. /home/nomad/Desktop/VECTRA-PLAYER/docs/CROSS_REPO_COORDINATION.md
-4. /home/nomad/Desktop/claude-flow/knowledge/CONTEXT.md
-
-# Run tests
-cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
-
-# Check git status
-git status
+```
+RECORDING   → Human plays, system records inputs with full context
+TRAINING    → RL model trains with fast SimulatedExecutor
+VALIDATION  → Model replays pre-recorded games with UI animation
+LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
 ```
 
----
+### Bugs Fixed During Implementation
+1. `factory.py` - Missing `event_bus` argument to StateTracker
+2. Test assertions in interface, human_interceptor, confirmation tests
 
-## Next Steps
-
-1. [x] **Empirical Validation** - ✅ COMPLETE (2025-12-24)
-2. [x] Create confirmation-mapping.md - ✅ DONE
-3. [x] Stage data in claude-flow - ✅ DONE
-4. [x] Update CROSS_REPO_COORDINATION.md - ✅ DONE
-5. [x] Create GitHub Issue for ingestion (claude-flow #24) - ✅ DONE
-6. [x] Phase 1 P0 crash fixes - ✅ VERIFIED COMPLETE (12/12 items)
-7. [x] Phase 2 thread-safety - ✅ COMPLETE (PR #142)
-8. [ ] **Phase 6: BotActionInterface** - Design doc ready, start implementation
-9. [ ] **Phase 7: Shorting Integration** - Design doc ready
-10. [ ] **Phase 8: Button XPath Verification** - CDP integration needed
-11. [ ] Continue with VECTRA-PLAYER #138-140 (parallel track)
+### Documentation Plan Created
+- **Location:** `/home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md`
+- **Effort:** ~10-12 hours
+- **Priority:** L4-vectra-codebase docs, then cross-references, then RAG ingestion
 
 ---
 
-## Key Decisions Made (Session 2025-12-24)
+## Key Decisions Made (2025-12-25)
 
-1. **RAG ownership → claude-flow** - All knowledge base, protocol docs, agents live in claude-flow
-2. **VECTRA-PLAYER → Data capture only** - No RAG responsibility
-3. **ChromaDB (not LanceDB)** - Using existing claude-flow infrastructure
-4. **Staging workflow** - Captures go to `staging/` → human review → CANONICAL promotion
-5. **Button clicks use HTTP POST** - Critical discovery for bot architecture
+1. **HYBRID StateTracker** - Uses LiveStateProvider in live mode, GameState fallback in replay
+2. **Schema v2.0.0 Reuse** - Extends existing PlayerState, ActionType from models/events
+3. **Factory Pattern** - Simple functions for each execution mode
+4. **Latency Chain** - client_ts → server_ts → confirmed_ts for timing analysis
+
+---
+
+## Next Steps (Priority Order)
+
+### Project Chores (VECTRA-PLAYER Issues)
+1. [ ] **#138** - Migrate Toast to Socket Events
+2. [ ] **#139** - Path Migration to RUGS_DATA_DIR
+3. [ ] **#140** - Final Legacy Cleanup
+
+### Documentation (claude-flow)
+4. [ ] Create L4-vectra-codebase docs (see BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md)
+5. [ ] Update rugs-events cross-references
+6. [ ] RAG ingestion into ChromaDB
+
+### Integration Work (VECTRA-PLAYER)
+7. [ ] Wire HumanActionInterceptor into main_window.py button handlers
+8. [ ] Add optional action_interface parameter to BotController
+9. [ ] Implement PuppeteerExecutor for v2.0 live trading
+
+### Pending Issues
+10. [ ] **claude-flow #24** - Ingest empirical data, update specs
+11. [ ] **Future: Shorting** - After rugs-expert captures live data
 
 ---
 
@@ -157,21 +131,45 @@ git status
 
 ---
 
-## Confirmation Mapping Summary
+## Quick Start for Fresh Sessions
 
-| Action | Confirmation Event | Detection |
-|--------|-------------------|-----------|
-| BUY | `playerUpdate` | positionQty ↑, cash ↓ |
-| SELL | `playerUpdate` | positionQty ↓, cash ↑ |
-| SIDEBET | `currentSidebet` | type == "placed" |
-| SIDEBET_WIN | `currentSidebetResult` | won == true |
+```bash
+# Read key context files
+1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
+2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
+3. /home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md
 
-**Latencies:** BUY/SELL ~1-2s, SIDEBET ~1s, SIDEBET_RESULT ~13-14s
+# Run tests
+cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
+
+# Check git status
+git status
+```
+
+---
+
+## Test Verification (2025-12-25)
+
+```
+===================== 1092 passed, 1005 warnings in 52.80s =====================
+Exit code: 0
+```
+
+---
+
+## Plan Files
+
+| File | Purpose |
+|------|---------|
+| `/home/nomad/.claude/plans/wise-jinkling-acorn.md` | BotActionInterface implementation plan |
+| `/home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md` | Rugipedia documentation plan |
 
 ---
 
 ## Session History
 
+- **2025-12-25**: BotActionInterface COMPLETE - 8 phases, 166 tests, 1092 total passing
+- **2025-12-24 (late night)**: Shorting DEFERRED - no empirical data, reverted speculative code
 - **2025-12-24 (late evening)**: Phase 1 VERIFIED COMPLETE (12/12 P0 items), devops docs finalized
 - **2025-12-24 (evening)**: Phase 2 COMPLETE (PR #142), crash fix, doc consolidation, roadmap updated
 - **2025-12-24 (noon)**: RAG staging complete, claude-flow #24 created, ownership clarified

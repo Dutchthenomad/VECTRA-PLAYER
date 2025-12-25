@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2025-12-24
+Last updated: 2025-12-25
 
 This roadmap unifies remaining goals and cleanup work. It is the canonical
 reference for planning and execution.
@@ -80,62 +80,79 @@ Acceptance checks:
 - `ruff check .` clean.
 - Coverage does not regress.
 
-## Phase 6: BotActionInterface Implementation
+## Phase 6: BotActionInterface Implementation ✅ COMPLETE
+
+**Completed:** 2025-12-25 | **Tests:** 166 new, 1092 total passing
 
 **Design Doc:** `docs/plans/2025-12-23-bot-action-interface-design.md`
 
-Scope (Track A from rugs-expert analysis):
-- Day 1-2: ActionExecutor layer (Tkinter/Puppeteer/Simulated modes)
-- Day 3-4: ConfirmationMonitor (WebSocket subscription, latency tracking)
-- Day 5-6: StateTracker (wraps LiveStateProvider)
-- Day 7-9: Integration, testing, and BotController migration
+Implementation summary:
 
-Architecture:
+| Phase | Component | Tests |
+|-------|-----------|-------|
+| 1 | `types.py` - ActionParams, ActionResult, ExecutionMode, GameContext | 20 |
+| 2 | `executors/base.py` + `simulated.py` - ABC and SimulatedExecutor | 21 |
+| 3 | `executors/tkinter.py` - TkinterExecutor wrapping BotUIController | 21 |
+| 4 | `confirmation/monitor.py` + `mock.py` - ConfirmationMonitor | 21 |
+| 5 | `state/tracker.py` - HYBRID StateTracker | 12 |
+| 6 | `interface.py` - BotActionInterface orchestrator | 17 |
+| 7 | `factory.py` - Factory functions for all 4 modes | 17 |
+| 8 | `recording/human_interceptor.py` - HumanActionInterceptor | 37 |
+
+Architecture ("Player Piano"):
 ```
-BotActionInterface
-├── ActionExecutor (execution modes: SIMULATED, UI_LAYER, BROWSER)
-├── ConfirmationMonitor (playerUpdate/currentSidebet subscriptions)
-└── StateTracker (server-authoritative state wrapper)
+RECORDING   → Human plays, system records inputs with full context
+TRAINING    → RL model trains with fast SimulatedExecutor
+VALIDATION  → Model replays pre-recorded games with UI animation
+LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
 ```
+
+**Note:** This phase covers BUY, SELL, SIDEBET only. Shorting deferred (see below).
 
 Acceptance checks:
-- Bot can execute trades via all three modes
-- Confirmation latency tracked and exposed
-- BotController uses new interface exclusively
+- Bot can execute trades via all three modes ✅
+- Confirmation latency tracked and exposed ✅
+- Factory functions for TRAINING/RECORDING/VALIDATION/LIVE modes ✅
 
-## Phase 7: Shorting Integration
+## Phase 7: Shorting Integration ⛔ DEFERRED
+
+**Status:** DEFERRED until empirical protocol data captured
+
+**Reason (2025-12-24):** rugs-expert agent confirmed no WebSocket event captures
+exist for shorting. All mechanics are unknown:
+- No `shortOrder` request/response events documented
+- `shortPosition` field always `null` in all captures
+- UI buttons and XPaths unknown
+- Leverage and liquidation mechanics undocumented
+
+**Prerequisites before implementation:**
+1. Live CDP capture of player opening/closing short position
+2. Document WebSocket request/response format
+3. Understand UI buttons and flow via browser inspection
+4. Validate mechanics (leverage, liquidation, amounts)
+
+**Research Location:** claude-flow rugs-expert agent
+
+## Phase 8: Button XPath Verification & Automation (Non-Short Buttons)
 
 **Design Doc:** `docs/plans/2025-12-24-shorting-integration-and-button-automation.md`
 
 Scope:
-- Add SHORT_OPEN/SHORT_CLOSE to ActionType enum (already in schema)
-- Implement shorting logic in ActionExecutor
-- Add short position display to UI
-- Integrate with LiveStateProvider short position tracking
-
-Acceptance checks:
-- Bot can open/close short positions
-- Short P&L calculated correctly
-- UI displays short position status
-
-## Phase 8: Button XPath Verification & Automation
-
-**Design Doc:** `docs/plans/2025-12-24-shorting-integration-and-button-automation.md`
-
-Scope:
-- Verify all 24 button XPaths via CDP
+- Verify button XPaths via CDP for documented features
 - Document automation approach (button click vs HTTP POST)
 - Implement Playwright button click methods
 - Add CDP health check and reconnection
 
-Button inventory (24 total):
-- Trade: BUY, SELL_25/50/75/100, SHORT_OPEN, SHORT_CLOSE
-- Sidebets: SIDEBET_UP/DOWN, BBC_BULL/BEAR/CRAB, CANDLE_FLIP
-- Bet amounts: 6 preset buttons
+Button inventory (v1.0 - excluding shorts):
+- Trade: BUY, SELL (10%/25%/50%/100%)
+- Sidebets: SIDEBET
+- Bet amounts: X (clear), +0.001, +0.01, +0.1, +1, 1/2, X2, MAX
 - Controls: Wallet connect, refresh, settings
 
+**Deferred buttons:** SHORT_OPEN, SHORT_CLOSE, SHORT percentages (pending Phase 7)
+
 Acceptance checks:
-- All buttons have verified XPaths
+- All documented buttons have verified XPaths
 - Playwright can click each button type
 - Automation mode selection working
 
