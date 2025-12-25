@@ -36,6 +36,39 @@ class EventHandlersMixin:
         )
         self.state.subscribe(StateEvents.POSITION_REDUCED, self._handle_position_reduced)
 
+    def _handle_game_tick(self: "MainWindow", event):
+        """Handle game tick from EventBus (live mode).
+
+        Bridges EventBus GAME_TICK events to the UI update logic.
+        """
+        from models import GameTick
+
+        data = event.get("data", {})
+        if not data:
+            return
+
+        # Convert dict to GameTick if needed
+        if isinstance(data, dict):
+            try:
+                tick = GameTick(
+                    tick=data.get("tick", data.get("tickIndex", 0)),
+                    price=float(data.get("price", data.get("currentPrice", 1.0))),
+                    phase=data.get("phase", "UNKNOWN"),
+                    rugged=data.get("rugged", False),
+                    seed=data.get("seed"),
+                    game_id=data.get("game_id", data.get("gameId")),
+                )
+            except Exception as e:
+                logger.debug(f"Failed to parse game tick: {e}")
+                return
+        elif isinstance(data, GameTick):
+            tick = data
+        else:
+            return
+
+        # Route to the existing tick processing logic
+        self._process_tick_ui(tick, 0, 0)
+
     def _handle_trade_executed(self: "MainWindow", event):
         """Handle successful trade"""
         self.log(f"Trade executed: {event.get('data')}")
