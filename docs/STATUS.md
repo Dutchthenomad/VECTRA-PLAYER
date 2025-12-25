@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2025-12-24
+Last updated: 2025-12-24 (evening)
 
 ## Canonical Status Sources
 
@@ -11,20 +11,46 @@ Last updated: 2025-12-24
 
 ## Current Phase
 
-Phase 12D -> 12E transition. The system is functional with EventStore and
-LiveStateProvider integrated, but remaining crash fixes, thread-safety work,
-and legacy cleanup are in progress.
+**Phase 2 COMPLETE** → Phase 1 P0 fixes + Phase 6-8 planning ready.
+
+The system is functional with EventStore and LiveStateProvider integrated.
+rugs-expert agent has created comprehensive design documents for the
+BotActionInterface implementation and shorting integration.
+
+## Completed
+
+- ✅ Phase 12A-12D: EventStore, schemas, LiveStateProvider
+- ✅ Schema v2.0.0: Expanded event types (PR #141)
+- ✅ Phase 2: Thread-safety stabilization (PR #142)
+- ✅ rugs-expert integration: ChromaDB ingestion, confirmation mapping
+- ✅ Design docs: BotActionInterface, shorting integration, button XPaths
 
 ## Now (Highest Priority)
 
-- Phase 1: Remaining P0 crash fixes across core, UI, browser, and sources.
-- Phase 2: Thread-safety and data-integrity stabilization.
+- Phase 1: Remaining P0 crash fixes (12 items in core, UI, browser, sources)
+- Phase 6: BotActionInterface implementation (design complete, ready to build)
 
 ## Next
 
-- Phase 3: GUI audit remediation and removal of legacy recorder paths.
-- Phase 4: Socket cleanup and live/replay state separation.
-- Phase 5: Quality sweep, tests, and coverage stabilization.
+- Phase 7: Shorting integration (schema ready, design complete)
+- Phase 8: Button XPath verification via CDP
+- Phase 3-5: GUI audit, socket cleanup, quality sweep (parallel track)
+
+## Recent Accomplishments (2025-12-24)
+
+| Commit | Description |
+|--------|-------------|
+| PR #142 | Phase 2 Stabilization + Canonical Docs (36 files) |
+| 3b5c7d5 | Fix missing _handle_game_tick handler |
+| 79e2c00 | Consolidate debugging docs into single reference |
+
+## Design Documents Ready
+
+| Document | Purpose |
+|----------|---------|
+| `docs/plans/2025-12-23-bot-action-interface-design.md` | BotActionInterface architecture |
+| `docs/plans/2025-12-24-shorting-integration-and-button-automation.md` | Shorting + button XPaths |
+| `claude-flow/.../confirmation-mapping.md` | Action→Event confirmation mapping |
 
 ## Archive Policy
 
