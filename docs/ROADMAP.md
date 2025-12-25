@@ -5,25 +5,27 @@ Last updated: 2025-12-24
 This roadmap unifies remaining goals and cleanup work. It is the canonical
 reference for planning and execution.
 
-## Phase 1: Remaining P0 Crash Fixes (Immediate)
+## Phase 1: Remaining P0 Crash Fixes (Immediate) ✅ COMPLETE
 
-Scope:
-- Core: PlaybackController cleanup self-join deadlock.
-- Core: PlaybackController duplicate thread/zombie playback loop.
-- UI: BotManager uses tick.active instead of game_active.
-- UI: Toast bootstyle misuse.
-- UI: LiveFeedController calls nonexistent set_seed_data().
-- UI: BrowserConnectionDialog constructor missing required arg.
-- UI: RecordingController calls missing toast.show().
-- Browser: WS_RAW_EVENT double-wrapped publish.
-- Browser: Playwright timeout exception type mismatch.
-- Browser: Runtime sys.path mutation in BrowserBridge.
-- Sources: socketio_parser unreachable duplicate code.
-- Sources: PriceHistoryHandler double-finalization.
+All 12 P0 items fixed with AUDIT FIX comments. Verified 926 tests passing.
+
+Scope (all fixed):
+- Core: PlaybackController cleanup self-join deadlock. ✅
+- Core: PlaybackController duplicate thread/zombie playback loop. ✅
+- UI: BotManager uses tick.active instead of game_active. ✅
+- UI: Toast bootstyle misuse. ✅
+- UI: LiveFeedController calls nonexistent set_seed_data(). ✅
+- UI: BrowserConnectionDialog constructor missing required arg. ✅
+- UI: RecordingController calls missing toast.show(). ✅ (removed)
+- Browser: WS_RAW_EVENT double-wrapped publish. ✅
+- Browser: Playwright timeout exception type mismatch. ✅
+- Browser: Runtime sys.path mutation in BrowserBridge. ✅
+- Sources: socketio_parser unreachable duplicate code. ✅
+- Sources: PriceHistoryHandler double-finalization. ✅
 
 Acceptance checks:
-- Repro steps for each crash no longer throw.
-- `cd src && pytest tests/ -v` passes or failures are triaged with notes.
+- Repro steps for each crash no longer throw. ✅
+- `cd src && pytest tests/ -v` passes (926 tests). ✅
 
 ## Phase 2: Thread-Safety and Data Integrity (Stabilization) ✅ COMPLETE
 

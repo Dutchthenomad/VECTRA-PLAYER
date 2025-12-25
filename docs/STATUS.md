@@ -11,9 +11,9 @@ Last updated: 2025-12-24 (evening)
 
 ## Current Phase
 
-**Phase 2 COMPLETE** → Phase 1 P0 fixes + Phase 6-8 planning ready.
+**Phase 1 & 2 COMPLETE** → Phase 6-8 implementation ready.
 
-The system is functional with EventStore and LiveStateProvider integrated.
+The system is stable with all P0 crashes fixed and thread-safety addressed.
 rugs-expert agent has created comprehensive design documents for the
 BotActionInterface implementation and shorting integration.
 
@@ -21,18 +21,18 @@ BotActionInterface implementation and shorting integration.
 
 - ✅ Phase 12A-12D: EventStore, schemas, LiveStateProvider
 - ✅ Schema v2.0.0: Expanded event types (PR #141)
+- ✅ Phase 1: All 12 P0 crash fixes (AUDIT FIX comments verified)
 - ✅ Phase 2: Thread-safety stabilization (PR #142)
 - ✅ rugs-expert integration: ChromaDB ingestion, confirmation mapping
 - ✅ Design docs: BotActionInterface, shorting integration, button XPaths
 
 ## Now (Highest Priority)
 
-- Phase 1: Remaining P0 crash fixes (12 items in core, UI, browser, sources)
 - Phase 6: BotActionInterface implementation (design complete, ready to build)
+- Phase 7: Shorting integration
 
 ## Next
 
-- Phase 7: Shorting integration (schema ready, design complete)
 - Phase 8: Button XPath verification via CDP
 - Phase 3-5: GUI audit, socket cleanup, quality sweep (parallel track)
 
