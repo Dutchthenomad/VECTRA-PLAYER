@@ -8,7 +8,7 @@ import queue
 import threading
 import time
 import weakref
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from enum import Enum
 from typing import Any
 
@@ -71,6 +71,9 @@ class Events(Enum):
     WS_RAW_EVENT = "ws.raw_event"  # Every frame, unfiltered
     WS_AUTH_EVENT = "ws.auth_event"  # Auth-only events (playerUpdate, usernameStatus)
     WS_SOURCE_CHANGED = "ws.source_changed"  # Source switching (cdp/fallback)
+    WS_CONNECTED = "ws.connected"  # WebSocket connection established
+    WS_DISCONNECTED = "ws.disconnected"  # WebSocket connection lost
+    WS_ERROR = "ws.error"  # WebSocket error occurred
 
 
 class EventBus:
@@ -180,37 +183,41 @@ class EventBus:
             if event not in self._callback_ids:
                 self._callback_ids[event] = {}
 
-            # Use object id to track callback for unsubscribe
-            cb_id = id(callback)
+            cb_key = self._callback_key(callback)
 
             # Skip if already subscribed (prevent duplicates)
-            existing = self._callback_ids[event].get(cb_id)
+            existing = self._callback_ids[event].get(cb_key)
             if existing is not None:
                 existing_cb = self._resolve_callback(existing)
                 if existing_cb is not None:
                     logger.debug(f"Already subscribed to {event.value}, skipping duplicate")
                     return
                 # Stale weakref entry: remove it and proceed to re-subscribe.
-                self._callback_ids[event].pop(cb_id, None)
+                self._callback_ids[event].pop(cb_key, None)
                 self._subscribers[event] = [
-                    (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_id
+                    (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_key
                 ]
 
             # AUDIT FIX: Store as weak reference by default
             if weak:
                 try:
-                    ref = weakref.ref(callback)
-                    self._subscribers[event].append((cb_id, ref))
+                    # Bound methods must use WeakMethod so the underlying (self, func)
+                    # remains resolvable; weakref.ref(method) dies immediately.
+                    if hasattr(callback, "__self__") and hasattr(callback, "__func__"):
+                        ref = weakref.WeakMethod(callback)  # type: ignore[arg-type]
+                    else:
+                        ref = weakref.ref(callback)
+                    self._subscribers[event].append((cb_key, ref))
                 except TypeError:
                     # Callback not weak-referenceable (e.g., lambda), store directly
-                    self._subscribers[event].append((cb_id, callback))
+                    self._subscribers[event].append((cb_key, callback))
             else:
                 # Store direct reference
-                self._subscribers[event].append((cb_id, callback))
+                self._subscribers[event].append((cb_key, callback))
 
             # Track by ID for unsubscribe/duplicate prevention without pinning weak callbacks.
             last_ref = self._subscribers[event][-1][1]
-            self._callback_ids[event][cb_id] = last_ref
+            self._callback_ids[event][cb_key] = last_ref
             logger.debug(f"Subscribed to {event.value}")
 
     def unsubscribe(self, event: Events, callback: Callable):
@@ -224,15 +231,15 @@ class EventBus:
                 logger.debug(f"No subscribers for {event.value}, nothing to unsubscribe")
                 return
 
-            cb_id = id(callback)
+            cb_key = self._callback_key(callback)
 
             # Remove from ID tracking
             if event in self._callback_ids:
-                self._callback_ids[event].pop(cb_id, None)
+                self._callback_ids[event].pop(cb_key, None)
 
             # Remove from subscriber list by ID
             self._subscribers[event] = [
-                (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_id
+                (cid, ref) for cid, ref in self._subscribers[event] if cid != cb_key
             ]
             if not self._subscribers[event]:
                 self._subscribers.pop(event, None)
@@ -316,6 +323,21 @@ class EventBus:
         except Exception as e:
             logger.warning(f"Failed to resolve callback: {e}")
         return None
+
+    @staticmethod
+    def _callback_key(callback: Callable) -> Hashable:
+        """
+        Create a stable key for callbacks.
+
+        Why: `id(self.method)` is not stable because each attribute access creates a
+        new bound method object. Using (id(instance), id(function)) keeps
+        subscribe/unsubscribe and duplicate detection correct for instance methods.
+        """
+        self_obj = getattr(callback, "__self__", None)
+        func_obj = getattr(callback, "__func__", None)
+        if self_obj is not None and func_obj is not None:
+            return ("method", id(self_obj), id(func_obj))
+        return ("callable", id(callback))
 
     def get_stats(self) -> dict[str, Any]:
         """

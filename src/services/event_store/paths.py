@@ -2,8 +2,12 @@
 Event Store Paths - Derive all directories from config/env
 
 No hardcoded paths. All paths derived from RUGS_DATA_DIR.
+
+Issue #139: Centralized path resolution for both modern (RUGS_DATA_DIR)
+and legacy (RUGS_RECORDINGS_DIR) paths.
 """
 
+import os
 from pathlib import Path
 
 
@@ -43,7 +47,7 @@ class EventStorePaths:
 
     @property
     def vectors_dir(self) -> Path:
-        """LanceDB vector index directory"""
+        """VectorDB index directory (derived artifacts, implementation-specific)"""
         return self._data_dir / "vectors"
 
     @property
@@ -117,3 +121,56 @@ class EventStorePaths:
     def context_file(self) -> Path:
         """Path to CONTEXT.md for AI reference"""
         return self._data_dir / "CONTEXT.md"
+
+
+# ============================================================================
+# Standalone Path Resolution Functions
+# ============================================================================
+
+
+def get_data_dir() -> Path:
+    """
+    Get the modern data directory (RUGS_DATA_DIR).
+
+    Returns:
+        Path to ~/rugs_data/ or RUGS_DATA_DIR env value
+    """
+    return Path(os.environ.get("RUGS_DATA_DIR", str(Path.home() / "rugs_data")))
+
+
+def get_legacy_recordings_dir() -> Path:
+    """
+    Get the legacy recordings directory for replay mode.
+
+    Checks RUGS_RECORDINGS_DIR env var, falls back to:
+    1. Config.FILES["recordings_dir"] if available
+    2. ~/rugs_recordings/ as default
+
+    Returns:
+        Path to legacy recordings directory
+    """
+    env_path = os.environ.get("RUGS_RECORDINGS_DIR")
+    if env_path:
+        return Path(env_path)
+
+    # Try to get from config
+    try:
+        from config import Config
+
+        files_config = Config.get_files_config()
+        return files_config["recordings_dir"]
+    except Exception:
+        pass
+
+    # Default fallback
+    return Path.home() / "rugs_recordings"
+
+
+def get_raw_captures_dir() -> Path:
+    """
+    Get the raw captures directory.
+
+    Returns:
+        Path to raw captures (inside legacy recordings dir)
+    """
+    return get_legacy_recordings_dir() / "raw_captures"

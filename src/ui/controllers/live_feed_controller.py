@@ -180,8 +180,12 @@ class LiveFeedController:
                     # Sync menu checkbox state (connection succeeded)
                     self.live_feed_var.set(True)
                     self.log(f"✅ Live feed connected (Socket ID: {socket_id})")
-                    if self.toast:
-                        self.toast.show("Live feed connected", "success")
+                    # Publish WS_CONNECTED - ToastHandlersMixin will show toast
+                    from services.event_bus import Events
+
+                    self.event_bus.publish(
+                        Events.WS_CONNECTED, {"source": "live feed", "socket_id": socket_id}
+                    )
                     # Update status label if it exists
                     if hasattr(self.parent, "phase_label"):
                         self.parent.phase_label.config(text="PHASE: LIVE FEED", fg="#00ff88")
@@ -202,8 +206,10 @@ class LiveFeedController:
                     # Sync menu checkbox state (disconnected)
                     self.live_feed_var.set(False)
                     self.log(f"❌ Live feed disconnected: {reason}")
-                    if self.toast:
-                        self.toast.show("Live feed disconnected", "error")
+                    # Publish WS_DISCONNECTED - ToastHandlersMixin will show toast
+                    from services.event_bus import Events
+
+                    self.event_bus.publish(Events.WS_DISCONNECTED, {"reason": reason})
                     if hasattr(self.parent, "phase_label"):
                         self.parent.phase_label.config(text="PHASE: DISCONNECTED", fg="#ff3366")
 
@@ -291,8 +297,10 @@ class LiveFeedController:
                         if connection_seq != self._active_connection_seq:
                             return
                         self.log(f"Failed to connect to live feed: {error_msg}")
-                        if self.toast:
-                            self.toast.show(f"Live feed error: {error_msg}", "error")
+                        # Publish WS_ERROR - ToastHandlersMixin will show toast
+                        from services.event_bus import Events
+
+                        self.event_bus.publish(Events.WS_ERROR, {"error": error_msg})
                         self.parent.live_feed = None
                         self.parent.live_feed_connected = False
                         self.live_feed_var.set(False)
@@ -306,8 +314,10 @@ class LiveFeedController:
             self._live_feed_requested = False
             logger.error(f"Failed to enable live feed: {e}", exc_info=True)
             self.log(f"Failed to connect to live feed: {e}")
-            if self.toast:
-                self.toast.show(f"Live feed error: {e}", "error")
+            # Publish WS_ERROR - ToastHandlersMixin will show toast
+            from services.event_bus import Events
+
+            self.event_bus.publish(Events.WS_ERROR, {"error": str(e)})
             self.parent.live_feed = None
             self.parent.live_feed_connected = False
             # Sync menu checkbox state (connection failed)
@@ -333,7 +343,10 @@ class LiveFeedController:
             # Reset tracking state
             self._player_id = None
             self._username = None
-            self.toast.show("Live feed disconnected", "info")
+            # Publish WS_DISCONNECTED - ToastHandlersMixin will show toast
+            from services.event_bus import Events
+
+            self.event_bus.publish(Events.WS_DISCONNECTED, {"reason": "user requested"})
             if hasattr(self.parent, "phase_label"):
                 self.parent.phase_label.config(text="PHASE: DISCONNECTED", fg="white")
         except Exception as e:

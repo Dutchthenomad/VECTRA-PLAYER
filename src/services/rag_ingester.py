@@ -63,7 +63,12 @@ class RAGIngester:
     event_chunker.py for automatic indexing by rugs-expert agent.
     """
 
-    DEFAULT_CAPTURE_DIR = Path.home() / "rugs_recordings" / "raw_captures"
+    @staticmethod
+    def _get_default_capture_dir() -> Path:
+        """Get default capture directory using centralized path resolution."""
+        from services.event_store import get_raw_captures_dir
+
+        return get_raw_captures_dir()
 
     def __init__(self, capture_dir: Path | None = None):
         """
@@ -72,7 +77,7 @@ class RAGIngester:
         Args:
             capture_dir: Directory for capture files
         """
-        self.capture_dir = capture_dir or self.DEFAULT_CAPTURE_DIR
+        self.capture_dir = capture_dir or self._get_default_capture_dir()
         self.capture_dir.mkdir(parents=True, exist_ok=True)
 
         # Session state

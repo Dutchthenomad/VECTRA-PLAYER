@@ -77,8 +77,12 @@ temp/
 # ML Models (large binary files - commented to track in git for now)
 # models/*.pkl
 
-# Game recordings (large data files - symlink to /home/nomad/rugs_recordings)
+# Game recordings (large data files - stored externally)
+# Legacy recordings: ~/rugs_recordings/
+# Modern data: ~/rugs_data/
 src/rugs_recordings/
+rugs_recordings/
+rugs_data/
 
 # Code review reports
 review_report_*.txt

@@ -163,6 +163,7 @@ class MainWindow(
         self._deferred_notifications = []
 
         self._setup_event_handlers()
+        self._setup_toast_handlers()
         self._setup_keyboard_shortcuts()
 
         # Auto-start bot if enabled in config

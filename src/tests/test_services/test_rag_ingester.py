@@ -1,6 +1,5 @@
 """Tests for RAG event ingestion."""
 
-import importlib
 import json
 from unittest.mock import patch
 
@@ -10,19 +9,16 @@ from services.rag_ingester import RAGIngester
 class TestRAGIngester:
     """Test RAG event cataloging."""
 
-    def test_default_capture_dir_uses_home(self, tmp_path):
-        """Default capture dir follows Path.home() for portability."""
-        import services.rag_ingester as rag_ingester
-
-        with patch("pathlib.Path.home", return_value=tmp_path):
-            reloaded = importlib.reload(rag_ingester)
-            assert (
-                tmp_path / "rugs_recordings" / "raw_captures"
-                == reloaded.RAGIngester.DEFAULT_CAPTURE_DIR
-            )
-
-        # Restore module state for other tests
-        importlib.reload(rag_ingester)
+    def test_default_capture_dir_uses_centralized_path(self, tmp_path):
+        """Default capture dir uses centralized path resolution."""
+        with patch(
+            "services.event_store.paths.get_legacy_recordings_dir",
+            return_value=tmp_path / "rugs_recordings",
+        ):
+            # Create fresh ingester to test default path
+            ingester = RAGIngester()
+            expected = tmp_path / "rugs_recordings" / "raw_captures"
+            assert ingester.capture_dir == expected
 
     def test_init_creates_capture_dir(self, tmp_path):
         """Ingester creates capture directory if missing."""
