@@ -39,7 +39,7 @@ def query_session(session_id: str):
 
     conn = duckdb.connect()
 
-    # Query events for this session
+    # Query events for this session using parameterized query to prevent SQL injection
     query = f"""
     SELECT
         doc_type,
@@ -47,13 +47,13 @@ def query_session(session_id: str):
         MIN(ts) as first_event,
         MAX(ts) as last_event
     FROM read_parquet('{parquet_dir}/**/*.parquet', hive_partitioning=true, union_by_name=true)
-    WHERE session_id = '{session_id}'
+    WHERE session_id = $session_id
     GROUP BY doc_type
     ORDER BY doc_type
     """
 
     try:
-        result = conn.execute(query).fetchall()
+        result = conn.execute(query, {"session_id": session_id}).fetchall()
 
         if not result:
             print(f"No events found for session: {session_id}")
@@ -77,6 +77,8 @@ def query_session(session_id: str):
     except Exception as e:
         print(f"Error querying session: {e}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        conn.close()
 
 
 def query_recent(limit: int = 10):
@@ -97,6 +99,7 @@ def query_recent(limit: int = 10):
 
     conn = duckdb.connect()
 
+    # Use parameterized query for LIMIT to follow best practices
     query = f"""
     SELECT
         ts,
@@ -106,11 +109,11 @@ def query_recent(limit: int = 10):
         session_id
     FROM read_parquet('{parquet_dir}/**/*.parquet', hive_partitioning=true, union_by_name=true)
     ORDER BY ts DESC
-    LIMIT {limit}
+    LIMIT $limit
     """
 
     try:
-        result = conn.execute(query).fetchall()
+        result = conn.execute(query, {"limit": limit}).fetchall()
 
         if not result:
             print("No events found")
@@ -136,6 +139,8 @@ def query_recent(limit: int = 10):
     except Exception as e:
         print(f"Error querying recent events: {e}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        conn.close()
 
 
 def query_stats():
@@ -209,6 +214,8 @@ def query_stats():
     except Exception as e:
         print(f"Error querying statistics: {e}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        conn.close()
 
 
 def main():
