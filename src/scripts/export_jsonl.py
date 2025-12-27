@@ -49,6 +49,7 @@ def export_to_jsonl(
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     # Query Parquet files
+    # Note: parquet_path is constructed from validated directory, not user input
     parquet_path = str(parquet_dir / "**" / "*.parquet")
     query = f"""
         SELECT * FROM read_parquet('{parquet_path}', hive_partitioning=true, union_by_name=true)
@@ -57,6 +58,7 @@ def export_to_jsonl(
     """
 
     try:
+        # DataFrame is independent of connection, so safe to close after query
         result = conn.execute(query, params).df()
     except Exception as e:
         print(f"Error querying Parquet: {e}", file=sys.stderr)

@@ -40,6 +40,7 @@ def query_session(session_id: str):
     conn = duckdb.connect()
 
     # Query events for this session using parameterized query to prevent SQL injection
+    # Note: parquet_dir is from environment/config, not user input, so safe to interpolate
     query = f"""
     SELECT
         doc_type,
@@ -100,6 +101,7 @@ def query_recent(limit: int = 10):
     conn = duckdb.connect()
 
     # Use parameterized query for LIMIT to follow best practices
+    # Note: parquet_dir is from environment/config, not user input, so safe to interpolate
     query = f"""
     SELECT
         ts,
@@ -163,6 +165,7 @@ def query_stats():
     conn = duckdb.connect()
 
     # Overall statistics
+    # Note: parquet_dir is from environment/config, not user input, so safe to interpolate
     stats_query = f"""
     SELECT
         COUNT(*) as total_events,
