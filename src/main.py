@@ -4,7 +4,12 @@ Clean, modular implementation
 Phase 8.5: Added --live flag for browser automation mode
 """
 
-__version__ = "2.0.0"
+try:
+    from importlib.metadata import version
+
+    __version__ = version("vectra-player")
+except Exception:
+    __version__ = "0.0.0-dev"
 
 import os
 import platform
@@ -21,13 +26,12 @@ import argparse
 import logging
 import tkinter as tk
 
-import ttkbootstrap as ttk
-
 from config import config
 from core.game_state import GameState
+from services.async_loop_manager import AsyncLoopManager
 from services.event_bus import Events, event_bus
 from services.logger import setup_logging
-from ui.main_window import MainWindow
+from ui.minimal_window import MinimalWindow
 
 
 class Application:
@@ -45,10 +49,11 @@ class Application:
             live_mode: If True, enable live browser automation mode (Phase 8.5)
         """
         self._initialized_components = []
-        self.main_window: MainWindow | None = None
+        self.main_window: MinimalWindow | None = None
         self.root: tk.Tk | None = None
         self.state: GameState | None = None
         self.event_bus = event_bus
+        self.async_manager: AsyncLoopManager | None = None
 
         try:
             # Initialize logging first
@@ -56,6 +61,7 @@ class Application:
             self._initialized_components.append("logging")
             self.logger.info("=" * 60)
             self.logger.info("Rugs Replay Viewer - Starting Application")
+            self.logger.info(f"Version: {__version__}")
             if live_mode:
                 self.logger.info("MODE: LIVE BROWSER AUTOMATION (Phase 8.5)")
             else:
@@ -82,19 +88,25 @@ class Application:
 
             # Initialize core components
             self.config = config
-            self.state = GameState(config.FINANCIAL["initial_balance"])
+            # Pass event_bus to GameState for live mode sync (Phase 12D fix)
+            self.state = GameState(config.FINANCIAL["initial_balance"], event_bus=event_bus)
 
             # Start event bus
             self.event_bus.start()
             self._initialized_components.append("event_bus")
 
+            # Dedicated asyncio loop thread for any legacy async operations that must be
+            # invoked from the Tk thread (prevents ad-hoc event loop creation).
+            self.async_manager = AsyncLoopManager()
+            self.async_manager.start()
+            self._initialized_components.append("async_manager")
+
             # Setup event handlers
             self._setup_event_handlers()
 
-            # Create UI window with ttkbootstrap theme support
-            saved_theme = MainWindow.load_theme_preference()
-            self.root = ttk.Window(themename=saved_theme)
-            self.logger.info(f"Using theme: {saved_theme}")
+            # Create UI window (MinimalWindow uses plain tkinter)
+            self.root = tk.Tk()
+            self.logger.info("Using MinimalWindow (plain tkinter)")
 
             # Configure root window
             self._configure_root()
@@ -125,6 +137,8 @@ class Application:
             try:
                 if component == "event_bus":
                     self.event_bus.stop()
+                elif component == "async_manager" and self.async_manager:
+                    self.async_manager.stop()
                 elif component == "logging":
                     logging.shutdown()
             except Exception:
@@ -208,13 +222,12 @@ class Application:
     def run(self):
         """Run the application"""
         try:
-            # Create main window with live mode flag
-            self.main_window = MainWindow(
+            # Create main window (MinimalWindow for RL training data collection)
+            self.main_window = MinimalWindow(
                 self.root,
                 self.state,
                 self.event_bus,
                 self.config,
-                live_mode=self.live_mode,  # Pass live mode flag
             )
 
             # Auto-load games if directory exists (skip in live mode)
@@ -271,9 +284,16 @@ class Application:
             # Stop event bus
             self.event_bus.stop()
 
-            # Destroy UI
-            if self.main_window:
+            # Shut down UI if shutdown method exists
+            if self.main_window and hasattr(self.main_window, 'shutdown'):
                 self.main_window.shutdown()
+            elif self.main_window and hasattr(self.main_window, '_unsubscribe_from_events'):
+                # MinimalWindow cleanup: unsubscribe from events
+                self.main_window._unsubscribe_from_events()
+
+            # Stop dedicated async manager after UI shutdown
+            if self.async_manager:
+                self.async_manager.stop()
 
             if self.root:
                 self.root.quit()
