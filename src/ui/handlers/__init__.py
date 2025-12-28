@@ -1,15 +1,7 @@
-"""UI handlers module."""
+"""UI handlers module - Archived.
 
-from ui.handlers.balance_handlers import BalanceHandlersMixin
-from ui.handlers.event_handlers import EventHandlersMixin
-from ui.handlers.player_handlers import PlayerHandlersMixin
-from ui.handlers.replay_handlers import ReplayHandlersMixin
-from ui.handlers.toast_handlers import ToastHandlersMixin
+All handler mixins have been archived to `_archived/handlers/`.
+MinimalWindow uses inline event handling instead of mixins.
+"""
 
-__all__ = [
-    "BalanceHandlersMixin",
-    "EventHandlersMixin",
-    "PlayerHandlersMixin",
-    "ReplayHandlersMixin",
-    "ToastHandlersMixin",
-]
+__all__ = []

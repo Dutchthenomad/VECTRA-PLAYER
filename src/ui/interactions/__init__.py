@@ -1,9 +1,7 @@
-"""UI interactions module."""
+"""UI interactions module - Archived.
 
-from ui.interactions.keyboard_shortcuts import KeyboardShortcutsMixin
-from ui.interactions.theme_manager import ThemeManagerMixin
+KeyboardShortcutsMixin and ThemeManagerMixin have been archived to `_archived/interactions/`.
+MinimalWindow uses plain Tk defaults.
+"""
 
-__all__ = [
-    "KeyboardShortcutsMixin",
-    "ThemeManagerMixin",
-]
+__all__ = []

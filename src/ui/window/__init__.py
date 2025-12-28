@@ -1,7 +1,7 @@
-"""UI window module."""
+"""UI window module - Archived.
 
-from ui.window.shutdown import ShutdownMixin
+ShutdownMixin has been archived to `_archived/window/`.
+MinimalWindow handles shutdown inline.
+"""
 
-__all__ = [
-    "ShutdownMixin",
-]
+__all__ = []

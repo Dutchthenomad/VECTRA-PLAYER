@@ -1,6 +1,7 @@
-"""UI Widgets - Reusable UI components"""
+"""UI Widgets - Archived.
 
-from .chart import ChartWidget
-from .toast_notification import ToastNotification
+ChartWidget and ToastNotification have been archived to `_archived/widgets/`.
+MinimalWindow uses plain Tk widgets only.
+"""
 
-__all__ = ["ChartWidget", "ToastNotification"]
+__all__ = []
