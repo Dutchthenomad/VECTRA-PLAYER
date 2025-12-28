@@ -114,11 +114,12 @@ class TestMinimalWindowCallbacks:
         assert minimal_window.current_sell_percentage == 0.25
 
     def test_clear_click_resets_bet_entry(self, minimal_window):
-        """Clicking clear should reset bet entry to 0.000."""
+        """Clicking clear should reset bet entry to 0."""
         minimal_window.bet_entry.delete(0, "end")
         minimal_window.bet_entry.insert(0, "5.0")
         minimal_window._on_clear_clicked()
-        assert minimal_window.bet_entry.get() == "0.000"
+        # TradingController clears to "0", MinimalWindow fallback uses "0.000"
+        assert minimal_window.bet_entry.get() in ("0", "0.000")
 
     def test_increment_click_adds_value(self, minimal_window):
         """Clicking increment should add value to bet entry."""
@@ -268,6 +269,277 @@ class TestMinimalWindowUtilityMethods:
         """get_sell_percentage should return current percentage."""
         minimal_window.current_sell_percentage = 0.5
         assert minimal_window.get_sell_percentage() == 0.5
+
+
+class TestMinimalWindowTradingController:
+    """Test TradingController integration (Task 2)."""
+
+    @pytest.fixture
+    def minimal_window_with_eventbus(self, tk_root):
+        """Create MinimalWindow with real EventBus for testing ButtonEvent emission."""
+        from services.event_bus import EventBus
+        from ui.minimal_window import MinimalWindow
+
+        # Create real EventBus (started)
+        event_bus = EventBus()
+        event_bus.start()
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.side_effect = lambda key, default=None: {
+            "current_tick": 42,
+            "current_price": Decimal("1.5"),
+            "game_id": "game-123",
+            "current_phase": "ACTIVE",
+            "balance": Decimal("10.0"),
+            "position_qty": Decimal("0"),
+        }.get(key, default)
+        mock_game_state.set_sell_percentage.return_value = True
+
+        mock_config = MagicMock()
+        mock_config.FINANCIAL = {"min_bet": Decimal("0.001"), "max_bet": Decimal("100")}
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=event_bus,
+            config=mock_config,
+        )
+
+        yield window, event_bus
+
+        # Cleanup
+        event_bus.stop()
+
+    def test_trading_controller_created(self, minimal_window_with_eventbus):
+        """TradingController should be created automatically."""
+        window, _event_bus = minimal_window_with_eventbus
+        assert window.trading_controller is not None
+
+    def test_buy_click_emits_button_event(self, minimal_window_with_eventbus):
+        """BUY click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click BUY
+        window._on_buy_clicked()
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "BUY"
+        assert received_events[0]["data"]["button_category"] == "action"
+        assert "client_timestamp" in received_events[0]["data"]
+
+    def test_sell_click_emits_button_event(self, minimal_window_with_eventbus):
+        """SELL click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click SELL
+        window._on_sell_clicked()
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "SELL"
+
+    def test_sidebet_click_emits_button_event(self, minimal_window_with_eventbus):
+        """SIDEBET click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click SIDEBET
+        window._on_sidebet_clicked()
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "SIDEBET"
+
+    def test_increment_click_emits_button_event(self, minimal_window_with_eventbus):
+        """Increment button click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click increment +0.01
+        window._on_increment_clicked("+0.01")
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "INC_01"
+        assert received_events[0]["data"]["button_category"] == "bet_adjust"
+
+    def test_utility_half_emits_button_event(self, minimal_window_with_eventbus):
+        """1/2 utility button click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Set initial bet amount
+        window.bet_entry.delete(0, "end")
+        window.bet_entry.insert(0, "2.0")
+
+        # Click 1/2
+        window._on_utility_clicked("1/2")
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "HALF"
+
+    def test_clear_click_emits_button_event(self, minimal_window_with_eventbus):
+        """Clear (X) button click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click clear
+        window._on_clear_clicked()
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "CLEAR"
+
+    def test_percentage_click_emits_button_event(self, minimal_window_with_eventbus):
+        """Percentage button click should emit BUTTON_PRESS event."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click 25%
+        window._on_percentage_clicked(0.25)
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        assert received_events[0]["data"]["button_id"] == "SELL_25"
+        assert received_events[0]["data"]["button_category"] == "percentage"
+
+    def test_button_event_contains_game_context(self, minimal_window_with_eventbus):
+        """ButtonEvent should contain full game context."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        # Click BUY
+        window._on_buy_clicked()
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        event_data = received_events[0]["data"]
+
+        # Check game context fields
+        assert event_data["tick"] == 42
+        assert event_data["game_phase"] == 2  # ACTIVE
+        assert event_data["game_id"] == "game-123"
+        assert "sequence_id" in event_data
+        assert "sequence_position" in event_data
+
+    def test_button_event_contains_client_timestamp(self, minimal_window_with_eventbus):
+        """ButtonEvent should contain client_timestamp for latency tracking."""
+        import time
+
+        from services.event_bus import Events
+
+        window, event_bus = minimal_window_with_eventbus
+        received_events = []
+
+        def handler(event):
+            received_events.append(event)
+
+        event_bus.subscribe(Events.BUTTON_PRESS, handler, weak=False)
+
+        before_ts = int(time.time() * 1000)
+        window._on_buy_clicked()
+        after_ts = int(time.time() * 1000)
+
+        # Wait for async event processing
+        time.sleep(0.2)
+
+        assert len(received_events) == 1
+        client_ts = received_events[0]["data"]["client_timestamp"]
+
+        # Timestamp should be within the test window
+        assert before_ts <= client_ts <= after_ts + 100  # Allow 100ms tolerance
 
 
 # Fixture for Tk root (shared with conftest.py)

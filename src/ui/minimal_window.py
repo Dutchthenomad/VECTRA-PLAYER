@@ -11,6 +11,10 @@ Stripped-down UI with only essential components:
 
 All visual components (charts, overlays, animations) removed.
 Buttons emit ButtonEvents with timestamps for latency tracking.
+
+Task 2: TradingController Integration
+- Button clicks are delegated to TradingController for ButtonEvent emission
+- TradingController handles latency tracking and EventBus publishing
 """
 
 import logging
@@ -21,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from core.game_state import GameState
     from services.event_bus import EventBus
+    from ui.controllers.trading_controller import TradingController
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +55,9 @@ class MinimalWindow:
         game_state: "GameState",
         event_bus: "EventBus",
         config: Any,
+        trading_controller: "TradingController | None" = None,
+        browser_bridge: Any = None,
+        live_state_provider: Any = None,
     ):
         """
         Initialize MinimalWindow.
@@ -59,11 +67,16 @@ class MinimalWindow:
             game_state: GameState instance for state access
             event_bus: EventBus for event subscriptions
             config: Configuration object
+            trading_controller: Optional TradingController for ButtonEvent emission
+            browser_bridge: Optional BrowserBridge for browser clicks
+            live_state_provider: Optional LiveStateProvider for live game context
         """
         self.root = root
         self.game_state = game_state
         self.event_bus = event_bus
         self.config = config
+        self.browser_bridge = browser_bridge
+        self.live_state_provider = live_state_provider
 
         # Configure root window
         self.root.title("VECTRA-PLAYER - Minimal UI")
@@ -85,8 +98,14 @@ class MinimalWindow:
         self.bet_entry: tk.Entry | None = None
         self.percentage_buttons: dict[float, dict] = {}
 
-        # Build UI
+        # Build UI first (before TradingController, as it needs bet_entry)
         self._create_ui()
+
+        # TradingController for ButtonEvent emission (Task 2)
+        # Created after UI so bet_entry exists
+        self.trading_controller = trading_controller
+        if self.trading_controller is None and self.bet_entry is not None:
+            self._create_trading_controller()
 
         logger.info("MinimalWindow initialized")
 
@@ -173,7 +192,11 @@ class MinimalWindow:
             side=tk.LEFT, padx=(0, 5)
         )
         self.balance_label = tk.Label(
-            balance_frame, text="00.000 SOL", bg=BG_COLOR, fg=GREEN_COLOR, font=("Arial", 10, "bold")
+            balance_frame,
+            text="00.000 SOL",
+            bg=BG_COLOR,
+            fg=GREEN_COLOR,
+            font=("Arial", 10, "bold"),
         )
         self.balance_label.pack(side=tk.LEFT)
 
@@ -360,14 +383,62 @@ class MinimalWindow:
         sell_btn.pack(side=tk.LEFT, padx=5)
 
     # =========================================================================
-    # BUTTON CALLBACKS (Placeholder implementations)
+    # TRADING CONTROLLER SETUP (Task 2)
+    # =========================================================================
+
+    def _create_trading_controller(self):
+        """
+        Create TradingController with minimal dependencies for MinimalWindow.
+
+        TradingController is responsible for:
+        - Emitting ButtonEvents with timestamps
+        - Coordinating with BrowserBridge for browser clicks
+        - Tracking action sequences
+        """
+        from ui.controllers.trading_controller import TradingController
+
+        # Create minimal dispatcher that runs callbacks directly (for testing)
+        # In production, this would be replaced with TkDispatcher
+        class MinimalDispatcher:
+            @staticmethod
+            def submit(callback):
+                callback()
+
+        # Create minimal toast that just logs
+        class MinimalToast:
+            @staticmethod
+            def show(message: str, level: str = "info"):
+                logger.info(f"[Toast:{level}] {message}")
+
+        self.trading_controller = TradingController(
+            parent_window=self,
+            trade_manager=None,  # Not needed for ButtonEvent emission
+            state=self.game_state,
+            config=self.config,
+            browser_bridge=self.browser_bridge or _NullBrowserBridge(),
+            bet_entry=self.bet_entry,
+            percentage_buttons=self.percentage_buttons,
+            ui_dispatcher=MinimalDispatcher(),
+            toast=MinimalToast(),
+            log_callback=lambda msg: logger.info(f"[TradingController] {msg}"),
+            event_bus=self.event_bus,
+            live_state_provider=self.live_state_provider,
+        )
+        logger.debug("TradingController created for MinimalWindow")
+
+    # =========================================================================
+    # BUTTON CALLBACKS (Wired to TradingController - Task 2)
     # =========================================================================
 
     def _on_percentage_clicked(self, percentage: float):
-        """Handle percentage button click."""
+        """Handle percentage button click - delegates to TradingController."""
         logger.debug(f"Percentage clicked: {percentage * 100:.0f}%")
         self.current_sell_percentage = percentage
         self._highlight_percentage_button(percentage)
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            self.trading_controller.set_sell_percentage(percentage)
 
     def _highlight_percentage_button(self, selected: float):
         """Highlight selected percentage button (radio-button style)."""
@@ -379,59 +450,93 @@ class MinimalWindow:
                 btn.config(bg=info["default_color"], relief=tk.RAISED, bd=2)
 
     def _on_increment_clicked(self, increment: str):
-        """Handle increment button click (+0.001, +0.01, +0.1, +1)."""
+        """Handle increment button click - delegates to TradingController."""
         logger.debug(f"Increment clicked: {increment}")
-        # Parse increment value
-        try:
-            value = Decimal(increment)
-            current = Decimal(self.bet_entry.get())
-            new_amount = current + value
-            self.bet_entry.delete(0, tk.END)
-            self.bet_entry.insert(0, str(new_amount))
-        except Exception as e:
-            logger.warning(f"Failed to apply increment {increment}: {e}")
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            try:
+                amount = Decimal(increment)
+                self.trading_controller.increment_bet_amount(amount)
+            except Exception as e:
+                logger.warning(f"Failed to parse increment {increment}: {e}")
+        else:
+            # Fallback: direct update if no TradingController
+            try:
+                value = Decimal(increment)
+                current = Decimal(self.bet_entry.get())
+                new_amount = current + value
+                self.bet_entry.delete(0, tk.END)
+                self.bet_entry.insert(0, str(new_amount))
+            except Exception as e:
+                logger.warning(f"Failed to apply increment {increment}: {e}")
 
     def _on_utility_clicked(self, utility: str):
-        """Handle utility button click (1/2, X2, MAX)."""
+        """Handle utility button click - delegates to TradingController."""
         logger.debug(f"Utility clicked: {utility}")
-        try:
-            current = Decimal(self.bet_entry.get())
-            if utility == "1/2":
-                new_amount = current / 2
-            elif utility == "X2":
-                new_amount = current * 2
-            elif utility == "MAX":
-                # Get balance from game state
-                balance = self.game_state.get("balance", Decimal("0"))
-                new_amount = balance
-            else:
-                return
 
-            self.bet_entry.delete(0, tk.END)
-            self.bet_entry.insert(0, str(new_amount))
-        except Exception as e:
-            logger.warning(f"Failed to apply utility {utility}: {e}")
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            if utility == "1/2":
+                self.trading_controller.half_bet_amount()
+            elif utility == "X2":
+                self.trading_controller.double_bet_amount()
+            elif utility == "MAX":
+                self.trading_controller.max_bet_amount()
+        else:
+            # Fallback: direct update if no TradingController
+            try:
+                current = Decimal(self.bet_entry.get())
+                if utility == "1/2":
+                    new_amount = current / 2
+                elif utility == "X2":
+                    new_amount = current * 2
+                elif utility == "MAX":
+                    balance = self.game_state.get("balance", Decimal("0"))
+                    new_amount = balance
+                else:
+                    return
+
+                self.bet_entry.delete(0, tk.END)
+                self.bet_entry.insert(0, str(new_amount))
+            except Exception as e:
+                logger.warning(f"Failed to apply utility {utility}: {e}")
 
     def _on_clear_clicked(self):
-        """Handle clear (X) button click."""
+        """Handle clear (X) button click - delegates to TradingController."""
         logger.debug("Clear clicked")
-        self.bet_entry.delete(0, tk.END)
-        self.bet_entry.insert(0, "0.000")
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            self.trading_controller.clear_bet_amount()
+        else:
+            # Fallback: direct update if no TradingController
+            self.bet_entry.delete(0, tk.END)
+            self.bet_entry.insert(0, "0.000")
 
     def _on_buy_clicked(self):
-        """Handle BUY button click."""
+        """Handle BUY button click - delegates to TradingController."""
         logger.debug("BUY clicked")
-        # Placeholder - TradingController will be wired in Task 2
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            self.trading_controller.execute_buy()
 
     def _on_sidebet_clicked(self):
-        """Handle SIDEBET button click."""
+        """Handle SIDEBET button click - delegates to TradingController."""
         logger.debug("SIDEBET clicked")
-        # Placeholder - TradingController will be wired in Task 2
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            self.trading_controller.execute_sidebet()
 
     def _on_sell_clicked(self):
-        """Handle SELL button click."""
+        """Handle SELL button click - delegates to TradingController."""
         logger.debug("SELL clicked")
-        # Placeholder - TradingController will be wired in Task 2
+
+        # Delegate to TradingController for ButtonEvent emission
+        if self.trading_controller:
+            self.trading_controller.execute_sell()
 
     # =========================================================================
     # STATUS UPDATE METHODS (Placeholder for Task 3)
@@ -497,3 +602,38 @@ class MinimalWindow:
     def get_sell_percentage(self) -> float:
         """Get current sell percentage."""
         return self.current_sell_percentage
+
+
+class _NullBrowserBridge:
+    """
+    Null object pattern for BrowserBridge when no browser is connected.
+
+    All methods are no-ops that log debug messages.
+    Prevents errors when TradingController tries to interact with browser.
+    """
+
+    def on_buy_clicked(self):
+        """No-op BUY click."""
+        logger.debug("NullBrowserBridge: on_buy_clicked (no browser connected)")
+
+    def on_sell_clicked(self):
+        """No-op SELL click."""
+        logger.debug("NullBrowserBridge: on_sell_clicked (no browser connected)")
+
+    def on_sidebet_clicked(self):
+        """No-op SIDEBET click."""
+        logger.debug("NullBrowserBridge: on_sidebet_clicked (no browser connected)")
+
+    def on_percentage_clicked(self, percentage: float):
+        """No-op percentage click."""
+        logger.debug(
+            f"NullBrowserBridge: on_percentage_clicked({percentage}) (no browser connected)"
+        )
+
+    def on_increment_clicked(self, increment: str):
+        """No-op increment click."""
+        logger.debug(f"NullBrowserBridge: on_increment_clicked({increment}) (no browser connected)")
+
+    def on_clear_clicked(self):
+        """No-op clear click."""
+        logger.debug("NullBrowserBridge: on_clear_clicked (no browser connected)")
