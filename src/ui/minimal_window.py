@@ -24,8 +24,9 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.game_state import GameState
-    from services.event_bus import EventBus
     from ui.controllers.trading_controller import TradingController
+
+from services.event_bus import EventBus, Events
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,9 @@ class MinimalWindow:
         self.trading_controller = trading_controller
         if self.trading_controller is None and self.bet_entry is not None:
             self._create_trading_controller()
+
+        # Subscribe to EventBus events for status updates (Task 3)
+        self._subscribe_to_events()
 
         logger.info("MinimalWindow initialized")
 
@@ -425,6 +429,200 @@ class MinimalWindow:
             live_state_provider=self.live_state_provider,
         )
         logger.debug("TradingController created for MinimalWindow")
+
+    # =========================================================================
+    # EVENT SUBSCRIPTIONS (Task 3)
+    # =========================================================================
+
+    def _subscribe_to_events(self):
+        """
+        Subscribe to EventBus events for status updates.
+
+        Subscribes to:
+        - WS_RAW_EVENT: Filter for gameStateUpdate (tick, price, phase),
+                        usernameStatus (user), playerUpdate (balance)
+        - WS_CONNECTED: Connection established
+        - WS_DISCONNECTED: Connection lost
+        - PLAYER_UPDATE: Server-authoritative balance/position updates
+
+        All UI updates use self.root.after() for thread safety since
+        WebSocket events come from background threads.
+        """
+        # Use weak=False to ensure handlers stay alive for the window's lifetime
+        self.event_bus.subscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event, weak=False)
+        self.event_bus.subscribe(Events.WS_CONNECTED, self._on_ws_connected, weak=False)
+        self.event_bus.subscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected, weak=False)
+        self.event_bus.subscribe(Events.PLAYER_UPDATE, self._on_player_update, weak=False)
+        logger.debug("MinimalWindow subscribed to EventBus events")
+
+    def _unsubscribe_from_events(self):
+        """Unsubscribe from all EventBus events (for cleanup)."""
+        try:
+            self.event_bus.unsubscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event)
+            self.event_bus.unsubscribe(Events.WS_CONNECTED, self._on_ws_connected)
+            self.event_bus.unsubscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected)
+            self.event_bus.unsubscribe(Events.PLAYER_UPDATE, self._on_player_update)
+            logger.debug("MinimalWindow unsubscribed from EventBus events")
+        except Exception as e:
+            logger.warning(f"Error unsubscribing from events: {e}")
+
+    @staticmethod
+    def _detect_phase(event_data: dict) -> str:
+        """
+        Detect game phase from gameStateUpdate event data.
+
+        Args:
+            event_data: The data payload from a gameStateUpdate event
+
+        Returns:
+            Phase string: 'COOLDOWN', 'PRESALE', 'ACTIVE', 'RUGGED', or 'UNKNOWN'
+        """
+        # Check cooldown first (explicit cooldown timer)
+        if event_data.get("cooldownTimer", 0) > 0:
+            return "COOLDOWN"
+
+        # Check if rugged and not active (post-rug cooldown)
+        if event_data.get("rugged", False) and not event_data.get("active", False):
+            return "COOLDOWN"
+
+        # Check presale (pre-round buys allowed but not active)
+        if event_data.get("allowPreRoundBuys", False) and not event_data.get("active", False):
+            return "PRESALE"
+
+        # Check active game
+        if event_data.get("active", False) and not event_data.get("rugged", False):
+            return "ACTIVE"
+
+        # Check rugged (during active rug)
+        if event_data.get("rugged", False):
+            return "RUGGED"
+
+        return "UNKNOWN"
+
+    def _on_ws_raw_event(self, wrapped: dict) -> None:
+        """
+        Handle WS_RAW_EVENT from EventBus.
+
+        Filters for:
+        - gameStateUpdate: Updates tick, price, phase
+        - usernameStatus: Updates user display
+        - playerUpdate: Updates balance (also handled by PLAYER_UPDATE)
+        """
+        try:
+            # EventBus wraps: {"name": event_type, "data": actual_data}
+            data = wrapped.get("data", wrapped)
+            if not isinstance(data, dict):
+                return
+
+            event_name = data.get("event")
+            event_data = data.get("data", {})
+            if not isinstance(event_data, dict):
+                return
+
+            if event_name == "gameStateUpdate":
+                self._handle_game_state_update(event_data)
+            elif event_name == "usernameStatus":
+                self._handle_username_status(event_data)
+            elif event_name == "playerUpdate":
+                self._handle_player_update_raw(event_data)
+
+        except Exception as e:
+            logger.error(f"Error handling WS_RAW_EVENT: {e}")
+
+    def _handle_game_state_update(self, event_data: dict) -> None:
+        """
+        Handle gameStateUpdate event - updates tick, price, phase.
+
+        Uses self.root.after() for thread-safe UI updates.
+        """
+        # Extract tick (field is 'tickCount' in rugs.fun WebSocket)
+        tick = event_data.get("tickCount", 0)
+
+        # Extract price (field is 'multiplier' or 'price')
+        price = event_data.get("multiplier") or event_data.get("price", 0.0)
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            price = 0.0
+
+        # Detect phase
+        phase = self._detect_phase(event_data)
+
+        # Thread-safe UI updates using root.after()
+        self.root.after(0, lambda t=tick: self.update_tick(t))
+        self.root.after(0, lambda p=price: self.update_price(p))
+        self.root.after(0, lambda ph=phase: self.update_phase(ph))
+
+    def _handle_username_status(self, event_data: dict) -> None:
+        """
+        Handle usernameStatus event - updates user display.
+
+        Uses self.root.after() for thread-safe UI updates.
+        """
+        username = event_data.get("username", "")
+        self.root.after(0, lambda u=username: self.update_user(u))
+
+    def _handle_player_update_raw(self, event_data: dict) -> None:
+        """
+        Handle playerUpdate from WS_RAW_EVENT - updates balance.
+
+        Uses self.root.after() for thread-safe UI updates.
+        """
+        cash = event_data.get("cash")
+        if cash is not None:
+            try:
+                balance = Decimal(str(cash))
+                self.root.after(0, lambda b=balance: self.update_balance(b))
+            except Exception as e:
+                logger.debug(f"Could not parse balance from playerUpdate: {e}")
+
+    def _on_player_update(self, wrapped: dict) -> None:
+        """
+        Handle PLAYER_UPDATE event from EventBus.
+
+        This is the server-authoritative state update (separate from WS_RAW_EVENT).
+        Updates balance display.
+        """
+        try:
+            data = wrapped.get("data", wrapped)
+            if not isinstance(data, dict):
+                return
+
+            # Handle both direct format and nested format
+            cash = data.get("cash")
+            if cash is None:
+                # Try server_state format (from LiveStateProvider normalization)
+                server_state = data.get("server_state")
+                if server_state is not None:
+                    cash = getattr(server_state, "cash", None)
+
+            if cash is not None:
+                try:
+                    balance = Decimal(str(cash))
+                    self.root.after(0, lambda b=balance: self.update_balance(b))
+                except Exception as e:
+                    logger.debug(f"Could not parse balance from PLAYER_UPDATE: {e}")
+
+        except Exception as e:
+            logger.error(f"Error handling PLAYER_UPDATE: {e}")
+
+    def _on_ws_connected(self, wrapped: dict) -> None:
+        """
+        Handle WS_CONNECTED event - update connection indicator to green.
+
+        Uses self.root.after() for thread-safe UI updates.
+        """
+        logger.debug("WebSocket connected - updating connection indicator")
+        self.root.after(0, lambda: self.update_connection(True))
+
+    def _on_ws_disconnected(self, wrapped: dict) -> None:
+        """
+        Handle WS_DISCONNECTED event - update connection indicator to gray.
+
+        Uses self.root.after() for thread-safe UI updates.
+        """
+        logger.debug("WebSocket disconnected - updating connection indicator")
+        self.root.after(0, lambda: self.update_connection(False))
 
     # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)

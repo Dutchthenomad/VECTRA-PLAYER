@@ -542,6 +542,330 @@ class TestMinimalWindowTradingController:
         assert before_ts <= client_ts <= after_ts + 100  # Allow 100ms tolerance
 
 
+class TestMinimalWindowEventSubscriptions:
+    """Test Task 3: WebSocket event subscriptions and UI updates.
+
+    Note: These tests verify the event handler logic directly rather than
+    through the EventBus, since root.after() cannot be tested reliably in
+    a non-main-loop environment. The integration with EventBus is tested
+    separately through subscription verification tests.
+    """
+
+    @pytest.fixture
+    def minimal_window_with_real_eventbus(self, tk_root):
+        """Create MinimalWindow with real EventBus for event subscription testing."""
+        from services.event_bus import EventBus
+        from ui.minimal_window import MinimalWindow
+
+        # Create real EventBus (started)
+        event_bus = EventBus()
+        event_bus.start()
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.side_effect = lambda key, default=None: {
+            "current_tick": 0,
+            "current_price": Decimal("1.0"),
+            "game_id": "game-000",
+            "current_phase": "UNKNOWN",
+            "balance": Decimal("0.0"),
+            "position_qty": Decimal("0"),
+        }.get(key, default)
+        mock_game_state.set_sell_percentage.return_value = True
+
+        mock_config = MagicMock()
+        mock_config.FINANCIAL = {"min_bet": Decimal("0.001"), "max_bet": Decimal("100")}
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=event_bus,
+            config=mock_config,
+        )
+
+        yield window, event_bus
+
+        # Cleanup
+        window._unsubscribe_from_events()
+        event_bus.stop()
+
+    def test_event_subscriptions_registered(self, minimal_window_with_real_eventbus):
+        """MinimalWindow should subscribe to required events on init."""
+        from services.event_bus import Events
+
+        _window, event_bus = minimal_window_with_real_eventbus
+
+        # Verify subscriptions exist
+        assert event_bus.has_subscribers(Events.WS_RAW_EVENT)
+        assert event_bus.has_subscribers(Events.WS_CONNECTED)
+        assert event_bus.has_subscribers(Events.WS_DISCONNECTED)
+        assert event_bus.has_subscribers(Events.PLAYER_UPDATE)
+
+    def test_handle_game_state_update_tick(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule tick label update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        # Call handler directly (simulating what happens in _on_ws_raw_event)
+        event_data = {
+            "tickCount": 1234,
+            "multiplier": 5.67,
+            "active": True,
+            "rugged": False,
+        }
+        window._handle_game_state_update(event_data)
+
+        # Process pending Tk events to execute root.after() callbacks
+        window.root.update()
+
+        assert window.tick_label.cget("text") == "1234"
+
+    def test_handle_game_state_update_price(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule price label update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {
+            "tickCount": 100,
+            "multiplier": 123.45,
+            "active": True,
+            "rugged": False,
+        }
+        window._handle_game_state_update(event_data)
+        window.root.update()
+
+        assert window.price_label.cget("text") == "123.45"
+
+    def test_handle_game_state_update_phase_active(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule ACTIVE phase update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {
+            "tickCount": 100,
+            "multiplier": 1.0,
+            "active": True,
+            "rugged": False,
+        }
+        window._handle_game_state_update(event_data)
+        window.root.update()
+
+        assert window.phase_label.cget("text") == "ACTIVE"
+
+    def test_handle_game_state_update_phase_presale(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule PRESALE phase update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {
+            "tickCount": 0,
+            "multiplier": 1.0,
+            "active": False,
+            "rugged": False,
+            "allowPreRoundBuys": True,
+        }
+        window._handle_game_state_update(event_data)
+        window.root.update()
+
+        assert window.phase_label.cget("text") == "PRESALE"
+
+    def test_handle_game_state_update_phase_cooldown(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule COOLDOWN phase update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {
+            "tickCount": 0,
+            "multiplier": 1.0,
+            "active": False,
+            "rugged": False,
+            "cooldownTimer": 5,
+        }
+        window._handle_game_state_update(event_data)
+        window.root.update()
+
+        assert window.phase_label.cget("text") == "COOLDOWN"
+
+    def test_handle_game_state_update_phase_rugged(self, minimal_window_with_real_eventbus):
+        """_handle_game_state_update should schedule RUGGED phase update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {
+            "tickCount": 150,
+            "multiplier": 50.0,
+            "active": True,
+            "rugged": True,
+        }
+        window._handle_game_state_update(event_data)
+        window.root.update()
+
+        assert window.phase_label.cget("text") == "RUGGED"
+
+    def test_handle_username_status(self, minimal_window_with_real_eventbus):
+        """_handle_username_status should schedule user label update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {"username": "TestPlayer123"}
+        window._handle_username_status(event_data)
+        window.root.update()
+
+        assert window.user_label.cget("text") == "TestPlayer123"
+
+    def test_handle_player_update_raw(self, minimal_window_with_real_eventbus):
+        """_handle_player_update_raw should schedule balance label update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        event_data = {"cash": 12.345}
+        window._handle_player_update_raw(event_data)
+        window.root.update()
+
+        assert window.balance_label.cget("text") == "12.345 SOL"
+
+    def test_on_player_update(self, minimal_window_with_real_eventbus):
+        """_on_player_update should schedule balance label update."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        # Simulating EventBus wrapped format
+        wrapped = {"name": "player.update", "data": {"cash": 99.999}}
+        window._on_player_update(wrapped)
+        window.root.update()
+
+        assert window.balance_label.cget("text") == "99.999 SOL"
+
+    def test_on_ws_connected(self, minimal_window_with_real_eventbus):
+        """_on_ws_connected should schedule connection indicator to green."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        # First set to disconnected
+        window.update_connection(False)
+        window.root.update()
+
+        # Call connected handler
+        window._on_ws_connected({})
+        window.root.update()
+
+        fg_color = window.connection_label.cget("fg")
+        assert fg_color == "#00ff66"  # GREEN_COLOR
+
+    def test_on_ws_disconnected(self, minimal_window_with_real_eventbus):
+        """_on_ws_disconnected should schedule connection indicator to gray."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        # First set to connected
+        window.update_connection(True)
+        window.root.update()
+
+        # Call disconnected handler
+        window._on_ws_disconnected({})
+        window.root.update()
+
+        fg_color = window.connection_label.cget("fg")
+        assert fg_color == "#666666"  # GRAY_COLOR
+
+    def test_on_ws_raw_event_game_state_update(self, minimal_window_with_real_eventbus):
+        """_on_ws_raw_event should route gameStateUpdate events correctly."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        wrapped = {
+            "name": "ws.raw_event",
+            "data": {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 999,
+                    "multiplier": 77.77,
+                    "active": True,
+                    "rugged": False,
+                },
+            },
+        }
+        window._on_ws_raw_event(wrapped)
+        window.root.update()
+
+        assert window.tick_label.cget("text") == "0999"
+        assert window.price_label.cget("text") == "77.77"
+        assert window.phase_label.cget("text") == "ACTIVE"
+
+    def test_on_ws_raw_event_username_status(self, minimal_window_with_real_eventbus):
+        """_on_ws_raw_event should route usernameStatus events correctly."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        wrapped = {
+            "name": "ws.raw_event",
+            "data": {
+                "event": "usernameStatus",
+                "data": {"username": "RealPlayer"},
+            },
+        }
+        window._on_ws_raw_event(wrapped)
+        window.root.update()
+
+        assert window.user_label.cget("text") == "RealPlayer"
+
+    def test_on_ws_raw_event_player_update(self, minimal_window_with_real_eventbus):
+        """_on_ws_raw_event should route playerUpdate events correctly."""
+        window, _event_bus = minimal_window_with_real_eventbus
+
+        wrapped = {
+            "name": "ws.raw_event",
+            "data": {
+                "event": "playerUpdate",
+                "data": {"cash": 55.555},
+            },
+        }
+        window._on_ws_raw_event(wrapped)
+        window.root.update()
+
+        assert window.balance_label.cget("text") == "55.555 SOL"
+
+
+class TestMinimalWindowPhaseDetection:
+    """Test the _detect_phase static method."""
+
+    def test_detect_phase_cooldown_timer(self):
+        """cooldownTimer > 0 should return COOLDOWN."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({"cooldownTimer": 5})
+        assert result == "COOLDOWN"
+
+    def test_detect_phase_cooldown_rugged_not_active(self):
+        """rugged=True and active=False should return COOLDOWN."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({"rugged": True, "active": False})
+        assert result == "COOLDOWN"
+
+    def test_detect_phase_presale(self):
+        """allowPreRoundBuys=True and active=False should return PRESALE."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({"allowPreRoundBuys": True, "active": False})
+        assert result == "PRESALE"
+
+    def test_detect_phase_active(self):
+        """active=True and rugged=False should return ACTIVE."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({"active": True, "rugged": False})
+        assert result == "ACTIVE"
+
+    def test_detect_phase_rugged(self):
+        """rugged=True and active=True should return RUGGED."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({"active": True, "rugged": True})
+        assert result == "RUGGED"
+
+    def test_detect_phase_unknown(self):
+        """Empty dict should return UNKNOWN."""
+        from ui.minimal_window import MinimalWindow
+
+        result = MinimalWindow._detect_phase({})
+        assert result == "UNKNOWN"
+
+    def test_detect_phase_cooldown_takes_priority(self):
+        """cooldownTimer takes priority over other flags."""
+        from ui.minimal_window import MinimalWindow
+
+        # Even with active=True, cooldownTimer > 0 means COOLDOWN
+        result = MinimalWindow._detect_phase({"cooldownTimer": 3, "active": True})
+        assert result == "COOLDOWN"
+
+
 # Fixture for Tk root (shared with conftest.py)
 @pytest.fixture
 def tk_root():
