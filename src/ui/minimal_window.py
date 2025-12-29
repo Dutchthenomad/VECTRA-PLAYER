@@ -94,6 +94,7 @@ class MinimalWindow:
         self.price_label: tk.Label | None = None
         self.phase_label: tk.Label | None = None
         self.connection_label: tk.Label | None = None
+        self.connect_button: tk.Button | None = None
         self.user_label: tk.Label | None = None
         self.balance_label: tk.Label | None = None
         self.bet_entry: tk.Entry | None = None
@@ -165,7 +166,7 @@ class MinimalWindow:
         )
         self.phase_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # CONNECTION (indicator dot on right)
+        # CONNECTION (indicator dot + CONNECT button on right)
         connection_frame = tk.Frame(row1, bg=BG_COLOR)
         connection_frame.pack(side=tk.RIGHT)
         tk.Label(
@@ -174,7 +175,21 @@ class MinimalWindow:
         self.connection_label = tk.Label(
             connection_frame, text="\u25cf", bg=BG_COLOR, fg=GRAY_COLOR, font=("Arial", 12)
         )
-        self.connection_label.pack(side=tk.LEFT)
+        self.connection_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        # CONNECT button
+        self.connect_button = tk.Button(
+            connection_frame,
+            text="CONNECT",
+            bg=BLUE_COLOR,
+            fg="white",
+            font=("Arial", 9, "bold"),
+            relief=tk.RAISED,
+            bd=2,
+            padx=10,
+            command=self._on_connect_clicked,
+        )
+        self.connect_button.pack(side=tk.LEFT)
 
         # Row 2: USER, BALANCE
         row2 = tk.Frame(status_frame, bg=BG_COLOR)
@@ -625,6 +640,22 @@ class MinimalWindow:
         self.root.after(0, lambda: self.update_connection(False))
 
     # =========================================================================
+    # BROWSER CONNECTION
+    # =========================================================================
+
+    def _on_connect_clicked(self):
+        """Handle CONNECT button click - connects to browser via CDP bridge."""
+        if self.browser_bridge is None:
+            logger.warning("Browser bridge not available")
+            return
+
+        logger.info("Connect button clicked - initiating browser connection")
+        try:
+            self.browser_bridge.connect_async()
+        except Exception as e:
+            logger.error(f"Failed to connect to browser: {e}")
+
+    # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)
     # =========================================================================
 
@@ -764,12 +795,18 @@ class MinimalWindow:
             self.phase_label.config(text=phase, fg=color)
 
     def update_connection(self, connected: bool):
-        """Update connection indicator."""
+        """Update connection indicator and button state."""
         if self.connection_label:
             if connected:
                 self.connection_label.config(fg=GREEN_COLOR)
             else:
                 self.connection_label.config(fg=GRAY_COLOR)
+
+        if self.connect_button:
+            if connected:
+                self.connect_button.config(text="CONNECTED", state=tk.DISABLED, bg=GREEN_COLOR)
+            else:
+                self.connect_button.config(text="CONNECT", state=tk.NORMAL, bg=BLUE_COLOR)
 
     def update_user(self, username: str):
         """Update user display."""
