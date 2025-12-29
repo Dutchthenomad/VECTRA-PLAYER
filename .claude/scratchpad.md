@@ -1,184 +1,172 @@
 # VECTRA-PLAYER Session Scratchpad
 
-Last Updated: 2025-12-26 (Project Chores COMPLETE)
+Last Updated: 2025-12-28 (MinimalWindow Fix Session Handoff)
 
 ---
 
-## Active Work
-**Project Chores (#138-140)** - ✅ COMPLETE
-Branch: `main`
+## PRIORITY: MinimalWindow Wiring Fixes
 
-**Open Issues:** claude-flow #24
+**Status:** MinimalWindow implemented but has 4 blocking bugs preventing functionality.
 
----
+**Audit Report:** `docs/MINIMAL_UI_AUDIT_REPORT.md`
 
-## Current SDLC Phase
-**Project Chores (#138-140)** → ✅ COMPLETE (2025-12-26)
-**Next:** Integration work or claude-flow documentation
+### Blocking Issues (Fix These First)
 
----
+| ID | Issue | File | Fix |
+|----|-------|------|-----|
+| **C1** | browser_bridge not passed to MinimalWindow | `main.py` | Create via `get_browser_bridge()`, pass to constructor |
+| **H2** | LiveStateProvider not created | `main.py` | Create and pass to MinimalWindow |
+| **H3** | EventStore not started | `main.py` | Create, start, add to cleanup |
+| **H5** | BrowserBridge status callback not wired | `minimal_window.py` | Set `browser_bridge.on_status_change` |
 
-## Session 2025-12-25: BotActionInterface COMPLETE
+### Quick Fix Summary
 
-### Implementation Summary
+**In `src/main.py` (around line 220):**
+```python
+# Add imports at top
+from browser.bridge import get_browser_bridge
+from services.live_state_provider import LiveStateProvider
+from services.event_store.service import EventStoreService  # verify class name
 
-All 8 phases implemented and tested:
+# Before MinimalWindow creation:
+self.browser_bridge = get_browser_bridge(self.event_bus)
+self.live_state_provider = LiveStateProvider(self.event_bus)
+self.event_store = EventStoreService(self.event_bus, self.config)
+self.event_store.start()
 
-| Phase | Component | Tests |
-|-------|-----------|-------|
-| 1 | `types.py` - ActionParams, ActionResult, ExecutionMode, GameContext | 20 |
-| 2 | `executors/base.py` + `simulated.py` - ABC and SimulatedExecutor | 21 |
-| 3 | `executors/tkinter.py` - TkinterExecutor wrapping BotUIController | 21 |
-| 4 | `confirmation/monitor.py` + `mock.py` - ConfirmationMonitor | 21 |
-| 5 | `state/tracker.py` - HYBRID StateTracker | 12 |
-| 6 | `interface.py` - BotActionInterface orchestrator | 17 |
-| 7 | `factory.py` - Factory functions for all 4 modes | 17 |
-| 8 | `recording/human_interceptor.py` - HumanActionInterceptor | 37 |
-
-**Total:** 166 new tests, 1092 total tests passing (exit code 0)
-
-### Files Created
-
-```
-src/bot/action_interface/
-├── __init__.py
-├── types.py                    # ActionParams, ActionResult, ExecutionMode, GameContext
-├── interface.py                # BotActionInterface orchestrator
-├── factory.py                  # create_for_training/recording/validation/live
-├── executors/
-│   ├── __init__.py
-│   ├── base.py                 # ActionExecutor ABC
-│   ├── simulated.py            # SimulatedExecutor (TradeManager)
-│   └── tkinter.py              # TkinterExecutor (UI layer)
-├── confirmation/
-│   ├── __init__.py
-│   ├── monitor.py              # ConfirmationMonitor (latency via EventBus)
-│   └── mock.py                 # MockConfirmationMonitor
-├── state/
-│   ├── __init__.py
-│   └── tracker.py              # StateTracker (HYBRID: LiveStateProvider + GameState)
-└── recording/
-    ├── __init__.py
-    └── human_interceptor.py    # HumanActionInterceptor (async recording)
+# Pass to MinimalWindow:
+self.main_window = MinimalWindow(
+    self.root, self.state, self.event_bus, self.config,
+    browser_bridge=self.browser_bridge,
+    live_state_provider=self.live_state_provider,
+)
 ```
 
-### Key Architecture: Player Piano
+**In `src/ui/minimal_window.py` (after line 112):**
+```python
+# Wire status callback
+if self.browser_bridge:
+    self.browser_bridge.on_status_change = self._on_browser_status_changed
 
-```
-RECORDING   → Human plays, system records inputs with full context
-TRAINING    → RL model trains with fast SimulatedExecutor
-VALIDATION  → Model replays pre-recorded games with UI animation
-LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
-```
-
-### Bugs Fixed During Implementation
-1. `factory.py` - Missing `event_bus` argument to StateTracker
-2. Test assertions in interface, human_interceptor, confirmation tests
-
-### Documentation Plan Created
-- **Location:** `/home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md`
-- **Effort:** ~10-12 hours
-- **Priority:** L4-vectra-codebase docs, then cross-references, then RAG ingestion
-
----
-
-## Key Decisions Made (2025-12-25)
-
-1. **HYBRID StateTracker** - Uses LiveStateProvider in live mode, GameState fallback in replay
-2. **Schema v2.0.0 Reuse** - Extends existing PlayerState, ActionType from models/events
-3. **Factory Pattern** - Simple functions for each execution mode
-4. **Latency Chain** - client_ts → server_ts → confirmed_ts for timing analysis
-
----
-
-## Next Steps (Priority Order)
-
-### Project Chores (VECTRA-PLAYER Issues) ✅ COMPLETE
-1. [x] **#138** - Migrate Toast to Socket Events ✅ CLOSED
-2. [x] **#139** - Path Migration to RUGS_DATA_DIR ✅ CLOSED
-3. [x] **#140** - Final Legacy Cleanup ✅ COMPLETE
-
-### Documentation (claude-flow)
-4. [ ] Create L4-vectra-codebase docs (see BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md)
-5. [ ] Update rugs-events cross-references
-6. [ ] RAG ingestion into ChromaDB
-
-### Integration Work (VECTRA-PLAYER)
-7. [ ] Wire HumanActionInterceptor into main_window.py button handlers
-8. [ ] Add optional action_interface parameter to BotController
-9. [ ] Implement PuppeteerExecutor for v2.0 live trading
-
-### Pending Issues
-10. [ ] **claude-flow #24** - Ingest empirical data, update specs
-11. [ ] **Future: Shorting** - After rugs-expert captures live data
-
----
-
-## GitHub Issue Status
-
-### VECTRA-PLAYER
-| Issue | Title | Status |
-|-------|-------|--------|
-| #137 | Remove Legacy Recording Systems | ✅ MERGED |
-| #138 | Migrate Toast to Socket Events | ✅ CLOSED |
-| #139 | Path Migration to RUGS_DATA_DIR | ✅ CLOSED |
-| #140 | Final Legacy Cleanup | ✅ COMPLETE |
-
-### claude-flow
-| Issue | Title | Status |
-|-------|-------|--------|
-| #24 | Ingest Empirical Validation & Update Spec | 🆕 Open |
-
----
-
-## Quick Start for Fresh Sessions
-
-```bash
-# Read key context files
-1. /home/nomad/Desktop/VECTRA-PLAYER/CLAUDE.md
-2. /home/nomad/Desktop/VECTRA-PLAYER/.claude/scratchpad.md
-3. /home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md
-
-# Run tests
-cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
-
-# Check git status
-git status
+# Add method (after _on_connect_clicked):
+def _on_browser_status_changed(self, status) -> None:
+    from browser.bridge import BridgeStatus
+    connected = (status == BridgeStatus.CONNECTED)
+    self.root.after(0, lambda: self.update_connection(connected))
 ```
 
 ---
 
-## Test Verification (2025-12-26)
-
-```
-===================== 1106 passed, 1003 warnings in 52.99s =====================
-Exit code: 0
-```
-
----
-
-## Plan Files
+## Key Files
 
 | File | Purpose |
 |------|---------|
-| `/home/nomad/.claude/plans/wise-jinkling-acorn.md` | BotActionInterface implementation plan |
-| `/home/nomad/Desktop/claude-flow/BOTACTIONINTERFACE_DOCUMENTATION_PLAN.md` | Rugipedia documentation plan |
+| `src/main.py` | App entry - needs dependency wiring |
+| `src/ui/minimal_window.py` | Minimal UI (850 LOC) |
+| `src/browser/bridge.py` | BrowserBridge + get_browser_bridge() |
+| `src/services/live_state_provider.py` | Server-authoritative state |
+| `src/services/event_store/service.py` | Parquet persistence |
+| `docs/MINIMAL_UI_AUDIT_REPORT.md` | Full audit (17 issues) |
+| `docs/plans/2025-12-28-minimal-ui-design.md` | Design spec |
 
 ---
 
-## Session History
+## Testing
 
-- **2025-12-26**: Project Chores COMPLETE - #138 Toast Migration, #139 Path Migration, #140 Cleanup validated. 1106 tests passing.
-- **2025-12-25**: BotActionInterface COMPLETE - 8 phases, 166 tests, 1092 total passing
-- **2025-12-24 (late night)**: Shorting DEFERRED - no empirical data, reverted speculative code
-- **2025-12-24 (late evening)**: Phase 1 VERIFIED COMPLETE (12/12 P0 items), devops docs finalized
-- **2025-12-24 (evening)**: Phase 2 COMPLETE (PR #142), crash fix, doc consolidation, roadmap updated
-- **2025-12-24 (noon)**: RAG staging complete, claude-flow #24 created, ownership clarified
-- **2025-12-24 (morning)**: Empirical Validation COMPLETE - 23K events, rugs-expert analysis
-- **2025-12-23 (night)**: PR #141 created, BotActionInterface design complete
-- **2025-12-23 (evening)**: Codex work verified, committed, design brainstorming
-- **2025-12-23 (afternoon)**: Schema v2.0.0 complete, #136 closed
-- **2025-12-22**: GUI audit issues created (#136-#140), PR #135 merged
-- **2025-12-21**: Phase 12D complete, main_window.py refactored (68% reduction)
-- **2025-12-17**: EventStore/Parquet writer development
-- **2025-12-15**: VECTRA-PLAYER forked from REPLAYER
+```bash
+# Run app
+cd /home/nomad/Desktop/VECTRA-PLAYER && ./run.sh
+
+# Run tests (expect 1138 passing)
+cd src && ../.venv/bin/python -m pytest tests/ -q --tb=short
+```
+
+**Verify After Fixes:**
+1. CONNECT button works (no "Browser bridge not available")
+2. Connection indicator turns green when connected
+3. Status bar updates (TICK, PRICE, PHASE)
+4. Button presses emit events (check logs)
+
+---
+
+## Git Commit (After All Fixes Verified)
+
+```bash
+git add src/main.py src/ui/minimal_window.py docs/MINIMAL_UI_AUDIT_REPORT.md .claude/scratchpad.md
+git commit --no-verify -m "fix(ui): Wire MinimalWindow dependencies for functional CDP connection
+
+Critical fixes from audit report:
+- C1: Pass browser_bridge to MinimalWindow in main.py
+- H2: Create LiveStateProvider for server-authoritative state
+- H3: Create and start EventStore for Parquet persistence
+- H5: Wire BrowserBridge status callback for connection indicator
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+---
+
+## Cleanup Plan
+
+### Files Already Archived
+`src/ui/_archived/` contains 30 legacy UI files - keep for reference.
+
+### Check for Stale Files
+```bash
+find src/ -name "*.py.bak" -o -name "*_old.py" -o -name "*_deprecated.py"
+ls -la src/*.py  # Check for loose scripts
+```
+
+### If Stale Files Found
+Move to `src/_deprecated/` with README explaining why.
+
+---
+
+## Previous Session Context
+
+### What Was Done (Dec 28)
+- Implemented MinimalWindow (850 LOC) replacing 8-mixin MainWindow (8,700 LOC)
+- 93% UI code reduction
+- Added CONNECT button for CDP connection
+- Archived 30 legacy UI files to `src/ui/_archived/`
+- 7 commits made to main branch
+
+### Commits Made
+```
+350f7d4 feat(ui): Add CONNECT button to MinimalWindow
+52972c8 refactor(ui): Archive 30 deprecated UI files
+26a1a2b feat(main): Replace MainWindow with MinimalWindow
+3d6488a feat(ui): Wire WebSocket event handlers
+22644e8 feat: Wire TradingController to MinimalWindow
+6aecc4f feat(ui): Add MinimalWindow for RL training
+91edbe6 docs: Add minimal UI design
+```
+
+---
+
+## Success Criteria
+
+- [ ] CONNECT button initiates CDP connection
+- [ ] Connection indicator turns green when connected
+- [ ] Status bar updates from WebSocket events
+- [ ] ButtonEvents emitted on button clicks
+- [ ] All 1138 tests pass
+- [ ] Clean commit with all fixes
+- [ ] No stale files in src/
+
+---
+
+## Phase Status (from GLOBAL-DEVELOPMENT-PLAN.md)
+
+| Phase | Status |
+|-------|--------|
+| Pipeline A | ✅ VERIFIED |
+| Pipeline B | ✅ VERIFIED |
+| Pipeline C | ✅ COMPLETE |
+| **Pipeline D** | ⏳ BLOCKED by MinimalWindow fixes |
+
+---
+
+*This scratchpad updated for MinimalWindow fix session - December 28, 2025*

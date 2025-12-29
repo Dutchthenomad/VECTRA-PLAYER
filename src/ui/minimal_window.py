@@ -112,6 +112,10 @@ class MinimalWindow:
         # Subscribe to EventBus events for status updates (Task 3)
         self._subscribe_to_events()
 
+        # Wire BrowserBridge status callback for connection indicator (H5 fix)
+        if self.browser_bridge:
+            self.browser_bridge.on_status_change = self._on_browser_status_changed
+
         logger.info("MinimalWindow initialized")
 
     def _create_ui(self):
@@ -654,6 +658,19 @@ class MinimalWindow:
             self.browser_bridge.connect_async()
         except Exception as e:
             logger.error(f"Failed to connect to browser: {e}")
+
+    def _on_browser_status_changed(self, status) -> None:
+        """
+        Handle BrowserBridge status changes (H5 fix).
+
+        Updates connection indicator based on bridge status.
+        Uses root.after() for thread-safe UI updates.
+        """
+        from browser.bridge import BridgeStatus
+
+        connected = status == BridgeStatus.CONNECTED
+        logger.debug(f"Browser status changed: {status.value} -> connected={connected}")
+        self.root.after(0, lambda: self.update_connection(connected))
 
     # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)

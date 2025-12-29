@@ -26,10 +26,13 @@ import argparse
 import logging
 import tkinter as tk
 
+from browser.bridge import get_browser_bridge
 from config import config
 from core.game_state import GameState
 from services.async_loop_manager import AsyncLoopManager
 from services.event_bus import Events, event_bus
+from services.event_store.service import EventStoreService
+from services.live_state_provider import LiveStateProvider
 from services.logger import setup_logging
 from ui.minimal_window import MinimalWindow
 
@@ -54,6 +57,9 @@ class Application:
         self.state: GameState | None = None
         self.event_bus = event_bus
         self.async_manager: AsyncLoopManager | None = None
+        self.browser_bridge = None
+        self.live_state_provider: LiveStateProvider | None = None
+        self.event_store: EventStoreService | None = None
 
         try:
             # Initialize logging first
@@ -222,12 +228,29 @@ class Application:
     def run(self):
         """Run the application"""
         try:
+            # Create browser bridge for CDP connection (C1 fix)
+            self.browser_bridge = get_browser_bridge()
+            self.logger.info("Browser bridge initialized")
+
+            # Create LiveStateProvider for server-authoritative state (H2 fix)
+            self.live_state_provider = LiveStateProvider(self.event_bus)
+            self._initialized_components.append("live_state_provider")
+            self.logger.info("LiveStateProvider initialized")
+
+            # Create and start EventStore for Parquet persistence (H3 fix)
+            self.event_store = EventStoreService(self.event_bus)
+            self.event_store.start()
+            self._initialized_components.append("event_store")
+            self.logger.info("EventStore started")
+
             # Create main window (MinimalWindow for RL training data collection)
             self.main_window = MinimalWindow(
                 self.root,
                 self.state,
                 self.event_bus,
                 self.config,
+                browser_bridge=self.browser_bridge,
+                live_state_provider=self.live_state_provider,
             )
 
             # Auto-load games if directory exists (skip in live mode)
@@ -280,6 +303,21 @@ class Application:
             # Save state metrics
             metrics = self.state.calculate_metrics()
             self.logger.info(f"Final session metrics: {metrics}")
+
+            # Stop EventStore first (flushes buffers)
+            if self.event_store:
+                self.event_store.stop()
+                self.logger.info("EventStore stopped")
+
+            # Stop LiveStateProvider
+            if self.live_state_provider:
+                self.live_state_provider.stop()
+                self.logger.info("LiveStateProvider stopped")
+
+            # Stop browser bridge
+            if self.browser_bridge:
+                self.browser_bridge.stop()
+                self.logger.info("BrowserBridge stopped")
 
             # Stop event bus
             self.event_bus.stop()
