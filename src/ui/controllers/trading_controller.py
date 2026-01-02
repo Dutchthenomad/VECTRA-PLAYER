@@ -5,12 +5,21 @@ Handles:
 - Trade execution (buy/sell/sidebet)
 - Bet amount management (increment, clear, half, double, max)
 - Sell percentage management (10%, 25%, 50%, 100%)
+
+Phase B: ButtonEvent Logging
+Emits ButtonEvents via EventBus for RL training data collection.
 """
 
 import logging
 import tkinter as tk
+import uuid
 from collections.abc import Callable
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from typing import Any
+
+from models.events.button_event import ButtonCategory, ButtonEvent, get_button_info
+from services.event_bus import EventBus, Events
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +39,8 @@ class TradingController:
         ui_dispatcher,
         toast,
         log_callback: Callable[[str], None],
+        event_bus: EventBus | None = None,
+        live_state_provider: Any | None = None,
     ):
         """
         Initialize TradingController with dependencies.
@@ -45,6 +56,8 @@ class TradingController:
             ui_dispatcher: TkDispatcher for thread-safe UI updates
             toast: Toast notification widget
             log_callback: Logging function
+            event_bus: EventBus for ButtonEvent emission (Phase B)
+            live_state_provider: LiveStateProvider for live game context (Phase B)
         """
         self.parent = parent_window
         self.trade_manager = trade_manager
@@ -56,92 +69,209 @@ class TradingController:
         self.ui_dispatcher = ui_dispatcher
         self.toast = toast
         self.log = log_callback
+        self.event_bus = event_bus
+        self.live_state_provider = live_state_provider
+
+        # ButtonEvent sequence tracking (Phase B)
+        self._current_sequence_id: str = str(uuid.uuid4())
+        self._sequence_position: int = 0
+        self._last_action_tick: int = 0
 
         logger.info("TradingController initialized")
+
+    # ========================================================================
+    # BUTTONEVENT EMISSION (Phase B)
+    # ========================================================================
+
+    def _detect_game_phase(self) -> int:
+        """
+        Detect current game phase from GameState.
+
+        Returns:
+            0=COOLDOWN, 1=PRESALE, 2=ACTIVE, 3=RUGGED
+        """
+        phase_str = self.state.get("current_phase", "UNKNOWN")
+        phase_map = {
+            "COOLDOWN": 0,
+            "PRESALE": 1,
+            "ACTIVE": 2,
+            "RUGGED": 3,
+            "UNKNOWN": 0,
+        }
+        return phase_map.get(phase_str, 0)
+
+    def _should_start_new_sequence(self, button_category: ButtonCategory) -> bool:
+        """
+        Determine if we should start a new action sequence.
+
+        New sequence starts when:
+        1. Previous action was an ACTION button (BUY/SELL/SIDEBET)
+        2. More than 50 ticks since last action (timeout)
+        """
+        current_tick = self.state.get("current_tick", 0)
+        ticks_since_last = current_tick - self._last_action_tick
+
+        # Start new sequence if timeout (50 ticks ~5 seconds at 10 ticks/sec)
+        if ticks_since_last > 50:
+            return True
+
+        return False
+
+    def _emit_button_event(self, button_text: str) -> None:
+        """
+        Create and emit ButtonEvent with full game context.
+
+        Args:
+            button_text: Raw button text (e.g., "BUY", "+0.01", "25%")
+        """
+        if self.event_bus is None:
+            logger.debug("No EventBus, skipping ButtonEvent emission")
+            return
+
+        try:
+            # Get button info
+            button_id, button_category = get_button_info(button_text)
+
+            # Check if we need a new sequence
+            if button_category == ButtonCategory.ACTION or self._should_start_new_sequence(
+                button_category
+            ):
+                self._current_sequence_id = str(uuid.uuid4())
+                self._sequence_position = 0
+            else:
+                self._sequence_position += 1
+
+            # Get game context - prefer LiveStateProvider for live WebSocket data
+            # Use is_live (source=cdp/public_ws) rather than is_connected (needs player_update)
+            if self.live_state_provider and self.live_state_provider.is_live:
+                current_tick = self.live_state_provider.current_tick
+                current_price = float(self.live_state_provider.current_multiplier)
+                game_id = self.live_state_provider.game_id or "unknown"
+                balance = self.live_state_provider.cash
+                position_qty = self.live_state_provider.position_qty
+            else:
+                # Fallback to GameState (for replay mode or disconnected state)
+                current_tick = self.state.get("current_tick", 0)
+                current_price = float(self.state.get("current_price", Decimal("1.0")))
+                game_id = self.state.get("game_id") or "unknown"
+                balance = self.state.get("balance", Decimal("0"))
+                position_qty = self.state.get("position_qty", Decimal("0"))
+
+            # Calculate ticks since last action
+            ticks_since_last = current_tick - self._last_action_tick
+            self._last_action_tick = current_tick
+
+            # Get bet amount from entry
+            try:
+                bet_amount = Decimal(self.bet_entry.get())
+            except (InvalidOperation, ValueError):
+                bet_amount = Decimal("0")
+
+            # Pipeline C: Get time_in_position from LiveStateProvider
+            time_in_position = 0
+            if self.live_state_provider and self.live_state_provider.is_live:
+                time_in_position = self.live_state_provider.time_in_position
+
+            # Pipeline C: Capture client timestamp for latency tracking
+            client_timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+            # Create ButtonEvent
+            event = ButtonEvent(
+                ts=datetime.now(timezone.utc),
+                server_ts=None,
+                button_id=button_id,
+                button_category=button_category,
+                tick=current_tick,
+                price=current_price,
+                game_phase=self._detect_game_phase(),
+                game_id=game_id,
+                balance=balance,
+                position_qty=position_qty,
+                bet_amount=bet_amount,
+                ticks_since_last_action=max(0, ticks_since_last),
+                sequence_id=self._current_sequence_id,
+                sequence_position=self._sequence_position,
+                # Pipeline C fields
+                time_in_position=time_in_position,
+                client_timestamp=client_timestamp,
+            )
+
+            # Emit via EventBus
+            self.event_bus.publish(Events.BUTTON_PRESS, event.to_dict())
+
+            logger.debug(
+                f"ButtonEvent emitted: {button_id} tick={current_tick} "
+                f"seq={self._current_sequence_id[:8]}:{self._sequence_position}"
+            )
+
+        except KeyError:
+            logger.warning(f"Unknown button text: {button_text}")
+        except Exception as e:
+            logger.error(f"Failed to emit ButtonEvent: {e}")
 
     # ========================================================================
     # TRADE EXECUTION
     # ========================================================================
 
     def execute_buy(self):
-        """Execute buy action using TradeManager."""
-        # Click BUY in browser first - browser is source of truth
+        """
+        Execute buy action - SERVER AUTHORITATIVE.
+
+        Flow: Button press → Browser bridge → Server → WebSocket response → UI
+        No local validation - server determines success/failure.
+        """
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("BUY")
+
+        # Click BUY in browser - BROWSER/SERVER IS SOURCE OF TRUTH
         try:
             self.browser_bridge.on_buy_clicked()
+            self.log("BUY sent to server")
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for BUY: {e}")
-            # Continue with local trading - browser is optional
+            self.log(f"BUY failed: No browser connection")
 
-        amount = self.get_bet_amount()
-        if amount is None:
-            return  # Validation failed, but browser click already sent
-
-        result = self.trade_manager.execute_buy(amount)
-
-        if result["success"]:
-            self.log(f"BUY executed at {result['price']:.4f}x")
-            self.toast.show(f"Bought {amount} SOL at {result['price']:.4f}x", "success")
-        else:
-            self.log(f"BUY failed: {result['reason']}")
-            self.toast.show(f"Buy failed: {result['reason']}", "error")
+        # Server response via WebSocket will trigger appropriate UI feedback
 
     def execute_sell(self):
-        """Execute sell action using TradeManager (supports partial sells)."""
-        # Click SELL in browser if connected
+        """
+        Execute sell action - SERVER AUTHORITATIVE.
+
+        Flow: Button press → Browser bridge → Server → WebSocket response → UI
+        No local validation - server determines success/failure.
+        """
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("SELL")
+
+        # Click SELL in browser - BROWSER/SERVER IS SOURCE OF TRUTH
         try:
             self.browser_bridge.on_sell_clicked()
+            self.log("SELL sent to server")
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for SELL: {e}")
-            # Continue with local trading - browser is optional
+            self.log(f"SELL failed: No browser connection")
 
-        result = self.trade_manager.execute_sell()
-
-        if result["success"]:
-            pnl = result.get("pnl_sol", 0)
-            pnl_pct = result.get("pnl_percent", 0)
-            msg_type = "success" if pnl >= 0 else "error"
-
-            # Show partial sell information
-            if result.get("partial", False):
-                percentage = result.get("percentage", 1.0)
-                remaining = result.get("remaining_amount", 0)
-                self.log(
-                    f"PARTIAL SELL ({percentage * 100:.0f}%) - P&L: {pnl:+.4f} SOL, Remaining: {remaining:.4f} SOL"
-                )
-                self.toast.show(
-                    f"Sold {percentage * 100:.0f}%! P&L: {pnl:+.4f} SOL ({pnl_pct:+.1f}%)", msg_type
-                )
-            else:
-                self.log(f"SELL executed - P&L: {pnl:+.4f} SOL")
-                self.toast.show(f"Sold! P&L: {pnl:+.4f} SOL ({pnl_pct:+.1f}%)", msg_type)
-        else:
-            self.log(f"SELL failed: {result['reason']}")
-            self.toast.show(f"Sell failed: {result['reason']}", "error")
+        # Server response via WebSocket will trigger appropriate UI feedback
 
     def execute_sidebet(self):
-        """Execute sidebet using TradeManager (Phase 9.3: syncs to browser)"""
-        # Click SIDEBET in browser first - browser is source of truth
+        """
+        Execute sidebet action - SERVER AUTHORITATIVE.
+
+        Flow: Button press → Browser bridge → Server → WebSocket response → UI
+        No local validation - server determines success/failure.
+        """
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("SIDEBET")
+
+        # Click SIDEBET in browser - BROWSER/SERVER IS SOURCE OF TRUTH
         try:
             self.browser_bridge.on_sidebet_clicked()
+            self.log("SIDEBET sent to server")
         except Exception as e:
             logger.warning(f"Browser bridge unavailable for SIDEBET: {e}")
-            # Continue with local trading - browser is optional
+            self.log(f"SIDEBET failed: No browser connection")
 
-        amount = self.get_bet_amount()
-        if amount is None:
-            return  # Validation failed (toast already shown), but browser click already sent
-
-        result = self.trade_manager.execute_sidebet(amount)
-
-        if result["success"]:
-            potential_win = result.get("potential_win", 0)
-            self.log(f"SIDEBET placed ({amount} SOL)")
-            self.toast.show(
-                f"Side bet placed! {amount} SOL (potential: {potential_win:.4f} SOL)", "warning"
-            )
-        else:
-            self.log(f"SIDEBET failed: {result['reason']}")
-            self.toast.show(f"Side bet failed: {result['reason']}", "error")
+        # Server response via WebSocket will trigger appropriate UI feedback
 
     # ========================================================================
     # PERCENTAGE SELECTOR (Phase 8.2)
@@ -157,6 +287,10 @@ class TradingController:
         Args:
             percentage: 0.1 (10%), 0.25 (25%), 0.5 (50%), or 1.0 (100%)
         """
+        # Emit ButtonEvent for RL training (Phase B)
+        pct_int = int(percentage * 100)
+        self._emit_button_event(f"{pct_int}%")
+
         # Click percentage button in browser if connected
         try:
             self.browser_bridge.on_percentage_clicked(percentage)
@@ -207,6 +341,10 @@ class TradingController:
         # Click increment button in browser FIRST
         # Map Decimal amount to button text: 0.001 -> '+0.001', 0.01 -> '+0.01', etc.
         button_text = f"+{amount}"
+
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event(button_text)
+
         try:
             self.browser_bridge.on_increment_clicked(button_text)
         except Exception as e:
@@ -229,6 +367,9 @@ class TradingController:
 
     def clear_bet_amount(self):
         """Clear bet amount to zero (Phase 9.3: syncs to browser)"""
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("X")
+
         # Click X (clear) button in browser FIRST
         try:
             self.browser_bridge.on_clear_clicked()
@@ -242,6 +383,9 @@ class TradingController:
 
     def half_bet_amount(self):
         """Halve bet amount (1/2 button) - Phase 9.3: syncs to browser"""
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("1/2")
+
         # Click 1/2 button in browser FIRST
         try:
             self.browser_bridge.on_increment_clicked("1/2")
@@ -264,6 +408,9 @@ class TradingController:
 
     def double_bet_amount(self):
         """Double bet amount (X2 button) - Phase 9.3: syncs to browser"""
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("X2")
+
         # Click X2 button in browser FIRST
         try:
             self.browser_bridge.on_increment_clicked("X2")
@@ -286,6 +433,9 @@ class TradingController:
 
     def max_bet_amount(self):
         """Set bet to max (MAX button) - Phase 9.3: syncs to browser"""
+        # Emit ButtonEvent for RL training (Phase B)
+        self._emit_button_event("MAX")
+
         # Click MAX button in browser FIRST
         try:
             self.browser_bridge.on_increment_clicked("MAX")

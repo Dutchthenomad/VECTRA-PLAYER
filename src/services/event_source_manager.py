@@ -20,7 +20,7 @@ class EventSource(Enum):
 
     NONE = "none"
     CDP = "cdp"  # Authenticated via CDP interception
-    FALLBACK = "fallback"  # Public WebSocketFeed
+    PUBLIC_WS = "public_ws"  # Public WebSocketFeed (was FALLBACK - renamed for LiveStateProvider compatibility)
 
 
 class EventSourceManager:
@@ -67,7 +67,7 @@ class EventSourceManager:
         on_source_changed = None
 
         with self._lock:
-            desired_source = EventSource.CDP if self.is_cdp_available else EventSource.FALLBACK
+            desired_source = EventSource.CDP if self.is_cdp_available else EventSource.PUBLIC_WS
             if desired_source != self.active_source:
                 old_source = self.active_source
                 self.active_source = desired_source

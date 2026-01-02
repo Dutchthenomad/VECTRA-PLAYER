@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VECTRA-PLAYER Development Plan</title>
+    <style>
+        :root {
+            --pink: #ff4f9a;
+            --orange: #ffb347;
+            --mint: #39ffba;
+            --purple: #1a1033;
+            --black: #05040a;
+            --white: #f0f0f5;
+            --gray: #2a2040;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--purple) 0%, var(--black) 100%);
+            padding: 2rem;
+            border-bottom: 2px solid var(--pink);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--pink), var(--mint));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--gray);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .meta-badge.canonical {
+            border: 1px solid var(--pink);
+            color: var(--pink);
+        }
+
+        .meta-badge.tests {
+            border: 1px solid var(--mint);
+            color: var(--mint);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: var(--purple);
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.complete { background: var(--mint); }
+        .status-dot.partial { background: var(--orange); }
+        .status-dot.verify { background: var(--pink); animation: pulse 2s infinite; }
+        .status-dot.pending { background: var(--gray); border: 1px solid var(--white); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 79, 154, 0.7); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 10px rgba(255, 79, 154, 0); }
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--pink);
+            border-radius: 2px;
+        }
+
+        /* Phase Cards */
+        .phase-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .phase-card {
+            background: var(--purple);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .phase-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 79, 154, 0.2);
+        }
+
+        .phase-card.current {
+            border: 2px solid var(--pink);
+        }
+
+        .phase-header {
+            padding: 1rem 1.5rem;
+            background: var(--gray);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .phase-header:hover {
+            background: rgba(255, 79, 154, 0.1);
+        }
+
+        .phase-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .phase-id {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--black);
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .phase-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .phase-status.complete { background: rgba(57, 255, 186, 0.2); color: var(--mint); }
+        .phase-status.partial { background: rgba(255, 179, 71, 0.2); color: var(--orange); }
+        .phase-status.verify { background: rgba(255, 79, 154, 0.2); color: var(--pink); }
+        .phase-status.pending { background: rgba(255, 255, 255, 0.1); color: var(--white); opacity: 0.7; }
+
+        .phase-content {
+            padding: 0 1.5rem;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .phase-card.expanded .phase-content {
+            max-height: 1000px;
+            padding: 1.5rem;
+        }
+
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+
+        .phase-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Nested Lists */
+        .task-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .task-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .task-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.9rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            background: var(--gray);
+        }
+
+        .task-list li.done::before {
+            background: var(--mint);
+        }
+
+        .task-list li.pending::before {
+            background: var(--orange);
+        }
+
+        /* Nested sub-lists */
+        .task-list .sub-list {
+            margin-left: 1rem;
+            margin-top: 0.5rem;
+            border-left: 2px solid var(--gray);
+            padding-left: 1rem;
+        }
+
+        .task-list .sub-list li {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Gate Box */
+        .gate-box {
+            background: var(--black);
+            border: 1px solid var(--pink);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .gate-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--pink);
+            margin-bottom: 0.75rem;
+        }
+
+        .gate-criteria {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: rgba(255, 79, 154, 0.1);
+            padding: 0.75rem;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        /* Bug Table */
+        .bug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .bug-table th {
+            background: var(--gray);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--pink);
+        }
+
+        .bug-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .bug-table tr:hover {
+            background: rgba(255, 79, 154, 0.05);
+        }
+
+        .bug-fixed {
+            color: var(--mint);
+        }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            background: var(--purple);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .flow-layer {
+            margin-bottom: 1.5rem;
+        }
+
+        .flow-layer-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--pink);
+            margin-bottom: 1rem;
+        }
+
+        .flow-nodes {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .flow-node {
+            background: var(--gray);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 140px;
+            position: relative;
+        }
+
+        .flow-node.complete {
+            border: 2px solid var(--mint);
+        }
+
+        .flow-node.current {
+            border: 2px solid var(--pink);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 79, 154, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(255, 79, 154, 0); }
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--mint);
+        }
+
+        .flow-gate {
+            width: 100%;
+            background: linear-gradient(90deg, transparent, var(--pink), transparent);
+            height: 2px;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .flow-gate-label {
+            position: absolute;
+            left: 50%;
+            top: -10px;
+            transform: translateX(-50%);
+            background: var(--purple);
+            padding: 0 1rem;
+            font-size: 0.8rem;
+            color: var(--pink);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* SSOT Table */
+        .ssot-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .ssot-table th {
+            background: var(--gray);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .ssot-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .ssot-fixed { color: var(--mint); }
+        .ssot-dual { color: var(--orange); }
+
+        /* Rules Section */
+        .rule-card {
+            background: var(--purple);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .rule-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--pink);
+            color: var(--black);
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-right: 0.75rem;
+        }
+
+        .rule-example {
+            margin-top: 0.75rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--gray);
+        }
+
+        .rule-bad {
+            color: #ff6b6b;
+        }
+
+        .rule-good {
+            color: var(--mint);
+        }
+
+        /* Quick Reference */
+        .quick-ref {
+            background: var(--purple);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .quick-ref code {
+            display: block;
+            background: var(--black);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+            border-left: 3px solid var(--mint);
+        }
+
+        /* Success Criteria */
+        .success-list {
+            list-style: none;
+        }
+
+        .success-list li {
+            padding: 0.75rem 0;
+            padding-left: 2rem;
+            position: relative;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .success-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--mint);
+            font-weight: bold;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
+            border-top: 1px solid var(--gray);
+            margin-top: 2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .flow-nodes {
+                flex-direction: column;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--purple);
+            border: none;
+            border-radius: 8px;
+            color: var(--white);
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: var(--gray);
+        }
+
+        .tab-btn.active {
+            background: var(--pink);
+            color: var(--black);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>VECTRA-PLAYER Development Plan</h1>
+        <p style="opacity: 0.8; margin-top: 0.5rem;">Unified, Gated Development Roadmap</p>
+        <div class="header-meta">
+            <span class="meta-badge canonical">CANONICAL</span>
+            <span class="meta-badge tests">1138 Tests Passing</span>
+            <span class="meta-badge" style="border: 1px solid var(--orange); color: var(--orange);">Updated: 2025-12-27</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="status-dot complete"></span>
+                <span>Complete</span>
+            </div>
+            <div class="legend-item">
+                <span class="status-dot partial"></span>
+                <span>Partial</span>
+            </div>
+            <div class="legend-item">
+                <span class="status-dot verify"></span>
+                <span>Ready for Verification</span>
+            </div>
+            <div class="legend-item">
+                <span class="status-dot pending"></span>
+                <span>Pending/Blocked</span>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="showTab('phases')">All Phases</button>
+            <button class="tab-btn" onclick="showTab('bugs')">Bug Hunt</button>
+            <button class="tab-btn" onclick="showTab('rules')">Gating Rules</button>
+            <button class="tab-btn" onclick="showTab('ssot')">SSOT Matrix</button>
+            <button class="tab-btn" onclick="showTab('actions')">Next Actions</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <section class="section">
+                <h2 class="section-title">Development Flow</h2>
+                <div class="flow-diagram">
+                    <div class="flow-layer">
+                        <div class="flow-layer-title">Foundation Layer</div>
+                        <div class="flow-nodes">
+                            <div class="flow-node">
+                                <div style="font-size: 0.8rem; color: var(--orange);">Audit 1-2</div>
+                                <div>Data Flow +<br>Contracts</div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-node">
+                                <div style="font-size: 0.8rem; opacity: 0.7;">Audit 3</div>
+                                <div>SSOT<br>Assignment</div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-node">
+                                <div style="font-size: 0.8rem; opacity: 0.7;">Audit 4-5</div>
+                                <div>Test Infra +<br>Fixes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flow-gate">
+                        <span class="flow-gate-label">Foundation Gate</span>
+                    </div>
+
+                    <div class="flow-layer">
+                        <div class="flow-layer-title">Feature Layer</div>
+                        <div class="flow-nodes">
+                            <div class="flow-node complete">
+                                <div style="font-size: 0.8rem; color: var(--mint);">Pipeline A</div>
+                                <div>Server State<br>Validation</div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-node current">
+                                <div style="font-size: 0.8rem; color: var(--pink);">Pipeline B</div>
+                                <div>ButtonEvent<br>Capture</div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-node">
+                                <div style="font-size: 0.8rem; opacity: 0.7;">Pipeline C</div>
+                                <div>Action<br>Validation</div>
+                            </div>
+                            <span class="flow-arrow">→</span>
+                            <div class="flow-node">
+                                <div style="font-size: 0.8rem; opacity: 0.7;">Pipeline D</div>
+                                <div>Training<br>Pipeline</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Current Priority</h2>
+                <div class="phase-card current expanded">
+                    <div class="phase-header" onclick="togglePhase(this)">
+                        <span class="phase-title">
+                            <span class="phase-id">B</span>
+                            ButtonEvent Implementation
+                        </span>
+                        <span class="phase-status verify">Ready for Verification</span>
+                    </div>
+                    <div class="phase-content">
+                        <ul class="task-list">
+                            <li class="done">ButtonEvent dataclass in <code>src/models/events/button_event.py</code></li>
+                            <li class="done">ActionSequence dataclass</li>
+                            <li class="done">BUTTON_PRESS event in EventBus</li>
+                            <li class="done">BUTTON_EVENT doc_type in EventStore</li>
+                            <li class="done">TradingController emits ButtonEvents</li>
+                            <li class="done">EventStoreService subscribes to BUTTON_PRESS</li>
+                            <li class="done">LiveStateProvider extracts tick/price/game_id</li>
+                            <li class="done" style="color: var(--mint); font-weight: 600;">Bug 7 Fix: GameState._on_ws_raw_event corrected (2025-12-27)</li>
+                        </ul>
+
+                        <div class="gate-box">
+                            <div class="gate-header">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                Gate Criteria
+                            </div>
+                            <div class="gate-criteria">tick > 0
+price != 1.0
+game_id != 'unknown'</div>
+                        </div>
+
+                        <h4 style="margin-top: 1rem; color: var(--orange);">Pending Verification:</h4>
+                        <ul class="task-list">
+                            <li class="pending">Run <code>./run.sh</code> and confirm live data flows</li>
+                            <li class="pending">Click buttons during ACTIVE game</li>
+                            <li class="pending">Check Parquet files for ButtonEvents with real context</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- All Phases Tab -->
+        <div id="phases" class="tab-content">
+            <section class="section">
+                <h2 class="section-title">Foundation Phases</h2>
+                <div class="phase-grid">
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">1-2</span>
+                                Data Flow + Contracts
+                            </span>
+                            <span class="phase-status partial">Partial</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.8; margin-bottom: 1rem;">Event structure documented during Bug 7 fix</p>
+                            <ul class="task-list">
+                                <li class="pending">Data source/sink inventory</li>
+                                <li class="pending">Real event samples captured</li>
+                                <li class="done">Field mapping table (expected vs actual)</li>
+                            </ul>
+                            <div class="sub-list">
+                                <p style="font-size: 0.85rem; color: var(--orange);">Scripts ready:</p>
+                                <ul class="task-list">
+                                    <li class="done">scripts/capture_event_structures.py</li>
+                                    <li class="done">scripts/diagnose_game_state_events.py</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">3</span>
+                                Responsibility Clarification
+                            </span>
+                            <span class="phase-status pending">Pending</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.8; margin-bottom: 1rem;">SSOT decision needed for balance/position</p>
+                            <ul class="task-list">
+                                <li class="pending">Define who owns what data in live vs replay mode</li>
+                                <li class="pending">Resolve dual ownership of balance</li>
+                                <li class="pending">Resolve dual ownership of position</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">4-5</span>
+                                Test Infra + Fixes
+                            </span>
+                            <span class="phase-status partial">Partial</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.8; margin-bottom: 1rem;">Bug 7 fix applied</p>
+                            <ul class="task-list">
+                                <li class="pending">Replace mocked tests with real event fixtures</li>
+                                <li class="pending">Standardize event format throughout codebase</li>
+                                <li class="pending">Eliminate silent failures and default value masking</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Feature Phases</h2>
+                <div class="phase-grid">
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">A</span>
+                                Server State Validation
+                            </span>
+                            <span class="phase-status complete">Complete</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="color: var(--mint); margin-bottom: 1rem;">18+ fields validated against WebSocket spec</p>
+                            <ul class="task-list">
+                                <li class="done">tick, price, game_phase, cooldown_timer_ms</li>
+                                <li class="done">balance, position_qty, avg_entry_price</li>
+                                <li class="done">rugpool_amount, rugpool_threshold</li>
+                                <li class="done">average_multiplier, count_2x/10x/50x/100x</li>
+                                <li class="done">highest_today, connected_players</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="phase-card current">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">B</span>
+                                ButtonEvent Implementation
+                            </span>
+                            <span class="phase-status verify">Ready for Verification</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="color: var(--pink); margin-bottom: 1rem;">Bug 7 fixed - live data should flow now</p>
+                            <ul class="task-list">
+                                <li class="done">ButtonEvent dataclass</li>
+                                <li class="done">ActionSequence dataclass</li>
+                                <li class="done">BUTTON_PRESS event in EventBus</li>
+                                <li class="done">BUTTON_EVENT doc_type in EventStore</li>
+                                <li class="done">Bug 7 Fix applied</li>
+                            </ul>
+                            <div class="gate-box">
+                                <div class="gate-header">Gate Criteria</div>
+                                <div class="gate-criteria">ButtonEvents with tick > 0, real price, real game_id</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">C</span>
+                                Player Action Validation
+                            </span>
+                            <span class="phase-status pending">Blocked</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.7; margin-bottom: 1rem;">Prerequisite: Phase B gate passed</p>
+                            <ul class="task-list">
+                                <li class="pending">Validate ButtonEvent fields against recordings</li>
+                                <li class="pending">Validate action timing features (ticks_since_last_action)</li>
+                                <li class="pending">Validate sequence grouping logic</li>
+                                <li class="pending">Update observation-space-design.md</li>
+                                <li class="pending">Finalize observation space schema</li>
+                            </ul>
+                            <div class="gate-box">
+                                <div class="gate-header">Gate Criteria</div>
+                                <div class="gate-criteria">All 7 player action features validated with real data</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">D</span>
+                                Training Pipeline
+                            </span>
+                            <span class="phase-status pending">Blocked</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.7; margin-bottom: 1rem;">Prerequisite: Phase C gate passed</p>
+                            <ul class="task-list">
+                                <li class="pending">Integrate ButtonEvents into training data loader</li>
+                                <li class="pending">Create training dataset from recorded sessions</li>
+                                <li class="pending">Validate observation space tensor generation</li>
+                                <li class="pending">Create training pipeline documentation</li>
+                            </ul>
+                            <div class="gate-box">
+                                <div class="gate-header">Gate Criteria</div>
+                                <div class="gate-criteria">Can generate valid training batches from recorded data</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Polish Phases</h2>
+                <div class="phase-grid">
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">6</span>
+                                Gated Development Validation
+                            </span>
+                            <span class="phase-status pending">Pending</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.7;">Requires Pipeline D completion</p>
+                        </div>
+                    </div>
+
+                    <div class="phase-card">
+                        <div class="phase-header" onclick="togglePhase(this)">
+                            <span class="phase-title">
+                                <span class="phase-id">7</span>
+                                UI Redesign Prep
+                            </span>
+                            <span class="phase-status pending">Pending</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div class="phase-content">
+                            <p style="opacity: 0.7;">Requires Audit 6 completion</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Bug Hunt Tab -->
+        <div id="bugs" class="tab-content">
+            <section class="section">
+                <h2 class="section-title">Bug Hunt Resolutions (2025-12-27)</h2>
+                <p style="margin-bottom: 1rem; color: var(--mint);">All 7 bugs resolved. Verification: 1138 tests pass.</p>
+
+                <table class="bug-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Bug</th>
+                            <th>Root Cause</th>
+                            <th>Fix</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="bug-fixed">1</td>
+                            <td>CDP→Fallback drop</td>
+                            <td>Socket.IO not found in window.*</td>
+                            <td>Dynamic Socket.IO discovery + don't stop CDP on failure</td>
+                            <td class="bug-fixed">CDP stays running</td>
+                        </tr>
+                        <tr>
+                            <td class="bug-fixed">2</td>
+                            <td>rugs_websocket_id None</td>
+                            <td>WebSocket created before CDP attached</td>
+                            <td>CDP waits for natural reconnection</td>
+                            <td class="bug-fixed">WebSocket captured</td>
+                        </tr>
+                        <tr>
+                            <td class="bug-fixed">3</td>
+                            <td>Stale log message</td>
+                            <td>.pyc bytecode cache</td>
+                            <td>Cleared __pycache__ directories</td>
+                            <td class="bug-fixed">Clean logs</td>
+                        </tr>
+                        <tr>
+                            <td class="bug-fixed">4</td>
+                            <td>Fallback not live</td>
+                            <td>Naming mismatch (FALLBACK vs public_ws)</td>
+                            <td>Renamed FALLBACK → PUBLIC_WS</td>
+                            <td class="bug-fixed">is_live works</td>
+                        </tr>
+                        <tr>
+                            <td class="bug-fixed">5</td>
+                            <td>tickCount extraction</td>
+                            <td>Wrong field name (tick vs tickCount)</td>
+                            <td>Fixed to use tickCount</td>
+                            <td class="bug-fixed">Tick data flows</td>
+                        </tr>
+                        <tr>
+                            <td class="bug-fixed">6</td>
+                            <td>Session stats location</td>
+                            <td>Expected nested sessionStats</td>
+                            <td>Fixed to extract from top level</td>
+                            <td class="bug-fixed">Stats work</td>
+                        </tr>
+                        <tr style="background: rgba(255, 79, 154, 0.1);">
+                            <td style="color: var(--pink); font-weight: bold;">7</td>
+                            <td style="font-weight: bold;">game_active never set</td>
+                            <td style="font-weight: bold;">Event extraction looked in wrong place</td>
+                            <td style="font-weight: bold;">Fixed _on_ws_raw_event to check wrapped.get("event")</td>
+                            <td style="color: var(--mint); font-weight: bold;">Trading enabled</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="gate-box" style="margin-top: 2rem;">
+                    <div class="gate-header">Bug 7 Technical Details</div>
+                    <div class="gate-criteria">Location: src/core/game_state.py:914
+
+Root Cause:
+CDPWebSocketInterceptor produces: {"event": "gameStateUpdate", "data": {...}}
+Handler was checking: data.get("event") → None (wrong path)
+
+Fix:
+Changed to: wrapped.get("event") → "gameStateUpdate" (correct path)</div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Gating Rules Tab -->
+        <div id="rules" class="tab-content">
+            <section class="section">
+                <h2 class="section-title">Gating Rules (MANDATORY)</h2>
+
+                <div class="rule-card">
+                    <h3><span class="rule-number">1</span>Gate on Any Valid Data Source</h3>
+                    <div class="rule-example">
+                        <p class="rule-bad">❌ BAD: "Requires CDP specifically"</p>
+                        <p class="rule-good">✓ GOOD: "Requires ANY live source (CDP OR PUBLIC_WS)"</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <h3><span class="rule-number">2</span>Verify Before Claiming Complete</h3>
+                    <div class="rule-example">
+                        <p class="rule-bad">❌ BAD: "Code is written, phase complete"</p>
+                        <p class="rule-good">✓ GOOD: "Ran verification, output shows real data"</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <h3><span class="rule-number">3</span>Don't Skip Foundation for Features</h3>
+                    <div class="rule-example">
+                        <p class="rule-bad">❌ BAD: "Just add the feature, we'll fix data flow later"</p>
+                        <p class="rule-good">✓ GOOD: "Data flow works → Feature works → Gate passed"</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <h3><span class="rule-number">4</span>Tests Must Use Real Data</h3>
+                    <div class="rule-example">
+                        <p class="rule-bad">❌ BAD: Tests pass with mocked events that don't match production</p>
+                        <p class="rule-good">✓ GOOD: Tests use fixtures captured from real WebSocket</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Governing Standard</h2>
+                <div class="quick-ref">
+                    <p>This plan follows the <strong style="color: var(--pink);">Development Documentation and Gating Standard</strong> defined in:</p>
+                    <code>/home/nomad/Desktop/claude-flow/docs/plans/DEVELOPMENT-DOCUMENTATION-AND-GATING-STANDARD.md</code>
+                    <ul class="task-list" style="margin-top: 1rem;">
+                        <li class="done">Gates require verification evidence before claiming complete</li>
+                        <li class="done">No work added without plan update</li>
+                        <li class="done">Session scratchpad is ephemeral, not authoritative</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <!-- SSOT Matrix Tab -->
+        <div id="ssot" class="tab-content">
+            <section class="section">
+                <h2 class="section-title">Single Source of Truth Matrix</h2>
+                <p style="margin-bottom: 1rem; opacity: 0.8;">Who owns what data in live vs replay mode?</p>
+
+                <table class="ssot-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Replay SSOT</th>
+                            <th>Live SSOT</th>
+                            <th>Current Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>tick</td>
+                            <td>ReplayEngine</td>
+                            <td>LiveStateProvider</td>
+                            <td class="ssot-fixed">✓ Fixed</td>
+                        </tr>
+                        <tr>
+                            <td>price</td>
+                            <td>ReplayEngine</td>
+                            <td>LiveStateProvider</td>
+                            <td class="ssot-fixed">✓ Fixed</td>
+                        </tr>
+                        <tr>
+                            <td>game_active</td>
+                            <td>ReplayEngine</td>
+                            <td>GameState (synced from WS)</td>
+                            <td class="ssot-fixed">✓ Fixed</td>
+                        </tr>
+                        <tr>
+                            <td>balance</td>
+                            <td>GameState</td>
+                            <td>LiveStateProvider</td>
+                            <td class="ssot-dual">⚠ Dual</td>
+                        </tr>
+                        <tr>
+                            <td>position</td>
+                            <td>GameState</td>
+                            <td>LiveStateProvider</td>
+                            <td class="ssot-dual">⚠ Dual</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 2rem;">
+                    <h3 style="color: var(--orange); margin-bottom: 1rem;">Ownership Split</h3>
+                    <table class="ssot-table">
+                        <thead>
+                            <tr>
+                                <th>Repository</th>
+                                <th>Owns</th>
+                                <th>Does NOT Own</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-weight: bold; color: var(--pink);">VECTRA-PLAYER</td>
+                                <td>Implementation, development plans, codebase docs</td>
+                                <td>Protocol knowledge, agent configs</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold; color: var(--mint);">claude-flow</td>
+                                <td>WebSocket protocol spec, RAG knowledge base, expert agents</td>
+                                <td>Code implementation</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Next Actions Tab -->
+        <div id="actions" class="tab-content">
+            <section class="section">
+                <h2 class="section-title">Immediate Actions</h2>
+
+                <div class="quick-ref">
+                    <h3 style="color: var(--pink); margin-bottom: 1rem;">Step 1: Verify Bug Hunt Fixes Work</h3>
+                    <code>./run.sh
+# Wait for browser connection
+# Click buttons during ACTIVE game (green "ACTIVE" banner)
+# Ctrl+C to stop</code>
+                </div>
+
+                <div class="quick-ref" style="margin-top: 1.5rem;">
+                    <h3 style="color: var(--pink); margin-bottom: 1rem;">Step 2: Check ButtonEvent Data</h3>
+                    <code>cd /home/nomad/Desktop/VECTRA-PLAYER
+.venv/bin/python -c "
+import duckdb, json
+result = duckdb.query('''
+    SELECT ts, raw_json FROM read_parquet(
+        '/home/nomad/rugs_data/events_parquet/doc_type=button_event/**/*.parquet'
+    ) ORDER BY ts DESC LIMIT 5
+''').fetchall()
+for ts, raw in result:
+    d = json.loads(raw)
+    print(f'{d.get(\"button_id\")} tick={d.get(\"tick\")} price={d.get(\"price\")}')
+"</code>
+                </div>
+
+                <div style="margin-top: 2rem; padding: 1.5rem; background: var(--purple); border-radius: 12px;">
+                    <h3 style="color: var(--mint); margin-bottom: 1rem;">Decision Tree</h3>
+                    <div style="padding-left: 1rem; border-left: 3px solid var(--mint);">
+                        <p><strong>If tick > 0 and real game_id:</strong></p>
+                        <p style="color: var(--mint); padding-left: 1rem;">→ Phase B COMPLETE → Proceed to Phase C</p>
+                    </div>
+                    <div style="padding-left: 1rem; border-left: 3px solid var(--orange); margin-top: 1rem;">
+                        <p><strong>If tick = 0:</strong></p>
+                        <p style="color: var(--orange); padding-left: 1rem;">→ Debug data flow → Run audit diagnostic scripts</p>
+                    </div>
+                </div>
+
+                <div class="quick-ref" style="margin-top: 1.5rem;">
+                    <h3 style="color: var(--orange); margin-bottom: 1rem;">If Phase B Blocked</h3>
+                    <code>python scripts/diagnose_game_state_events.py &
+./run.sh
+# Check output for event structure issues</code>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Success Criteria (End State)</h2>
+                <ul class="success-list">
+                    <li><strong>Documented Data Flow:</strong> Every event type traced from source to sink</li>
+                    <li><strong>Real Test Fixtures:</strong> Tests use captured production data</li>
+                    <li><strong>Single Source of Truth:</strong> Clear SSOT for each piece of state</li>
+                    <li><strong>ButtonEvent Capture:</strong> Human actions logged with full game context</li>
+                    <li><strong>Training Pipeline:</strong> Can generate RL training data from sessions</li>
+                    <li><strong>No Silent Failures:</strong> All errors surface immediately</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>VECTRA-PLAYER Global Development Plan</p>
+        <p style="font-size: 0.85rem; margin-top: 0.5rem;">CANONICAL Document • Updated 2025-12-27</p>
+    </footer>
+
+    <script>
+        function togglePhase(header) {
+            const card = header.closest('.phase-card');
+            card.classList.toggle('expanded');
+        }
+
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Mark button as active
+            event.target.classList.add('active');
+        }
+
+        // Auto-expand current phase card on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Find the current phase and ensure it's expanded
+            const currentPhases = document.querySelectorAll('.phase-card.current');
+            currentPhases.forEach(card => {
+                if (!card.classList.contains('expanded')) {
+                    card.classList.add('expanded');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

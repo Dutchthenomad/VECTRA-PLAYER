@@ -19,7 +19,7 @@ class TestEventSourceManager:
         """EventSource enum has correct values."""
         assert EventSource.NONE.value == "none"
         assert EventSource.CDP.value == "cdp"
-        assert EventSource.FALLBACK.value == "fallback"
+        assert EventSource.PUBLIC_WS.value == "public_ws"
 
     def test_set_cdp_available(self):
         """Can mark CDP as available."""
@@ -41,8 +41,8 @@ class TestEventSourceManager:
         assert manager.active_source == EventSource.CDP
         callback.assert_called_with(EventSource.CDP)
 
-    def test_fallback_when_cdp_unavailable(self):
-        """Falls back when CDP unavailable."""
+    def test_public_ws_when_cdp_unavailable(self):
+        """Uses public WebSocket when CDP unavailable."""
         manager = EventSourceManager()
         manager.set_cdp_available(False)
         callback = Mock()
@@ -50,11 +50,11 @@ class TestEventSourceManager:
 
         manager.switch_to_best_source()
 
-        assert manager.active_source == EventSource.FALLBACK
-        callback.assert_called_with(EventSource.FALLBACK)
+        assert manager.active_source == EventSource.PUBLIC_WS
+        callback.assert_called_with(EventSource.PUBLIC_WS)
 
     def test_auto_switch_on_cdp_disconnect(self):
-        """Auto-switches to fallback on CDP disconnect."""
+        """Auto-switches to public WebSocket on CDP disconnect."""
         manager = EventSourceManager()
         manager.set_cdp_available(True)
         manager.switch_to_best_source()
@@ -66,7 +66,7 @@ class TestEventSourceManager:
         manager.set_cdp_available(False)
         manager.switch_to_best_source()
 
-        assert manager.active_source == EventSource.FALLBACK
+        assert manager.active_source == EventSource.PUBLIC_WS
 
     def test_get_status(self):
         """Get status returns correct info."""

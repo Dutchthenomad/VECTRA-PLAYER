@@ -51,6 +51,23 @@ class LiveState:
     current_tick: int = 0
     current_multiplier: Decimal = field(default_factory=lambda: Decimal("1.0"))
 
+    # Position timing tracking (for RL training - time_in_position feature)
+    # entry_tick: tick when position was opened (positionQty 0 → non-zero)
+    # Reset on: game_id change, position close (qty → 0)
+    entry_tick: int | None = None
+
+    # Rugpool fields for instarug risk prediction (from gameStateUpdate)
+    rugpool_amount: Decimal = field(default_factory=lambda: Decimal("0"))
+    rugpool_threshold: Decimal = field(default_factory=lambda: Decimal("0"))
+
+    # Session statistics for RL training context (from gameStateUpdate)
+    average_multiplier: Decimal = field(default_factory=lambda: Decimal("0"))
+    count_2x: int = 0
+    count_10x: int = 0
+    count_50x: int = 0
+    count_100x: int = 0
+    highest_today: Decimal = field(default_factory=lambda: Decimal("0"))
+
     # Update tracking
     last_update_seq: int = 0
 
@@ -63,6 +80,7 @@ class LiveStateProvider:
     - PLAYER_UPDATE: Server state from playerUpdate WebSocket events
     - WS_SOURCE_CHANGED: Track live vs replay/fallback mode
     - GAME_TICK: Track current price/tick from server
+    - WS_RAW_EVENT: Capture rugpool and session stats from gameStateUpdate
 
     Thread-safe: All state access is protected by lock.
     """
@@ -84,6 +102,7 @@ class LiveStateProvider:
         self._event_bus.subscribe(Events.PLAYER_UPDATE, self._on_player_update, weak=False)
         self._event_bus.subscribe(Events.WS_SOURCE_CHANGED, self._on_source_changed, weak=False)
         self._event_bus.subscribe(Events.GAME_TICK, self._on_game_tick, weak=False)
+        self._event_bus.subscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event, weak=False)
 
         logger.info("LiveStateProvider initialized")
 
@@ -167,6 +186,88 @@ class LiveStateProvider:
         with self._lock:
             return self._state.current_multiplier
 
+    # ========== Position Timing Properties (for RL training) ==========
+
+    @property
+    def entry_tick(self) -> int | None:
+        """Tick when position was opened (positionQty 0 → non-zero)."""
+        with self._lock:
+            return self._state.entry_tick
+
+    @property
+    def time_in_position(self) -> int:
+        """
+        Calculate time in position (current_tick - entry_tick).
+
+        Returns 0 if no position or entry_tick not set.
+        """
+        with self._lock:
+            if self._state.entry_tick is None:
+                return 0
+            if self._state.position_qty <= Decimal("0"):
+                return 0
+            return max(0, self._state.current_tick - self._state.entry_tick)
+
+    # ========== Rugpool Properties (from gameStateUpdate) ==========
+
+    @property
+    def rugpool_amount(self) -> Decimal:
+        """Current rugpool amount in SOL."""
+        with self._lock:
+            return self._state.rugpool_amount
+
+    @property
+    def rugpool_threshold(self) -> Decimal:
+        """Rugpool threshold (instarug trigger level)."""
+        with self._lock:
+            return self._state.rugpool_threshold
+
+    @property
+    def rugpool_ratio(self) -> Decimal:
+        """Rugpool ratio (amount / threshold). Higher = more risk."""
+        with self._lock:
+            if self._state.rugpool_threshold <= Decimal("0"):
+                return Decimal("0")
+            return self._state.rugpool_amount / self._state.rugpool_threshold
+
+    # ========== Session Stats Properties (from gameStateUpdate) ==========
+
+    @property
+    def average_multiplier(self) -> Decimal:
+        """Session average multiplier."""
+        with self._lock:
+            return self._state.average_multiplier
+
+    @property
+    def count_2x(self) -> int:
+        """Count of games reaching 2x multiplier today."""
+        with self._lock:
+            return self._state.count_2x
+
+    @property
+    def count_10x(self) -> int:
+        """Count of games reaching 10x multiplier today."""
+        with self._lock:
+            return self._state.count_10x
+
+    @property
+    def count_50x(self) -> int:
+        """Count of games reaching 50x multiplier today."""
+        with self._lock:
+            return self._state.count_50x
+
+    @property
+    def count_100x(self) -> int:
+        """Count of games reaching 100x multiplier today."""
+        with self._lock:
+            return self._state.count_100x
+
+    @property
+    def highest_today(self) -> Decimal:
+        """Highest multiplier reached today."""
+        with self._lock:
+            return self._state.highest_today
+
     # ========== Computed Properties ==========
 
     @property
@@ -227,6 +328,20 @@ class LiveStateProvider:
                 "unrealized_pnl": self.unrealized_pnl,
                 "position_value": self.position_value,
                 "last_update_seq": self._state.last_update_seq,
+                # Position timing for RL training (time_in_position feature)
+                "entry_tick": self._state.entry_tick,
+                "time_in_position": self.time_in_position,
+                # Rugpool fields for instarug risk prediction
+                "rugpool_amount": self._state.rugpool_amount,
+                "rugpool_threshold": self._state.rugpool_threshold,
+                "rugpool_ratio": self.rugpool_ratio,
+                # Session statistics for RL training context
+                "average_multiplier": self._state.average_multiplier,
+                "count_2x": self._state.count_2x,
+                "count_10x": self._state.count_10x,
+                "count_50x": self._state.count_50x,
+                "count_100x": self._state.count_100x,
+                "highest_today": self._state.highest_today,
             }
 
     # ========== Event Handlers ==========
@@ -272,9 +387,27 @@ class LiveStateProvider:
                 if data.get("cash") is not None:
                     self._state.cash = Decimal(str(data["cash"]))
 
+                # Track position changes for entry_tick (time_in_position feature)
+                old_position_qty = self._state.position_qty
+
                 # Update position
                 if data.get("positionQty") is not None:
                     self._state.position_qty = Decimal(str(data["positionQty"]))
+
+                    # Detect position OPENED: 0 → non-zero
+                    if old_position_qty <= Decimal("0") < self._state.position_qty:
+                        self._state.entry_tick = self._state.current_tick
+                        logger.debug(
+                            f"Position opened at tick {self._state.entry_tick}, "
+                            f"qty={self._state.position_qty}"
+                        )
+
+                    # Detect position CLOSED: non-zero → 0
+                    elif old_position_qty > Decimal("0") and self._state.position_qty <= Decimal("0"):
+                        logger.debug(
+                            f"Position closed, was open since tick {self._state.entry_tick}"
+                        )
+                        self._state.entry_tick = None
 
                 if data.get("avgCost") is not None:
                     self._state.avg_cost = Decimal(str(data["avgCost"]))
@@ -380,6 +513,74 @@ class LiveStateProvider:
         except Exception as e:
             logger.error(f"Error handling GAME_TICK: {e}")
 
+    def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
+        """
+        Handle WS_RAW_EVENT events from EventBus.
+
+        Extracts rugpool and session stats from gameStateUpdate events.
+        """
+        try:
+            data = wrapped.get("data", wrapped)
+            if not isinstance(data, dict):
+                return
+
+            # Only process gameStateUpdate events
+            event_name = data.get("event")
+            if event_name != "gameStateUpdate":
+                return
+
+            event_data = data.get("data", {})
+            if not isinstance(event_data, dict):
+                return
+
+            with self._lock:
+                # Detect game_id change (new game starts) → reset entry_tick
+                old_game_id = self._state.game_id
+
+                # Extract tick/price/game_id from gameStateUpdate
+                # NOTE: Field is "tickCount" not "tick" in rugs.fun WebSocket events
+                if "tickCount" in event_data:
+                    self._state.current_tick = int(event_data["tickCount"])
+                if "multiplier" in event_data:
+                    self._state.current_multiplier = Decimal(str(event_data["multiplier"]))
+                elif "price" in event_data:
+                    self._state.current_multiplier = Decimal(str(event_data["price"]))
+                if "gameId" in event_data:
+                    self._state.game_id = event_data["gameId"]
+
+                    # Reset entry_tick on new game (positions don't carry over)
+                    if old_game_id is not None and event_data["gameId"] != old_game_id:
+                        logger.debug(
+                            f"New game detected: {old_game_id} → {event_data['gameId']}, "
+                            f"resetting entry_tick"
+                        )
+                        self._state.entry_tick = None
+
+                # Extract rugpool fields
+                rugpool = event_data.get("rugpool")
+                if isinstance(rugpool, dict):
+                    if "rugpoolAmount" in rugpool:
+                        self._state.rugpool_amount = Decimal(str(rugpool["rugpoolAmount"]))
+                    if "threshold" in rugpool:
+                        self._state.rugpool_threshold = Decimal(str(rugpool["threshold"]))
+
+                # Extract session stats (at top level of gameStateUpdate, not nested)
+                if "averageMultiplier" in event_data:
+                    self._state.average_multiplier = Decimal(str(event_data["averageMultiplier"]))
+                if "count2x" in event_data:
+                    self._state.count_2x = int(event_data["count2x"])
+                if "count10x" in event_data:
+                    self._state.count_10x = int(event_data["count10x"])
+                if "count50x" in event_data:
+                    self._state.count_50x = int(event_data["count50x"])
+                if "count100x" in event_data:
+                    self._state.count_100x = int(event_data["count100x"])
+                if "highestToday" in event_data:
+                    self._state.highest_today = Decimal(str(event_data["highestToday"]))
+
+        except Exception as e:
+            logger.error(f"Error handling WS_RAW_EVENT: {e}")
+
     # ========== Cleanup ==========
 
     def stop(self) -> None:
@@ -388,6 +589,7 @@ class LiveStateProvider:
             self._event_bus.unsubscribe(Events.PLAYER_UPDATE, self._on_player_update)
             self._event_bus.unsubscribe(Events.WS_SOURCE_CHANGED, self._on_source_changed)
             self._event_bus.unsubscribe(Events.GAME_TICK, self._on_game_tick)
+            self._event_bus.unsubscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event)
             logger.info("LiveStateProvider stopped")
         except Exception as e:
             logger.warning(f"Error during LiveStateProvider cleanup: {e}")

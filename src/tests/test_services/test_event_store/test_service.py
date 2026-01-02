@@ -177,6 +177,30 @@ class TestWebSocketEventHandling:
         assert table.column("doc_type")[0].as_py() == "ws_event"
         service.stop()
 
+    def test_ws_event_with_null_data_field(self, event_bus, paths, temp_data_dir):
+        """WS_RAW_EVENT with null data field is handled gracefully (regression test)"""
+        service = EventStoreService(event_bus, paths, buffer_size=1)
+        service.start()
+
+        # Some events like "ping" have data: null
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "ping",
+                "data": None,  # This was causing 'NoneType' has no attribute 'get'
+                "source": "cdp",
+            },
+        )
+
+        import time
+
+        time.sleep(0.3)
+
+        # Should store without error
+        parquet_files = list(temp_data_dir.rglob("*.parquet"))
+        assert len(parquet_files) >= 1
+        service.stop()
+
 
 class TestGameTickHandling:
     """Tests for GAME_TICK handling"""

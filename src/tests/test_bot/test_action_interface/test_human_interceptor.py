@@ -370,7 +370,7 @@ class TestEventLoopManagement:
     """Test event loop creation and management."""
 
     def test_get_event_loop_creates_loop_if_none(self, interceptor):
-        """Test that _get_event_loop creates loop if needed."""
+        """Test that _get_event_loop caches the thread event loop when available."""
         # Arrange - Ensure no loop initially
         interceptor._loop = None
 
@@ -394,7 +394,7 @@ class TestEventLoopManagement:
 
     @patch("bot.action_interface.recording.human_interceptor.asyncio.get_event_loop")
     def test_get_event_loop_handles_runtime_error(self, mock_get_loop, interceptor):
-        """Test that _get_event_loop creates new loop on RuntimeError."""
+        """Test that _get_event_loop returns None when no thread loop exists."""
         # Arrange
         mock_get_loop.side_effect = RuntimeError("No event loop")
 
@@ -402,8 +402,8 @@ class TestEventLoopManagement:
         loop = interceptor._get_event_loop()
 
         # Assert
-        assert loop is not None
-        assert interceptor._loop is loop
+        assert loop is None
+        assert interceptor._loop is None
 
 
 class TestScheduleRecording:

@@ -9,13 +9,18 @@ Handles:
 - Connection lifecycle management
 """
 
-import asyncio
 import logging
 import tkinter as tk
 from collections.abc import Callable
 
 from browser.bridge import BridgeStatus
-from ui.browser_connection_dialog import BrowserConnectionDialog
+
+# BrowserConnectionDialog has been archived - import will fail if used
+# This controller is kept for backward compatibility but show_browser_connection_dialog() is disabled
+try:
+    from ui._archived.browser_connection_dialog import BrowserConnectionDialog
+except ImportError:
+    BrowserConnectionDialog = None  # type: ignore[misc, assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +72,27 @@ class BrowserBridgeController:
     # ========================================================================
 
     def show_browser_connection_dialog(self):
-        """Show browser connection wizard (Phase 8.5)"""
+        """Show browser connection wizard (Legacy - Phase 8.5).
+
+        NOTE: BrowserConnectionDialog has been archived. This method now
+        logs a warning and returns without showing a dialog.
+        Use CDP bridge connection methods instead.
+        """
+        if BrowserConnectionDialog is None:
+            logger.warning(
+                "BrowserConnectionDialog has been archived. "
+                "Use connect_browser_bridge() for CDP connection."
+            )
+            self.log("Browser dialog unavailable - use CDP bridge instead")
+            return
+
         try:
             # AUDIT FIX: Pass required browser_executor parameter
             # Create dialog with callbacks
             dialog = BrowserConnectionDialog(
                 parent=self.root,
                 browser_executor=self.parent.browser_executor,
+                async_manager=getattr(self.parent, "async_manager", None),
                 on_connected=self.on_browser_connected,
                 on_failed=self.on_browser_connection_failed,
             )
@@ -130,13 +149,17 @@ class BrowserBridgeController:
         try:
             self.log("Disconnecting browser...")
 
-            # Run async disconnect in background thread
+            async_manager = getattr(self.parent, "async_manager", None)
+            if async_manager is None:
+                raise RuntimeError("AsyncLoopManager not available for browser disconnect")
+
+            # Run async stop in background thread (uses dedicated AsyncLoopManager loop)
             def run_disconnect():
                 try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(self.parent.browser_executor.disconnect())
-                    loop.close()
+                    future = async_manager.run_coroutine(
+                        self.parent.browser_executor.stop_browser()
+                    )
+                    future.result(timeout=15)
 
                     # Update UI in main thread
                     self.root.after(0, self.on_browser_disconnected)

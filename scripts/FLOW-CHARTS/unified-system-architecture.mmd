@@ -1,0 +1,100 @@
+%% VECTRA-PLAYER Unified System Architecture & Workflow
+%% Master diagram for Player Piano bot system
+%% Created: 2025-12-25
+%% Import into draw.io: Arrange > Insert > Advanced > Mermaid
+
+flowchart TD
+    START([🎬 Start]) --> RECORD_STAGE
+
+    %% ========== RECORDING STAGE ==========
+    subgraph RECORD_STAGE["📹 STAGE 1: RECORD HUMAN GAMEPLAY"]
+        direction TB
+        R_IN[Human plays in browser] --> R_INTERCEPT[HumanActionInterceptor]
+        R_INTERCEPT --> R_CONTEXT[Capture GameContext]
+        R_CONTEXT --> R_LATENCY[Track Latency Chain]
+        R_LATENCY --> R_STORE[(EventStore / Parquet)]
+    end
+
+    RECORD_STAGE --> TRAIN_STAGE
+
+    %% ========== TRAINING STAGE ==========
+    subgraph TRAIN_STAGE["🎯 STAGE 2: TRAIN RL MODEL"]
+        direction TB
+        T_DATA[(Recorded Games)] --> T_GYM[Gymnasium Environment]
+        T_GYM --> T_OBS[Observation Space]
+        T_OBS --> T_AGENT[RL Agent / PPO]
+        T_AGENT -->|action| T_SIM[SimulatedExecutor]
+        T_SIM --> T_REWARD[Reward Calculator]
+        T_REWARD -->|reward + next_state| T_GYM
+        T_AGENT --> T_WEIGHTS[(Model Weights)]
+
+        T_SIDEBET[SidebetPredictor] -.->|features| T_OBS
+    end
+
+    TRAIN_STAGE --> VALIDATE_STAGE
+
+    %% ========== VALIDATION STAGE ==========
+    subgraph VALIDATE_STAGE["✅ STAGE 3: VALIDATE MODEL"]
+        direction TB
+        V_DATA[(Recorded Games)] --> V_REPLAY[Replay Controller]
+        V_MODEL[(Trained Model)] --> V_PREDICT[Predict Actions]
+        V_REPLAY --> V_STATE[StateTracker]
+        V_STATE --> V_PREDICT
+        V_PREDICT --> V_EXEC[TkinterExecutor]
+        V_EXEC --> V_UI[Animate in VECTRA UI]
+        V_UI --> V_METRICS[Collect Metrics]
+    end
+
+    VALIDATE_STAGE --> DECISION
+
+    %% ========== DECISION GATE ==========
+    DECISION{{"🤔 Model meets criteria?<br/>• Win rate > 60%<br/>• Rug avoidance > 90%<br/>• ROI positive"}}
+
+    DECISION -->|"❌ NO"| DIAGNOSE_STAGE
+
+    %% ========== DIAGNOSE STAGE ==========
+    subgraph DIAGNOSE_STAGE["🔍 DIAGNOSE & ITERATE"]
+        direction TB
+        D_ANALYZE[Analyze Failure Patterns] --> D_CHOICE
+        D_CHOICE{Root Cause?}
+        D_CHOICE -->|Insufficient data| D_MORE_DATA[Need more recordings]
+        D_CHOICE -->|Reward hacking| D_REWARD[Tune reward function]
+        D_CHOICE -->|Wrong architecture| D_ARCH[Revise model architecture]
+    end
+
+    D_MORE_DATA --> RECORD_STAGE
+    D_REWARD --> TRAIN_STAGE
+    D_ARCH --> TRAIN_STAGE
+
+    DECISION -->|"✅ YES"| DEPLOY_STAGE
+
+    %% ========== DEPLOY STAGE ==========
+    subgraph DEPLOY_STAGE["🚀 STAGE 4: DEPLOY LIVE"]
+        direction TB
+        L_WS[WebSocket Feed] --> L_STATE[LiveStateProvider]
+        L_MODEL[(Trained Model)] --> L_PREDICT[Predict Actions]
+        L_STATE --> L_PREDICT
+        L_PREDICT --> L_EXEC[PuppeteerExecutor]
+        L_EXEC --> L_BROWSER[Browser Automation]
+        L_BROWSER -.->|confirmation events| L_STATE
+        L_CONFIRM[ConfirmationMonitor] --> L_LATENCY[Track Execution Latency]
+    end
+
+    DEPLOY_STAGE --> MONITOR
+
+    %% ========== MONITORING LOOP ==========
+    MONITOR[📊 Monitor Live Performance]
+    MONITOR --> LIVE_DECISION
+
+    LIVE_DECISION{{"Live metrics healthy?"}}
+    LIVE_DECISION -->|"✅ Stable"| MONITOR
+    LIVE_DECISION -->|"❌ Degradation"| RECORD_STAGE
+
+    %% ========== STYLING ==========
+    classDef stageBox fill:#1a1a2e,stroke:#4a4a6a,stroke-width:2px,color:#fff
+    classDef decision fill:#2d2d44,stroke:#ffd700,stroke-width:2px,color:#fff
+    classDef storage fill:#0d3b66,stroke:#4a90d9,stroke-width:2px,color:#fff
+
+    class RECORD_STAGE,TRAIN_STAGE,VALIDATE_STAGE,DEPLOY_STAGE,DIAGNOSE_STAGE stageBox
+    class DECISION,LIVE_DECISION,D_CHOICE decision
+    class R_STORE,T_DATA,T_WEIGHTS,V_DATA,V_MODEL,L_MODEL storage

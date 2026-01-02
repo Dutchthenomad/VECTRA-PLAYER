@@ -2,14 +2,20 @@
 
 ## Overview
 
-Phase 12D consolidates 6 legacy recorders into a single EventStoreService. This guide documents the migration path.
+Phase 12D consolidated 6 legacy recorders into a single EventStoreService. **This migration is COMPLETE as of December 2025.**
 
-## Migration Matrix
+## Migration Status: COMPLETE
 
-| Legacy Recorder | Replacement | Data Access |
-|-----------------|-------------|-------------|
-| GameStateRecorder | EventStore.GAME_TICK | `doc_type='game_tick'` |
-| PlayerSessionRecorder | EventStore.PLAYER_UPDATE | `doc_type='server_state'` |
+All legacy recorders have been removed. The EventStore is now the sole data persistence layer.
+
+| Legacy Recorder | Status | Replacement |
+|-----------------|--------|-------------|
+| RecorderSink | **REMOVED** | EventStore.GAME_TICK |
+| DemoRecorder | **REMOVED** | EventStore.PLAYER_ACTION |
+| RawCaptureRecorder | **REMOVED** | EventStore.WS_EVENT |
+| UnifiedRecorder | **REMOVED** | EventStore |
+| GameStateRecorder | **REMOVED** | EventStore.GAME_TICK |
+| PlayerSessionRecorder | **REMOVED** | EventStore.SERVER_STATE |
 
 ## Querying Data
 
@@ -39,30 +45,24 @@ python src/scripts/query_session.py --recent 20
 python src/scripts/export_jsonl.py --output ./export/
 ```
 
-## Deprecation Flags
+## Timeline (Historical)
 
-Control legacy recorders via environment variables:
+1. **Phase 12A-12C:** EventStore implementation and validation
+2. **Phase 12D:** Dual-write mode, legacy deprecation flags added
+3. **Phase 13 (COMPLETE):** Legacy recorder code removed
 
-```bash
-export LEGACY_RECORDER_SINK=false
-export LEGACY_DEMO_RECORDER=false
-export LEGACY_RAW_CAPTURE=false
-export LEGACY_UNIFIED_RECORDER=false
-export LEGACY_GAME_STATE_RECORDER=false
-export LEGACY_PLAYER_SESSION_RECORDER=false
+## Data Directory
+
+All data now lives in the canonical location:
+
 ```
-
-Default: All `true` (backwards compatible)
-
-## Timeline
-
-1. **Phase 12D (Current):** Dual-write mode - both systems active
-2. **Phase 12E:** Legacy recorders disabled by default
-3. **Phase 13:** Legacy recorder code removed
-
-## Rollback
-
-Re-enable legacy recorders if needed:
-```bash
-export LEGACY_RECORDER_SINK=true
+~/rugs_data/
+├── events_parquet/          # Canonical truth store
+│   ├── doc_type=ws_event/
+│   ├── doc_type=game_tick/
+│   ├── doc_type=player_action/
+│   └── doc_type=server_state/
+├── exports/                 # Optional JSONL exports
+└── manifests/
+    └── schema_version.json
 ```

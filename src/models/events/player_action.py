@@ -28,16 +28,26 @@ class ActionType(str, Enum):
 
 
 class GamePhase(str, Enum):
-    """Game phase at the time of action."""
+    """Game phase at the time of action.
+
+    PRESALE phase occurs during the countdown before ACTIVE trading begins.
+    Source: rugs-expert agent analysis of WebSocket protocol.
+    """
 
     COOLDOWN = "COOLDOWN"
+    PRESALE = "PRESALE"  # Pre-round countdown phase
     ACTIVE = "ACTIVE"
     RUGGED = "RUGGED"
 
 
 class GameContext(BaseModel):
-    """Snapshot of game context when the action occurred."""
+    """Snapshot of game context when the action occurred.
 
+    Includes rugpool fields for instarug risk prediction and session
+    statistics for RL observation space enhancement.
+    """
+
+    # Core game state
     game_id: str
     tick: int
     price: Decimal
@@ -45,9 +55,25 @@ class GameContext(BaseModel):
     is_pre_round: bool
     connected_players: int
 
-    @field_validator("price", mode="before")
+    # Rugpool fields for instarug risk prediction (from gameStateUpdate)
+    rugpool_amount: Decimal | None = None
+    rugpool_threshold: Decimal | None = None
+    rugpool_ratio: Decimal | None = None
+
+    # Session statistics for RL training context (from gameStateUpdate)
+    average_multiplier: Decimal | None = None
+    count_2x: int | None = None
+    count_10x: int | None = None
+    count_50x: int | None = None
+    count_100x: int | None = None
+    highest_today: Decimal | None = None
+
+    @field_validator("price", "rugpool_amount", "rugpool_threshold", "rugpool_ratio",
+                     "average_multiplier", "highest_today", mode="before")
     @classmethod
-    def _coerce_price(cls, v):
+    def _coerce_decimal(cls, v):
+        if v is None:
+            return None
         if isinstance(v, float):
             return Decimal(str(v))
         return v

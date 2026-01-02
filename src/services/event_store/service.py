@@ -103,6 +103,10 @@ class EventStoreService:
         self._event_bus.subscribe(Events.TRADE_SIDEBET, self._on_trade_sidebet, weak=False)
         self._event_bus.subscribe(Events.TRADE_CONFIRMED, self._on_trade_confirmed, weak=False)
 
+        # Subscribe to button events (Phase B: RL training data)
+        self._event_bus.subscribe(Events.BUTTON_PRESS, self._on_button_press, weak=False)
+        logger.info("EventStoreService subscribed to BUTTON_PRESS for RL training")
+
         self._started = True
         logger.info("EventStoreService started")
 
@@ -119,6 +123,7 @@ class EventStoreService:
         self._event_bus.unsubscribe(Events.TRADE_SELL, self._on_trade_sell)
         self._event_bus.unsubscribe(Events.TRADE_SIDEBET, self._on_trade_sidebet)
         self._event_bus.unsubscribe(Events.TRADE_CONFIRMED, self._on_trade_confirmed)
+        self._event_bus.unsubscribe(Events.BUTTON_PRESS, self._on_button_press)
 
         # Flush and close writer
         self._writer.close()
@@ -206,9 +211,9 @@ class EventStoreService:
                 logger.warning("WS_RAW_EVENT: Missing event name")
                 return
 
-            event_data = data.get("data", {})
+            event_data = data.get("data") or {}  # Handle None value explicitly
             source_str = data.get("source", "public_ws")
-            game_id = data.get("game_id") or event_data.get("gameId")
+            game_id = data.get("game_id") or (event_data.get("gameId") if isinstance(event_data, dict) else None)
 
             source = EventSource.CDP if source_str == "cdp" else EventSource.PUBLIC_WS
 
@@ -350,6 +355,46 @@ class EventStoreService:
 
         except Exception as e:
             logger.error(f"Error handling trade action {action_type}: {e}")
+
+    def _on_button_press(self, wrapped: dict[str, Any]) -> None:
+        """
+        Handle ButtonEvent for RL training data (Phase B).
+
+        ButtonEvents capture human button presses with full game context
+        for training reinforcement learning models.
+        """
+        try:
+            # EventBus wraps data: {"name": event.value, "data": actual_data}
+            data = wrapped.get("data", wrapped)
+
+            # Extract button event fields
+            button_id = data.get("button_id", "unknown")
+            button_category = data.get("button_category", "unknown")
+            game_id = data.get("game_id")
+            tick = data.get("tick")
+            price = data.get("price")
+            sequence_id = data.get("sequence_id")
+            sequence_position = data.get("sequence_position")
+
+            envelope = EventEnvelope.from_button_event(
+                button_id=button_id,
+                button_category=button_category,
+                data=data,
+                source=EventSource.UI,
+                session_id=self._session_id,
+                seq=self._next_seq(),
+                game_id=game_id,
+                tick=tick,
+                price=price,
+                sequence_id=sequence_id,
+                sequence_position=sequence_position,
+            )
+
+            self._writer.write(envelope)
+            logger.debug(f"ButtonEvent stored: {button_id} tick={tick} seq={sequence_id[:8] if sequence_id else 'N/A'}")
+
+        except Exception as e:
+            logger.error(f"Error handling BUTTON_PRESS: {e}")
 
     def __enter__(self) -> "EventStoreService":
         """Context manager entry"""

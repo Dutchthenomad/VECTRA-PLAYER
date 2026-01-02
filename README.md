@@ -7,15 +7,15 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Unified Data Architecture for Rugs.fun** - Game replay and live trading platform with DuckDB/Parquet storage and LanceDB vector search.
+**Unified Data Architecture for Rugs.fun** - Game replay and live trading platform with DuckDB/Parquet storage plus VectorDB (ChromaDB) semantic search via an external RAG project.
 
 ---
 
 ## 🚀 Features
 
-- **📊 Unified Data Storage**: DuckDB/Parquet as canonical truth + LanceDB for vectors
+- **📊 Unified Data Storage**: DuckDB/Parquet as canonical truth + derived VectorDB (ChromaDB) index
 - **🎮 Server-Authoritative State**: Trust server in live mode, eliminate local calculations
-- **🤖 RAG Integration**: LanceDB powers `rugs-expert` agent and Protocol Explorer UI
+- **🤖 RAG Integration**: External knowledge RAG agent uses VectorDB (ChromaDB) and works in concert with this repo
 - **🔍 WebSocket Event Capture**: Real-time event recording and replay
 - **📈 Live Trading**: Monitor and interact with live game sessions
 - **🧪 Testing & Quality**: Comprehensive test suite with 60%+ coverage
@@ -86,8 +86,7 @@ pytest tests/test_event_store.py -v
 │   ├── doc_type=ws_event/
 │   ├── doc_type=game_tick/
 │   └── doc_type=player_action/
-├── vectors/                          # Derived LanceDB index
-│   └── events.lance/
+├── vectors/                          # Optional derived vector artifacts (implementation-specific)
 ├── exports/                          # Optional JSONL exports
 └── manifests/
     └── schema_version.json
@@ -212,7 +211,7 @@ Please report security vulnerabilities to [@Dutchthenomad](https://github.com/Du
 ### Completed
 - ✅ Core event capture and replay
 - ✅ DuckDB/Parquet storage design
-- ✅ LanceDB vector integration
+- ✅ VectorDB (ChromaDB) integration (external RAG project)
 - ✅ Comprehensive CI/CD pipeline
 - ✅ Automated code review system
 
@@ -260,7 +259,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with [DuckDB](https://duckdb.org/) and [LanceDB](https://lancedb.com/)
+- Built with [DuckDB](https://duckdb.org/) and [ChromaDB](https://www.trychroma.com/)
 - CI/CD powered by [GitHub Actions](https://github.com/features/actions)
 - Code quality by [Ruff](https://github.com/astral-sh/ruff)
 - AI assistance by [Claude](https://claude.ai/) and [GitHub Copilot](https://github.com/features/copilot)

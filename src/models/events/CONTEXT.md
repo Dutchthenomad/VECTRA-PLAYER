@@ -9,13 +9,13 @@ Pydantic schemas for all WebSocket events from rugs.fun backend, enabling type-s
 | `../../services/event_store/schema.py` | EventEnvelope wraps these event models |
 | `../../sources/websocket_feed.py` | Receives raw JSON, parses into these models |
 | `../../sources/socketio_parser.py` | Extracts event payloads for parsing |
-| `../../services/rag_ingester.py` | Indexes validated events to LanceDB |
+| `../../services/rag_ingester.py` | Prepares validated events for external VectorDB (ChromaDB) ingestion |
 | `../../../docs/specs/WEBSOCKET_EVENTS_SPEC.md` | Source of truth for field definitions |
 
 ## Data Flow
 ```
 [WebSocketFeed/CDP] → raw JSON → [Pydantic validation] → EventEnvelope → [Parquet writer]
-                                                                       → [LanceDB indexer]
+                                                                       → [VectorDB (ChromaDB) indexer]
 ```
 
 ## Key Decisions
@@ -42,5 +42,5 @@ Pydantic schemas for all WebSocket events from rugs.fun backend, enabling type-s
 ## Status
 - [x] All 8 event schemas defined
 - [x] All tests written and passing
-- [ ] Indexed to LanceDB
+- [ ] Indexed to VectorDB (ChromaDB)
 - [ ] Relationships verified

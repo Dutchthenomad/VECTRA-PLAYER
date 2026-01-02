@@ -374,3 +374,388 @@ class TestCleanup:
 
         # After exiting context, stop should have been called
         # Verify that __exit__ was invoked without exceptions
+
+
+class TestRugpoolCapture:
+    """Tests for rugpool field capture from gameStateUpdate events."""
+
+    def test_rugpool_fields_captured(self, event_bus, provider):
+        """Provider should capture rugpool fields from WS_RAW_EVENT."""
+        # Simulate gameStateUpdate with rugpool
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "gameId": "game-123",
+                    "rugpool": {
+                        "rugpoolAmount": 0.5,
+                        "threshold": 1.0,
+                    },
+                },
+            },
+        )
+
+        # Wait for processing
+        assert wait_for_condition(lambda: provider.rugpool_amount == Decimal("0.5"))
+        assert provider.rugpool_threshold == Decimal("1.0")
+        assert provider.rugpool_ratio == Decimal("0.5")  # Computed: amount/threshold
+
+    def test_rugpool_ratio_computed(self, event_bus, provider):
+        """Rugpool ratio should be computed correctly."""
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "rugpool": {
+                        "rugpoolAmount": 0.75,
+                        "threshold": 1.5,
+                    },
+                },
+            },
+        )
+
+        assert wait_for_condition(lambda: provider.rugpool_amount == Decimal("0.75"))
+        assert provider.rugpool_ratio == Decimal("0.5")  # 0.75 / 1.5 = 0.5
+
+    def test_rugpool_snapshot_includes_fields(self, event_bus, provider):
+        """get_snapshot() should include rugpool fields."""
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "rugpool": {
+                        "rugpoolAmount": 0.8,
+                        "threshold": 1.0,
+                    },
+                },
+            },
+        )
+
+        assert wait_for_condition(lambda: provider.rugpool_amount == Decimal("0.8"))
+        snapshot = provider.get_snapshot()
+        assert snapshot["rugpool_amount"] == Decimal("0.8")
+        assert snapshot["rugpool_threshold"] == Decimal("1.0")
+        assert snapshot["rugpool_ratio"] == Decimal("0.8")
+
+
+class TestSessionStatsCapture:
+    """Tests for session statistics capture from gameStateUpdate events."""
+
+    def test_session_stats_captured(self, event_bus, provider):
+        """Provider should capture session stats from WS_RAW_EVENT.
+
+        NOTE: rugs.fun gameStateUpdate has session stats at top level, not nested.
+        """
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    # Session stats are at top level in real rugs.fun events
+                    "averageMultiplier": 15.5,
+                    "count2x": 100,
+                    "count10x": 45,
+                    "count50x": 12,
+                    "count100x": 3,
+                    "highestToday": 250.0,
+                },
+            },
+        )
+
+        # Wait for processing
+        assert wait_for_condition(
+            lambda: provider.average_multiplier == Decimal("15.5")
+        )
+        assert provider.count_2x == 100
+        assert provider.count_10x == 45
+        assert provider.count_50x == 12
+        assert provider.count_100x == 3
+        assert provider.highest_today == Decimal("250.0")
+
+    def test_session_stats_snapshot(self, event_bus, provider):
+        """get_snapshot() should include session stats."""
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    # Session stats are at top level in real rugs.fun events
+                    "averageMultiplier": 20.0,
+                    "count2x": 150,
+                    "count10x": 60,
+                    "count50x": 15,
+                    "count100x": 5,
+                    "highestToday": 500.0,
+                },
+            },
+        )
+
+        assert wait_for_condition(lambda: provider.count_2x == 150)
+        snapshot = provider.get_snapshot()
+        assert snapshot["average_multiplier"] == Decimal("20.0")
+        assert snapshot["count_2x"] == 150
+        assert snapshot["highest_today"] == Decimal("500.0")
+
+
+class TestTickCountExtraction:
+    """Tests for tickCount extraction from gameStateUpdate events.
+
+    NOTE: rugs.fun uses 'tickCount' not 'tick' in gameStateUpdate events.
+    """
+
+    def test_tick_count_extracted_from_game_state_update(self, event_bus, provider):
+        """Provider should extract tickCount from gameStateUpdate WS_RAW_EVENT."""
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 42,
+                    "price": 5.5,
+                    "gameId": "test-game-123",
+                },
+            },
+        )
+
+        # Wait for processing
+        assert wait_for_condition(lambda: provider.current_tick == 42)
+        assert provider.current_multiplier == Decimal("5.5")
+        assert provider.game_id == "test-game-123"
+
+    def test_tick_count_snapshot_includes_field(self, event_bus, provider):
+        """get_snapshot() should include current_tick from tickCount."""
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 100,
+                    "price": 10.0,
+                },
+            },
+        )
+
+        assert wait_for_condition(lambda: provider.current_tick == 100)
+        snapshot = provider.get_snapshot()
+        assert snapshot["current_tick"] == 100
+        assert snapshot["current_multiplier"] == Decimal("10.0")
+
+
+class TestTimeInPositionTracking:
+    """Tests for time_in_position tracking for RL training.
+
+    Based on rugs-expert RAG validation:
+    - Position entry detected via positionQty 0 → non-zero
+    - entry_tick stored when position opens
+    - time_in_position = current_tick - entry_tick
+    - Reset when game_id changes
+    """
+
+    def test_entry_tick_tracked_on_position_open(self, event_bus, provider):
+        """entry_tick should be set when position opens (0 → non-zero)."""
+        # First set the current tick
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 50,
+                    "price": 2.0,
+                    "gameId": "game-001",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 50)
+
+        # Now open a position
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "cash": "0.5",
+                "positionQty": "10",
+                "avgCost": "2.0",
+                "gameId": "game-001",
+            },
+        )
+
+        assert wait_for_condition(lambda: provider.position_qty == Decimal("10"))
+        assert provider.entry_tick == 50
+        assert provider.has_position is True
+
+    def test_time_in_position_calculated(self, event_bus, provider):
+        """time_in_position should be current_tick - entry_tick."""
+        # Set initial tick and open position
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 100,
+                    "price": 1.5,
+                    "gameId": "game-002",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 100)
+
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "positionQty": "5",
+                "avgCost": "1.5",
+                "gameId": "game-002",
+            },
+        )
+        assert wait_for_condition(lambda: provider.position_qty == Decimal("5"))
+        assert provider.entry_tick == 100
+        assert provider.time_in_position == 0  # Same tick
+
+        # Advance tick
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 150,
+                    "price": 2.0,
+                    "gameId": "game-002",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 150)
+        assert provider.time_in_position == 50  # 150 - 100
+
+    def test_entry_tick_resets_on_new_game(self, event_bus, provider):
+        """entry_tick should reset when game_id changes."""
+        # Open position in game 1
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 200,
+                    "price": 3.0,
+                    "gameId": "game-A",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 200)
+
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "positionQty": "10",
+                "avgCost": "3.0",
+                "gameId": "game-A",
+            },
+        )
+        assert wait_for_condition(lambda: provider.entry_tick == 200)
+
+        # New game starts (game_id changes)
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 5,  # Reset to low tick
+                    "price": 1.0,
+                    "gameId": "game-B",  # New game
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.game_id == "game-B")
+        # entry_tick should be None since no position in new game yet
+        assert provider.entry_tick is None
+        assert provider.time_in_position == 0
+
+    def test_entry_tick_clears_when_position_closed(self, event_bus, provider):
+        """entry_tick should clear when position is fully closed."""
+        # Open position
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 100,
+                    "price": 2.0,
+                    "gameId": "game-X",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 100)
+
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "positionQty": "10",
+                "avgCost": "2.0",
+                "gameId": "game-X",
+            },
+        )
+        assert wait_for_condition(lambda: provider.entry_tick == 100)
+
+        # Close position (qty → 0)
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "positionQty": "0",
+                "avgCost": "0",
+                "gameId": "game-X",
+            },
+        )
+        assert wait_for_condition(lambda: provider.position_qty == Decimal("0"))
+        assert provider.entry_tick is None
+        assert provider.has_position is False
+        assert provider.time_in_position == 0
+
+    def test_snapshot_includes_position_timing(self, event_bus, provider):
+        """get_snapshot() should include entry_tick and time_in_position."""
+        # Set up position with timing
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 50,
+                    "price": 1.5,
+                    "gameId": "game-snapshot",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 50)
+
+        event_bus.publish(
+            Events.PLAYER_UPDATE,
+            {
+                "positionQty": "5",
+                "avgCost": "1.5",
+                "gameId": "game-snapshot",
+            },
+        )
+        assert wait_for_condition(lambda: provider.position_qty == Decimal("5"))
+
+        # Advance tick
+        event_bus.publish(
+            Events.WS_RAW_EVENT,
+            {
+                "event": "gameStateUpdate",
+                "data": {
+                    "tickCount": 75,
+                    "price": 2.0,
+                    "gameId": "game-snapshot",
+                },
+            },
+        )
+        assert wait_for_condition(lambda: provider.current_tick == 75)
+
+        snapshot = provider.get_snapshot()
+        assert snapshot["entry_tick"] == 50
+        assert snapshot["time_in_position"] == 25  # 75 - 50
+
+    def test_time_in_position_zero_without_position(self, event_bus, provider):
+        """time_in_position should be 0 when no position."""
+        assert provider.time_in_position == 0
+        assert provider.entry_tick is None
