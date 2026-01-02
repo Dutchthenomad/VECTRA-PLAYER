@@ -64,15 +64,15 @@ class TestCDPEventFlow:
         event_data = received[0]["data"]["data"]
         assert event_data["event"] == "usernameStatus"
 
-    def test_fallback_on_cdp_unavailable(self):
-        """Falls back to public feed when CDP unavailable."""
+    def test_public_ws_on_cdp_unavailable(self):
+        """Uses public WebSocket when CDP unavailable."""
         manager = EventSourceManager()
 
         # CDP unavailable
         manager.set_cdp_available(False)
         manager.switch_to_best_source()
 
-        assert manager.active_source == EventSource.FALLBACK
+        assert manager.active_source == EventSource.PUBLIC_WS
 
     def test_rag_captures_all_events(self, tmp_path):
         """RAG ingester captures all events."""

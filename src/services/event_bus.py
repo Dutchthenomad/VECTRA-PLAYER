@@ -48,6 +48,9 @@ class Events(Enum):
     BOT_DECISION = "bot.decision"
     BOT_ACTION = "bot.action"
 
+    # Button Events (for human gameplay recording)
+    BUTTON_PRESS = "button.press"  # Human button press with full game context
+
     # File Events
     FILE_LOADED = "file.loaded"
     FILE_SAVED = "file.saved"

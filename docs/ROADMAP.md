@@ -1,9 +1,11 @@
 # Roadmap
 
-Last updated: 2025-12-25
+Last updated: 2025-12-26
 
-This roadmap unifies remaining goals and cleanup work. It is the canonical
-reference for planning and execution.
+This roadmap covers high-level phases. For detailed implementation priorities
+including P0/P1 bugs, QC findings, and Bot Integration pipeline, see:
+
+**Canonical Reference:** `docs/plans/2025-12-26-production-development-roadmap.md`
 
 ## Phase 1: Remaining P0 Crash Fixes (Immediate) ✅ COMPLETE
 
@@ -165,11 +167,29 @@ Acceptance checks:
 
 ---
 
+## Bot Integration Pipeline (NEW)
+
+**Design Docs:** `scripts/FLOW-CHARTS/`
+
+| Phase | Scope |
+|-------|-------|
+| Phase 1 | ButtonEvent Logging (HumanActionInterceptor) |
+| Phase 2 | EventStore Integration (button_event doc_type) |
+| Phase 3 | Training Data Converter (sequences → Multi-Discrete) |
+| Phase 4 | Gymnasium Environment Update (45-dim obs space) |
+| Phase 5 | Model Training & Validation Pipeline |
+
+**Full Details:** `docs/plans/2025-12-26-production-development-roadmap.md`
+
+---
+
 ## Design Documents Reference
 
 | Phase | Document |
 |-------|----------|
+| **Master Roadmap** | `docs/plans/2025-12-26-production-development-roadmap.md` |
 | Phase 6 | `docs/plans/2025-12-23-bot-action-interface-design.md` |
 | Phase 7-8 | `docs/plans/2025-12-24-shorting-integration-and-button-automation.md` |
+| Bot Integration | `scripts/FLOW-CHARTS/implementation-plan.md` |
 | rugs-expert | `claude-flow/knowledge/rugs-strategy/L2-protocol/confirmation-mapping.md` |
 | Schema v2.0 | `docs/plans/2025-12-23-expanded-event-schema-design.md` |

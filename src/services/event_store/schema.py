@@ -18,6 +18,7 @@ class DocType(str, Enum):
     WS_EVENT = "ws_event"  # Raw WebSocket events
     GAME_TICK = "game_tick"  # Price/tick stream
     PLAYER_ACTION = "player_action"  # Human/bot trading actions
+    BUTTON_EVENT = "button_event"  # Human button presses for RL training (Phase B)
     BBC_ROUND = "bbc_round"  # BBC sidegame rounds
     CANDLEFLIP_ROUND = "candleflip_round"  # Candleflip sidegame rounds
     SHORT_POSITION = "short_position"  # Short position snapshots
@@ -79,6 +80,12 @@ class EventEnvelope:
     action_type: str | None = None  # For player_action
     cash: Decimal | None = None  # For server_state
     position_qty: Decimal | None = None  # For server_state
+
+    # Button event fields (Phase B - RL training)
+    button_id: str | None = None  # For button_event (BUY, SELL, INC_01, etc.)
+    button_category: str | None = None  # For button_event (action, bet_adjust, percentage)
+    sequence_id: str | None = None  # For button_event (action sequence grouping)
+    sequence_position: int | None = None  # For button_event (position in sequence)
 
     @classmethod
     def from_ws_event(
@@ -209,6 +216,60 @@ class EventEnvelope:
             event_name=event_type,
         )
 
+    @classmethod
+    def from_button_event(
+        cls,
+        button_id: str,
+        button_category: str,
+        data: dict[str, Any],
+        source: EventSource,
+        session_id: str,
+        seq: int,
+        game_id: str | None = None,
+        player_id: str | None = None,
+        username: str | None = None,
+        tick: int | None = None,
+        price: Decimal | None = None,
+        sequence_id: str | None = None,
+        sequence_position: int | None = None,
+    ) -> "EventEnvelope":
+        """
+        Create envelope from button event (Phase B - RL training).
+
+        Args:
+            button_id: Button identifier (BUY, SELL, INC_01, etc.)
+            button_category: Button category (action, bet_adjust, percentage)
+            data: Full ButtonEvent data as dict
+            source: Event source (typically UI)
+            session_id: Recording session UUID
+            seq: Sequence number
+            game_id: Game identifier
+            player_id: Player DID
+            username: Player display name
+            tick: Game tick when button was pressed
+            price: Price when button was pressed
+            sequence_id: ActionSequence grouping ID
+            sequence_position: Position within sequence
+        """
+        return cls(
+            ts=datetime.utcnow(),
+            source=source,
+            doc_type=DocType.BUTTON_EVENT,
+            session_id=session_id,
+            seq=seq,
+            direction=Direction.SENT,
+            raw_json=json.dumps(data),
+            game_id=game_id,
+            player_id=player_id,
+            username=username,
+            tick=tick,
+            price=price,
+            button_id=button_id,
+            button_category=button_category,
+            sequence_id=sequence_id,
+            sequence_position=sequence_position,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for Parquet serialization"""
         return {
@@ -228,6 +289,11 @@ class EventEnvelope:
             "action_type": self.action_type,
             "cash": str(self.cash) if self.cash is not None else None,
             "position_qty": str(self.position_qty) if self.position_qty is not None else None,
+            # Button event fields (Phase B)
+            "button_id": self.button_id,
+            "button_category": self.button_category,
+            "sequence_id": self.sequence_id,
+            "sequence_position": self.sequence_position,
         }
 
 

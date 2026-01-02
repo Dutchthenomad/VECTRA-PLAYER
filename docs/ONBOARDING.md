@@ -207,7 +207,7 @@ Welcome to VECTRA-PLAYER! This checklist will help you get set up and productive
 ## 🎓 Advanced Topics
 
 ### Vector Indexing
-- [ ] **Learn LanceDB basics**
+- [ ] **Learn VectorDB (ChromaDB) basics**
   - Read docs/specs/WEBSOCKET_EVENTS_SPEC.md
   - Understand vector embedding process
 

@@ -146,6 +146,21 @@ def make_event(
             raw_json=json.dumps({"seq": seq, "doc_type": doc_type.value}),
             game_id=game_id,
         )
+    elif doc_type == DocType.BUTTON_EVENT:
+        # Phase B: Button event for RL training
+        return EventEnvelope.from_button_event(
+            button_id="BUY",
+            button_category="action",
+            data={"button_id": "BUY", "tick": seq, "price": 1.5},
+            source=EventSource.UI,
+            session_id=session_id,
+            seq=seq,
+            game_id=game_id,
+            tick=seq,
+            price=Decimal("1.5"),
+            sequence_id=f"seq-{seq}",
+            sequence_position=0,
+        )
     else:  # SYSTEM_EVENT
         return EventEnvelope.from_system_event(
             event_type="test",

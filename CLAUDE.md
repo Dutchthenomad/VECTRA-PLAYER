@@ -14,7 +14,7 @@ VECTRA-PLAYER is a clean-slate refactor of REPLAYER focused on:
 
 **Core Principle:** Parquet is canonical truth; vector indexes are derived and rebuildable.
 
-**December 20, 2025:** Changed vector store from LanceDB to **ChromaDB** to reuse existing claude-flow infrastructure (~600 LOC). ChromaDB MCP server available for Claude Code integration.
+**December 20, 2025:** Standardized on **ChromaDB** (VectorDB) to reuse existing claude-flow infrastructure (~600 LOC). ChromaDB MCP server available for Claude Code integration.
 
 ---
 
@@ -184,7 +184,7 @@ These files are deprecated and being deleted:
 | **Schema v2.0.0 Design** | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
 | Migration Guide | `docs/MIGRATION_GUIDE.md` |
 | Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
-| Storage Migration Plan | `sandbox/duckdb_parquet_lancedb_migration_plan.md` |
+| Storage Migration Plan | `sandbox/duckdb_parquet_vectordb_migration_plan.md` |
 | Phase 12 Design | `sandbox/2025-12-15-phase-12-unified-data-architecture-design.md` |
 | WebSocket Events Spec | `docs/specs/WEBSOCKET_EVENTS_SPEC.md` |
 | Data Context | `~/rugs_data/CONTEXT.md` |

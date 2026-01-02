@@ -1,0 +1,38 @@
+%% VECTRA-PLAYER Simple Development Cycle
+%% Basic decision tree for the RL training loop
+%% Created: 2025-12-25
+
+flowchart TD
+    START([🎬 Start]) --> RECORD
+
+    RECORD[📹 Record Human Gameplay]
+    RECORD --> TRAIN
+
+    TRAIN[🎯 Train RL Model]
+    TRAIN --> VALIDATE
+
+    VALIDATE[✅ Validate on Recordings]
+    VALIDATE --> DECISION
+
+    DECISION{🤔 Does model<br/>need revision?}
+
+    DECISION -->|YES - Poor performance| DIAGNOSE
+    DIAGNOSE[🔍 Diagnose Issues]
+    DIAGNOSE --> CHOICE
+
+    CHOICE{What's wrong?}
+    CHOICE -->|Need more data| RECORD
+    CHOICE -->|Need reward tuning| TRAIN
+    CHOICE -->|Need architecture change| TRAIN
+
+    DECISION -->|NO - Meets criteria| DEPLOY
+
+    DEPLOY[🚀 Deploy to Live Gameplay]
+    DEPLOY --> MONITOR
+
+    MONITOR[📊 Monitor Live Performance]
+    MONITOR --> LIVE_DECISION
+
+    LIVE_DECISION{Live performance<br/>acceptable?}
+    LIVE_DECISION -->|YES| MONITOR
+    LIVE_DECISION -->|NO - Degradation| RECORD

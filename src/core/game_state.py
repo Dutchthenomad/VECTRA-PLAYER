@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from models.demo_action import StateSnapshot as DemoStateSnapshot
     from models.recording_models import LocalStateSnapshot, ServerState
+    from services.event_bus import EventBus
 
 from config import config
 
@@ -71,7 +72,9 @@ class GameState:
     and observer pattern for reactive updates
     """
 
-    def __init__(self, initial_balance: Decimal = Decimal("0.100")):
+    def __init__(
+        self, initial_balance: Decimal = Decimal("0.100"), event_bus: "EventBus | None" = None
+    ):
         # Core state
         self._state = self._build_initial_state(initial_balance)
 
@@ -101,6 +104,14 @@ class GameState:
 
         # State validation rules
         self._validators: list[Callable] = []
+
+        # Live mode: subscribe to WebSocket events for tick/price/phase updates
+        self._event_bus = event_bus
+        if event_bus is not None:
+            from services.event_bus import Events
+
+            event_bus.subscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event, weak=False)
+            logger.info("GameState subscribed to WS_RAW_EVENT for live mode sync")
 
         logger.info(f"GameState initialized with balance: {initial_balance}")
 
@@ -879,6 +890,71 @@ class GameState:
             return False
 
         return True
+
+    # ========== Live Mode Event Handlers ==========
+
+    def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
+        """
+        Handle WS_RAW_EVENT from EventBus in live mode.
+
+        Syncs tick/price/phase/game_active from gameStateUpdate events
+        so validators have correct live game state.
+
+        Event structure from CDPWebSocketInterceptor:
+        {
+            "event": "gameStateUpdate",
+            "data": {tickCount, multiplier, phase, ...},
+            "timestamp": "...",
+            "direction": "received"
+        }
+        """
+        try:
+            # CDPWebSocketInterceptor puts event name at TOP level
+            # (not wrapped inside "data")
+            event_name = wrapped.get("event")
+            if event_name != "gameStateUpdate":
+                return
+
+            # The actual game data is in wrapped["data"]
+            event_data = wrapped.get("data", {})
+            if not isinstance(event_data, dict):
+                return
+
+            with self._lock:
+                # Extract tick from tickCount (rugs.fun field name)
+                if "tickCount" in event_data:
+                    self._state["current_tick"] = int(event_data["tickCount"])
+
+                # Extract price/multiplier
+                if "multiplier" in event_data:
+                    self._state["current_price"] = Decimal(str(event_data["multiplier"]))
+                elif "price" in event_data:
+                    self._state["current_price"] = Decimal(str(event_data["price"]))
+
+                # Extract game ID
+                if "gameId" in event_data:
+                    self._state["game_id"] = event_data["gameId"]
+
+                # Extract phase and determine game_active
+                if "phase" in event_data:
+                    phase = event_data["phase"]
+                    self._state["current_phase"] = phase
+                    # Game is active if phase is ACTIVE (not PRESALE, RUG, END)
+                    # Note: PRESALE allows trading (checked separately in validators)
+                    self._state["game_active"] = phase == "ACTIVE"
+
+                # Extract rugged status
+                if "rugged" in event_data:
+                    self._state["rugged"] = bool(event_data["rugged"])
+                    self._state["rug_detected"] = bool(event_data["rugged"])
+
+                logger.debug(
+                    f"GameState synced: tick={self._state['current_tick']}, "
+                    f"phase={self._state['current_phase']}, active={self._state['game_active']}"
+                )
+
+        except Exception as e:
+            logger.error(f"Error handling WS_RAW_EVENT in GameState: {e}")
 
     # ========== State Reset ==========
 

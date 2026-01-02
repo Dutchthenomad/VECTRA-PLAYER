@@ -542,17 +542,61 @@ class BrowserBridge:
         This creates a new WebSocket connection that CDP can capture.
         The pre-existing WebSocket (created before CDP interception started)
         cannot be intercepted by CDP, so we force a reconnection.
+
+        NOTE: If Socket.IO isn't found, we continue CDP interception anyway.
+        The WebSocket may reconnect naturally (heartbeat timeout, page navigation)
+        and CDP will capture it when it does.
         """
         try:
             if not self.cdp_manager or not self.cdp_manager.page:
                 logger.warning("Cannot force reconnect - no page available")
                 return
 
-            # Socket.IO client typically available as window.socketService or window.socket
+            # Dynamic Socket.IO discovery - searches window properties
             reconnect_js = """
             () => {
-                // Try multiple common Socket.IO variable names
-                const socket = window.socketService || window.socket || window.io?.socket;
+                // Strategy 1: Try common Socket.IO variable names
+                let socket = window.socketService || window.socket || window.io?.socket;
+
+                // Strategy 2: Search window properties for Socket.IO-like objects
+                if (!socket) {
+                    const candidates = ['socket', 'Socket', 'io', 'socketio', 'socketIO',
+                                        'sio', 'ws', 'webSocket', 'connection', 'conn'];
+                    for (const name of candidates) {
+                        const obj = window[name];
+                        if (obj && typeof obj.disconnect === 'function' && typeof obj.connect === 'function') {
+                            socket = obj;
+                            console.log(`[CDP Reconnect] Found Socket.IO at window.${name}`);
+                            break;
+                        }
+                    }
+                }
+
+                // Strategy 3: Deep search - check nested properties
+                if (!socket) {
+                    for (const key of Object.keys(window)) {
+                        try {
+                            const obj = window[key];
+                            if (obj && typeof obj === 'object' && obj !== window) {
+                                // Check for Socket.IO manager pattern (socket inside an object)
+                                if (obj.socket && typeof obj.socket.disconnect === 'function') {
+                                    socket = obj.socket;
+                                    console.log(`[CDP Reconnect] Found Socket.IO at window.${key}.socket`);
+                                    break;
+                                }
+                                // Check direct Socket.IO client pattern
+                                if (typeof obj.disconnect === 'function' && typeof obj.connect === 'function' && obj.io) {
+                                    socket = obj;
+                                    console.log(`[CDP Reconnect] Found Socket.IO at window.${key}`);
+                                    break;
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore errors accessing properties
+                        }
+                    }
+                }
+
                 if (socket && typeof socket.disconnect === 'function') {
                     console.log('[CDP Reconnect] Forcing Socket.IO reconnection...');
                     socket.disconnect();
@@ -563,27 +607,31 @@ class BrowserBridge:
                             console.log('[CDP Reconnect] Socket.IO reconnected');
                         }
                     }, 500);
-                    return true;
+                    return { found: true, reconnected: true };
                 }
-                console.log('[CDP Reconnect] No Socket.IO instance found');
-                return false;
+
+                console.log('[CDP Reconnect] No Socket.IO instance found - CDP will wait for natural reconnection');
+                return { found: false, reconnected: false };
             }
             """
 
             result = await self.cdp_manager.page.evaluate(reconnect_js)
-            if result:
+            if result.get("reconnected"):
                 logger.info("Forced Socket.IO reconnection for CDP capture")
                 # Wait for the reconnection to complete
                 await asyncio.sleep(1.0)
             else:
-                logger.error(
-                    "Could not find Socket.IO instance for reconnection; stopping CDP interception"
+                # IMPORTANT: Don't stop CDP interception!
+                # The WebSocket may reconnect naturally (heartbeat timeout, page navigation)
+                # and CDP will capture Network.webSocketCreated when it does.
+                logger.warning(
+                    "Socket.IO instance not found for forced reconnection; "
+                    "CDP interception continues - waiting for natural WebSocket reconnection"
                 )
-                await self._stop_cdp_interception()
 
         except Exception as e:
-            logger.error(f"Failed to force Socket.IO reconnect: {e}")
-            await self._stop_cdp_interception()
+            # Don't stop CDP on error - just log it
+            logger.error(f"Failed to force Socket.IO reconnect: {e} - CDP interception continues")
 
     # ========================================================================
     # BUTTON CLICK IMPLEMENTATIONS

@@ -223,7 +223,7 @@ Configure in: Settings → Secrets and variables → Actions
 
 | Type | Description | Example |
 |------|-------------|---------|
-| `feat` | New feature | `feat: add LanceDB integration` |
+| `feat` | New feature | `feat: add ChromaDB integration` |
 | `fix` | Bug fix | `fix: resolve memory leak` |
 | `docs` | Documentation | `docs: update API reference` |
 | `style` | Formatting | `style: fix indentation` |
