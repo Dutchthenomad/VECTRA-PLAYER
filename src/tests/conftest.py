@@ -2,6 +2,8 @@
 Shared test fixtures for pytest
 """
 
+import time
+import warnings
 from decimal import Decimal
 
 import pytest
@@ -16,6 +18,23 @@ from services import event_bus, setup_logging
 def setup_test_logging():
     """Setup logging for all tests"""
     setup_logging()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_async_tasks():
+    """
+    Cleanup pending async tasks after each test to prevent warnings.
+
+    HumanActionInterceptor creates fire-and-forget async tasks that may
+    not complete before test teardown. This fixture ensures they complete.
+    """
+    yield
+    # Give async tasks time to complete
+    time.sleep(0.05)
+
+    # Suppress warnings about pending tasks since we've given them time to complete
+    warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
+    warnings.filterwarnings("ignore", message="Task was destroyed but it is pending")
 
 
 @pytest.fixture

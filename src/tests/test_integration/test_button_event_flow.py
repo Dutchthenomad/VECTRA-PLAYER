@@ -7,10 +7,9 @@ Phase B: Validates the complete pipeline:
 3. Events can be persisted via EventStore (BUTTON_EVENT doc_type)
 """
 
-import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -290,6 +289,8 @@ class TestHumanActionInterceptorButtonEvents:
 
     def test_interceptor_emits_button_event_on_buy(self):
         """HumanActionInterceptor emits BUTTON_PRESS on BUY click."""
+        import time
+
         from bot.action_interface.recording.human_interceptor import HumanActionInterceptor
 
         # Mock dependencies
@@ -313,18 +314,29 @@ class TestHumanActionInterceptorButtonEvents:
             event_bus=mock_event_bus,
         )
 
-        # Wrap a BUY handler
-        original_called = []
-        original_handler = lambda: original_called.append(True)
-        get_amount = lambda: Decimal("0.01")
+        try:
+            # Wrap a BUY handler
+            original_called = []
 
-        wrapped = interceptor.wrap_buy(original_handler, get_amount)
-        wrapped()
+            def original_handler():
+                original_called.append(True)
 
-        # Verify ButtonEvent was published
-        mock_event_bus.publish.assert_called_once()
-        call_args = mock_event_bus.publish.call_args
-        assert call_args[0][0] == Events.BUTTON_PRESS
+            def get_amount():
+                return Decimal("0.01")
 
-        # Verify original handler was called
-        assert len(original_called) == 1
+            wrapped = interceptor.wrap_buy(original_handler, get_amount)
+            wrapped()
+
+            # Verify ButtonEvent was published
+            mock_event_bus.publish.assert_called_once()
+            call_args = mock_event_bus.publish.call_args
+            assert call_args[0][0] == Events.BUTTON_PRESS
+
+            # Verify original handler was called
+            assert len(original_called) == 1
+        finally:
+            # Cleanup: ensure async manager is stopped properly
+            if interceptor._owns_async_manager and interceptor._async_manager:
+                interceptor._async_manager.stop(timeout=2.0)
+            # Give any pending tasks time to complete
+            time.sleep(0.05)
