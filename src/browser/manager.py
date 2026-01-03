@@ -90,11 +90,19 @@ class CDPBrowserManager:
 
         Args:
             cdp_port: Port for Chrome DevTools Protocol (default: from config or 9222)
-            profile_name: Name of Chrome profile directory (default: from config or "rugs_bot")
+            profile_name: Name of Chrome profile directory (default: from config or "default")
+                - "default": Uses system Chrome profile at ~/.config/google-chrome
+                - "rugs_bot": Uses dedicated profile at ~/.gamebot/chrome_profiles/rugs_bot
+                - Other: Uses ~/.gamebot/chrome_profiles/<name>
         """
         self.cdp_port = cdp_port or config.BROWSER.get("cdp_port", 9222)
-        profile_name = profile_name or config.BROWSER.get("profile_name", "rugs_bot")
-        self.profile_path = Path.home() / ".gamebot" / "chrome_profiles" / profile_name
+        profile_name = profile_name or config.BROWSER.get("profile_name", "default")
+
+        # Handle special "default" profile - use system Chrome profile
+        if profile_name == "default":
+            self.profile_path = Path.home() / ".config" / "google-chrome"
+        else:
+            self.profile_path = Path.home() / ".gamebot" / "chrome_profiles" / profile_name
 
         # Playwright components
         self.playwright = None
@@ -173,6 +181,31 @@ class CDPBrowserManager:
         except Exception:
             return False
 
+    def _cleanup_stale_locks(self) -> bool:
+        """
+        Clean up stale Chrome profile lock files.
+
+        Chrome creates SingletonLock, SingletonSocket, SingletonCookie files
+        that can prevent CDP from binding if Chrome crashes or is killed.
+
+        Returns:
+            True if any lock files were removed
+        """
+        lock_files = ["SingletonLock", "SingletonSocket", "SingletonCookie"]
+        removed = False
+
+        for lock_file in lock_files:
+            lock_path = self.profile_path / lock_file
+            if lock_path.exists():
+                try:
+                    lock_path.unlink()
+                    logger.info(f"Removed stale lock file: {lock_path}")
+                    removed = True
+                except Exception as e:
+                    logger.warning(f"Could not remove lock file {lock_path}: {e}")
+
+        return removed
+
     async def _launch_chrome(self) -> bool:
         """
         Launch Chrome with remote debugging enabled.
@@ -189,6 +222,11 @@ class CDPBrowserManager:
         if self._check_existing_chrome():
             logger.warning("Existing Chrome detected. This may cause CDP connection issues.")
             logger.info("TIP: Close all Chrome windows or kill Chrome processes first.")
+        else:
+            # Clean up stale lock files only if Chrome is not running
+            # (if Chrome is running, the locks are valid)
+            if self._cleanup_stale_locks():
+                logger.info("Cleaned up stale profile locks from previous session")
 
         self.status = CDPStatus.LAUNCHING_CHROME
         logger.info(f"Launching Chrome with debug port {self.cdp_port}...")

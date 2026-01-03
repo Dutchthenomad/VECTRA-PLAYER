@@ -1,6 +1,26 @@
 # VECTRA-PLAYER - Unified Data Architecture for Rugs.fun
 
-**Status:** Schema v2.0.0 | **Date:** December 23, 2025 | **Fork of:** REPLAYER
+**Status:** Schema v2.0.0 | **Date:** January 2, 2026 | **Fork of:** REPLAYER
+
+---
+
+## ⚠️ CRITICAL: Chrome Profile Configuration
+
+**ALWAYS USE THE `rugs_bot` PROFILE - NO EXCEPTIONS!**
+
+```
+Profile Path: ~/.gamebot/chrome_profiles/rugs_bot/
+Config Key: CHROME_PROFILE=rugs_bot (default in config.py)
+```
+
+This profile has:
+- ✅ Phantom wallet extension installed and configured
+- ✅ Wallet connected to rugs.fun
+- ✅ CDP (Chrome DevTools Protocol) works correctly
+
+**DO NOT use the Default profile** (`~/.config/google-chrome/`) - it has CDP binding issues.
+
+See: `docs/CHROME_PROFILE_SETUP.md` for details.
 
 ---
 
