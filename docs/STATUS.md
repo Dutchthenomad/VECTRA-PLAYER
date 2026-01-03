@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2025-12-25
+Last updated: 2026-01-03
 
 ## Canonical Status Sources
 
@@ -58,14 +58,20 @@ LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
 
 ## Now (Highest Priority)
 
-**Project Chores (GitHub Issues):**
-- #138: Migrate Toast to Socket Events
-- #139: Path Migration to RUGS_DATA_DIR
-- #140: Final Legacy Cleanup
+**✅ Migration Stabilization Complete (Jan 3, 2026)**
 
-**Documentation:**
-- claude-flow #24: Ingest empirical validation data
-- BotActionInterface docs for L4-vectra-codebase
+Priority 1 tasks completed:
+- ✅ Issues #138-140: Closed Dec 26, 2025
+- ✅ MinimalWindow implementation complete
+- ✅ Test suite: 1138/1138 passing (100%)
+- ✅ Async cleanup improvements committed
+- ✅ Path verification: 34 RUGS_DATA_DIR refs, 2 legacy for replay compat
+- ✅ System ready for production development
+
+**Next Steps:**
+- Pipeline D: RL training data generation
+- CDP connection stability verification
+- Phase 3-5 roadmap execution
 
 ## Deferred (Pending Research)
 
@@ -75,10 +81,14 @@ LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
 
 | Date | Event | Description |
 |------|-------|-------------|
+| 2026-01-03 | Priority 1 | Migration stabilization complete - system stable |
+| 2026-01-03 | f6bdc9d | Async cleanup improvements in tests |
+| 2026-01-02 | 1355dfc | Chrome `rugs_bot` profile configured as default |
+| 2026-01-01 | dc3d1a2 | WIP: Migration from old development machine |
+| 2025-12-28 | Milestone | MinimalWindow implementation complete |
+| 2025-12-26 | Issues | #138-140 closed (toast, paths, legacy cleanup) |
 | 2025-12-25 | Phase 6 | BotActionInterface COMPLETE - 166 tests |
 | 2025-12-24 | Decision | Shorting deferred - no empirical data |
-| 2025-12-24 | PR #142 | Phase 2 Stabilization + Canonical Docs |
-| 2025-12-24 | 3b5c7d5 | Fix missing _handle_game_tick handler |
 
 ## Design Documents
 
