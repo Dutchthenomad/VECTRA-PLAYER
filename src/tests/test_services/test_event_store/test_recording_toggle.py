@@ -89,10 +89,10 @@ class TestEventStoreRecordingToggle:
         # recorded_game_ids should be a set
         assert isinstance(event_store.recorded_game_ids, set)
 
-    def test_total_events_recorded_property(self, event_store):
-        """total_events_recorded property should track total persisted events."""
+    def test_event_count_property(self, event_store):
+        """event_count property should track total persisted events."""
         event_store.start()
-        assert event_store.total_events_recorded == 0
+        assert event_store.event_count == 0
 
 
 class TestRecordingPausedBehavior:

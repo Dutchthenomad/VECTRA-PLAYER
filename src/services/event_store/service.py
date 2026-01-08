@@ -79,8 +79,8 @@ class EventStoreService:
 
     @property
     def event_count(self) -> int:
-        """Number of events in current buffer"""
-        return self._writer.buffer_count
+        """Total events recorded this session."""
+        return self._total_events_recorded
 
     @property
     def is_paused(self) -> bool:
@@ -91,11 +91,6 @@ class EventStoreService:
     def is_recording(self) -> bool:
         """Whether actively recording events (started and not paused)."""
         return self._started and not self._paused
-
-    @property
-    def total_events_recorded(self) -> int:
-        """Total number of events persisted across this session."""
-        return self._total_events_recorded
 
     @property
     def recorded_game_ids(self) -> set[str]:
