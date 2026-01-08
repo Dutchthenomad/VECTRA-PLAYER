@@ -745,7 +745,11 @@ class MinimalWindow:
 
     def _on_recording_toggled(self, data: dict) -> None:
         """Handle recording state change from EventBus."""
-        self.root.after(0, lambda: self.update_recording_state(data.get("is_recording", False)))
+        try:
+            is_recording = data.get("is_recording", False)
+            self.root.after(0, lambda: self.update_recording_state(is_recording))
+        except Exception as e:
+            self.logger.error(f"Error handling RECORDING_TOGGLED: {e}")
 
     # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)
