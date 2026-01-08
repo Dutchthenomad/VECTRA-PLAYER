@@ -66,6 +66,9 @@ class EventStoreService:
         )
 
         self._started = False
+        self._paused = True  # Start paused by default (no recording until toggled)
+        self._recorded_game_ids: set[str] = set()  # Track unique game_ids for deduplication
+        self._total_events_recorded = 0  # Count of events persisted
 
         logger.info(f"EventStoreService initialized: session_id={self._session_id}")
 
@@ -78,6 +81,49 @@ class EventStoreService:
     def event_count(self) -> int:
         """Number of events in current buffer"""
         return self._writer.buffer_count
+
+    @property
+    def is_paused(self) -> bool:
+        """Whether recording is currently paused."""
+        return self._paused
+
+    @property
+    def is_recording(self) -> bool:
+        """Whether actively recording events (started and not paused)."""
+        return self._started and not self._paused
+
+    @property
+    def total_events_recorded(self) -> int:
+        """Total number of events persisted across this session."""
+        return self._total_events_recorded
+
+    @property
+    def recorded_game_ids(self) -> set[str]:
+        """Set of unique game_ids that have been recorded (copy for safety)."""
+        return self._recorded_game_ids.copy()
+
+    def pause(self) -> None:
+        """Pause event recording. Events will be dropped until resume() is called."""
+        self._paused = True
+        logger.info("Recording PAUSED")
+
+    def resume(self) -> None:
+        """Resume event recording."""
+        self._paused = False
+        logger.info("Recording RESUMED")
+
+    def toggle_recording(self) -> bool:
+        """
+        Toggle recording state between paused and recording.
+
+        Returns:
+            bool: New recording state (True if now recording, False if paused)
+        """
+        if self._paused:
+            self.resume()
+        else:
+            self.pause()
+        return self.is_recording
 
     def start(self) -> None:
         """Start service and subscribe to events"""
@@ -199,6 +245,10 @@ class EventStoreService:
 
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
         """Handle raw WebSocket event"""
+        # Early return if recording is paused
+        if self._paused:
+            return
+
         try:
             # Unwrap event payload from EventBus/BrowserBridge wrappers
             data = self._unwrap_event_payload(wrapped)
@@ -213,10 +263,13 @@ class EventStoreService:
 
             event_data = data.get("data") or {}  # Handle None value explicitly
             source_str = data.get("source", "public_ws")
-            game_id = data.get("game_id") or (event_data.get("gameId") if isinstance(event_data, dict) else None)
+            game_id = data.get("game_id") or (
+                event_data.get("gameId") if isinstance(event_data, dict) else None
+            )
 
             source = EventSource.CDP if source_str == "cdp" else EventSource.PUBLIC_WS
 
+            # Write raw ws_event
             envelope = EventEnvelope.from_ws_event(
                 event_name=event_name,
                 data=event_data,
@@ -225,14 +278,55 @@ class EventStoreService:
                 seq=self._next_seq(),
                 game_id=game_id,
             )
-
             self._writer.write(envelope)
+            self._total_events_recorded += 1
+
+            # TRAINING DATA: Extract complete games from gameHistory
+            if event_name == "gameStateUpdate" and isinstance(event_data, dict):
+                game_history = event_data.get("gameHistory", [])
+
+                if game_history:
+                    # Rug event! Capture all complete games (with deduplication)
+                    new_games = []
+                    for game in game_history:
+                        # gameHistory games use "id" field, not "gameId"
+                        gid = game.get("id") or game.get("gameId")
+                        if gid and gid not in self._recorded_game_ids:
+                            new_games.append(game)
+                            self._recorded_game_ids.add(gid)
+
+                    if new_games:
+                        logger.info(
+                            f"Capturing {len(new_games)} NEW complete games from gameHistory"
+                        )
+
+                        for game in new_games:
+                            game_envelope = EventEnvelope.from_complete_game(
+                                game_data=game,
+                                source=source,
+                                session_id=self._session_id,
+                                seq=self._next_seq(),
+                            )
+                            self._writer.write(game_envelope)
+                            self._total_events_recorded += 1
+
+                        # Count sidebets for logging
+                        total_sidebets = sum(len(g.get("globalSidebets", [])) for g in new_games)
+                        total_ticks = sum(len(g.get("prices", [])) for g in new_games)
+                        logger.info(
+                            f"Captured training data: {len(new_games)} games, "
+                            f"{total_sidebets} sidebets, {total_ticks} ticks"
+                        )
 
         except Exception as e:
             logger.error(f"Error handling WS_RAW_EVENT: {e}")
 
     def _on_game_tick(self, wrapped: dict[str, Any]) -> None:
         """Handle game tick event"""
+        # Early return if recording is paused
+        if self._paused:
+            return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -258,12 +352,17 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling GAME_TICK: {e}")
 
     def _on_player_update(self, wrapped: dict[str, Any]) -> None:
         """Handle player update event"""
+        # Early return if recording is paused
+        if self._paused:
+            return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -292,24 +391,34 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling PLAYER_UPDATE: {e}")
 
     def _on_trade_buy(self, data: dict[str, Any]) -> None:
         """Handle buy trade event"""
+        if self._paused:
+            return
         self._handle_trade_action("buy", data)
 
     def _on_trade_sell(self, data: dict[str, Any]) -> None:
         """Handle sell trade event"""
+        if self._paused:
+            return
         self._handle_trade_action("sell", data)
 
     def _on_trade_sidebet(self, data: dict[str, Any]) -> None:
         """Handle sidebet trade event"""
+        if self._paused:
+            return
         self._handle_trade_action("sidebet", data)
 
     def _on_trade_confirmed(self, wrapped: dict[str, Any]) -> None:
         """Handle trade confirmation event with latency tracking"""
+        if self._paused:
+            return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -326,6 +435,7 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling TRADE_CONFIRMED: {e}")
@@ -352,6 +462,7 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling trade action {action_type}: {e}")
@@ -363,6 +474,10 @@ class EventStoreService:
         ButtonEvents capture human button presses with full game context
         for training reinforcement learning models.
         """
+        # Early return if recording is paused
+        if self._paused:
+            return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -391,7 +506,10 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
-            logger.debug(f"ButtonEvent stored: {button_id} tick={tick} seq={sequence_id[:8] if sequence_id else 'N/A'}")
+            self._total_events_recorded += 1
+            logger.debug(
+                f"ButtonEvent stored: {button_id} tick={tick} seq={sequence_id[:8] if sequence_id else 'N/A'}"
+            )
 
         except Exception as e:
             logger.error(f"Error handling BUTTON_PRESS: {e}")

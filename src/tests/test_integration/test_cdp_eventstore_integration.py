@@ -38,6 +38,7 @@ class TestCDPEventStoreIntegration:
                 event_bus=test_event_bus, paths=paths, session_id="test-cdp-pipeline"
             )
             event_store.start()
+            event_store.resume()  # Enable recording (EventStore starts paused by default)
 
             # Create CDP interceptor and wire it like BrowserBridge does
             interceptor = CDPWebSocketInterceptor()

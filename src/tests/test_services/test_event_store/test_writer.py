@@ -161,6 +161,20 @@ def make_event(
             sequence_id=f"seq-{seq}",
             sequence_position=0,
         )
+    elif doc_type == DocType.COMPLETE_GAME:
+        # Complete game from gameHistory (ML training)
+        return EventEnvelope.from_complete_game(
+            game_data={
+                "id": game_id,
+                "timestamp": 1767505016696,
+                "peakMultiplier": 2.5,
+                "prices": [1.0, 1.5, 2.0, 2.5],
+                "globalSidebets": [],
+            },
+            source=EventSource.CDP,
+            session_id=session_id,
+            seq=seq,
+        )
     else:  # SYSTEM_EVENT
         return EventEnvelope.from_system_event(
             event_type="test",
