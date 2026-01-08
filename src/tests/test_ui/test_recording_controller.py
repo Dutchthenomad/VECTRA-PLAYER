@@ -89,3 +89,19 @@ class TestRecordingController:
         controller.stop()
 
         mock_event_store.pause.assert_called_once()
+
+    def test_start_publishes_events(self, controller, mock_event_store, mock_event_bus):
+        """start() should publish recording events."""
+        mock_event_store.is_paused = True
+
+        controller.start()
+
+        assert mock_event_bus.publish.called
+
+    def test_stop_publishes_events(self, controller, mock_event_store, mock_event_bus):
+        """stop() should publish recording events."""
+        mock_event_store.is_recording = True
+
+        controller.stop()
+
+        assert mock_event_bus.publish.called

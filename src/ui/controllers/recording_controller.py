@@ -86,6 +86,15 @@ class RecordingController:
         """Explicitly start recording."""
         if self.event_store.is_paused:
             self.event_store.resume()
+            # Publish RECORDING_TOGGLED for UI updates
+            self.event_bus.publish(
+                Events.RECORDING_TOGGLED,
+                {
+                    "is_recording": True,
+                    "event_count": self.event_store.event_count,
+                    "game_count": len(self.event_store.recorded_game_ids),
+                },
+            )
             self.event_bus.publish(Events.RECORDING_STARTED, {})
             self.logger.info("Recording STARTED")
 
@@ -93,6 +102,15 @@ class RecordingController:
         """Explicitly stop recording."""
         if self.event_store.is_recording:
             self.event_store.pause()
+            # Publish RECORDING_TOGGLED for UI updates
+            self.event_bus.publish(
+                Events.RECORDING_TOGGLED,
+                {
+                    "is_recording": False,
+                    "event_count": self.event_store.event_count,
+                    "game_count": len(self.event_store.recorded_game_ids),
+                },
+            )
             self.event_bus.publish(
                 Events.RECORDING_STOPPED,
                 {
