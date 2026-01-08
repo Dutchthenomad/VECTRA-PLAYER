@@ -70,6 +70,11 @@ class Events(Enum):
     PLAYER_IDENTITY = "player.identity"  # From usernameStatus WebSocket event
     PLAYER_UPDATE = "player.update"  # From playerUpdate WebSocket event (server truth)
 
+    # Recording Events
+    RECORDING_STARTED = "recording.started"
+    RECORDING_STOPPED = "recording.stopped"
+    RECORDING_TOGGLED = "recording.toggled"
+
     # WebSocket interception events (CDP capture layer)
     WS_RAW_EVENT = "ws.raw_event"  # Every frame, unfiltered
     WS_AUTH_EVENT = "ws.auth_event"  # Auth-only events (playerUpdate, usernameStatus)
