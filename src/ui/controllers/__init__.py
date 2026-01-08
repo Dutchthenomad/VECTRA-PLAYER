@@ -6,9 +6,11 @@ Archived controllers: BotManager, LiveFeedController, ReplayController
 """
 
 from .browser_bridge_controller import BrowserBridgeController
+from .recording_controller import RecordingController
 from .trading_controller import TradingController
 
 __all__ = [
     "BrowserBridgeController",
+    "RecordingController",
     "TradingController",
 ]
