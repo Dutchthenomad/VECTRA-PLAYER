@@ -866,6 +866,165 @@ class TestMinimalWindowPhaseDetection:
         assert result == "COOLDOWN"
 
 
+class TestRecordingButton:
+    """Test REC button functionality (Task 4: 1-click recording toggle)."""
+
+    @pytest.fixture
+    def minimal_window_with_event_store(self, tk_root):
+        """Create MinimalWindow with mock EventStore for testing REC button."""
+        from services.event_bus import EventBus
+        from ui.minimal_window import MinimalWindow
+
+        # Create real EventBus (started)
+        event_bus = EventBus()
+        event_bus.start()
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.side_effect = lambda key, default=None: {
+            "current_tick": 0,
+            "current_price": Decimal("1.0"),
+            "game_id": "game-000",
+            "current_phase": "UNKNOWN",
+            "balance": Decimal("0.0"),
+            "position_qty": Decimal("0"),
+        }.get(key, default)
+        mock_game_state.set_sell_percentage.return_value = True
+
+        mock_config = MagicMock()
+        mock_config.FINANCIAL = {"min_bet": Decimal("0.001"), "max_bet": Decimal("100")}
+
+        # Create mock EventStore
+        mock_event_store = MagicMock()
+        mock_event_store.is_recording = False
+        mock_event_store.is_paused = True
+        mock_event_store.event_count = 0
+        mock_event_store.recorded_game_ids = set()
+
+        # toggle_recording returns new state
+        def toggle_recording():
+            mock_event_store.is_recording = not mock_event_store.is_recording
+            mock_event_store.is_paused = not mock_event_store.is_recording
+            return mock_event_store.is_recording
+
+        mock_event_store.toggle_recording.side_effect = toggle_recording
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=event_bus,
+            config=mock_config,
+            event_store=mock_event_store,
+        )
+
+        yield window, event_bus, mock_event_store
+
+        # Cleanup
+        window._unsubscribe_from_events()
+        event_bus.stop()
+
+    def test_rec_button_exists(self, minimal_window_with_event_store):
+        """REC button should exist when event_store is provided."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert hasattr(window, "rec_button")
+        assert window.rec_button is not None
+
+    def test_rec_button_initial_state_gray(self, minimal_window_with_event_store):
+        """REC button should be gray initially (not recording)."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert window.rec_button.cget("text") == "REC"
+        assert window.rec_button.cget("bg") == "gray"
+
+    def test_rec_button_click_toggles_recording(self, minimal_window_with_event_store):
+        """Clicking REC button should toggle recording state."""
+        window, _event_bus, mock_event_store = minimal_window_with_event_store
+
+        # Initially not recording
+        assert mock_event_store.is_recording is False
+
+        # Click REC button
+        window._on_rec_clicked()
+        window.root.update()
+
+        # Should be recording now
+        assert mock_event_store.toggle_recording.called
+
+    def test_rec_button_turns_red_when_recording(self, minimal_window_with_event_store):
+        """REC button should turn red when recording is active."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # Update visual state to recording
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        assert window.rec_button.cget("text") == "\u25cf REC"  # bullet + REC
+        assert window.rec_button.cget("bg") == "red"
+
+    def test_rec_button_turns_gray_when_stopped(self, minimal_window_with_event_store):
+        """REC button should turn gray when recording is stopped."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # First turn on
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        # Then turn off
+        window.update_recording_state(is_recording=False)
+        window.root.update()
+
+        assert window.rec_button.cget("text") == "REC"
+        assert window.rec_button.cget("bg") == "gray"
+
+    def test_rec_button_subscribes_to_recording_toggled(self, minimal_window_with_event_store):
+        """MinimalWindow should subscribe to RECORDING_TOGGLED event."""
+        from services.event_bus import Events
+
+        _window, event_bus, _mock_event_store = minimal_window_with_event_store
+        assert event_bus.has_subscribers(Events.RECORDING_TOGGLED)
+
+    def test_recording_toggled_event_updates_button(self, minimal_window_with_event_store):
+        """RECORDING_TOGGLED event handler should update REC button visual state.
+
+        Note: We test the handler directly because root.after() doesn't work
+        from non-main threads in tests. The subscription is verified separately.
+        """
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # Simulate what the event handler does (call update directly)
+        # The actual subscription is verified by test_rec_button_subscribes_to_recording_toggled
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        assert window.rec_button.cget("text") == "\u25cf REC"
+        assert window.rec_button.cget("bg") == "red"
+
+    def test_recording_controller_created_with_event_store(self, minimal_window_with_event_store):
+        """RecordingController should be created when event_store is provided."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert hasattr(window, "recording_controller")
+        assert window.recording_controller is not None
+
+    def test_no_rec_button_without_event_store(self, tk_root):
+        """No REC button should exist when event_store is not provided."""
+        from ui.minimal_window import MinimalWindow
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.return_value = Decimal("1.0")
+        mock_event_bus = MagicMock()
+        mock_config = MagicMock()
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=mock_event_bus,
+            config=mock_config,
+            # No event_store provided
+        )
+
+        # rec_button should be None when no event_store
+        assert window.rec_button is None
+        assert window.recording_controller is None
+
+
 # Fixture for Tk root (shared with conftest.py)
 @pytest.fixture
 def tk_root():

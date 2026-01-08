@@ -24,9 +24,11 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.game_state import GameState
+    from services.event_store.service import EventStoreService
     from ui.controllers.trading_controller import TradingController
 
 from services.event_bus import EventBus, Events
+from ui.controllers.recording_controller import RecordingController
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,7 @@ class MinimalWindow:
         trading_controller: "TradingController | None" = None,
         browser_bridge: Any = None,
         live_state_provider: Any = None,
+        event_store: "EventStoreService | None" = None,
     ):
         """
         Initialize MinimalWindow.
@@ -71,6 +74,7 @@ class MinimalWindow:
             trading_controller: Optional TradingController for ButtonEvent emission
             browser_bridge: Optional BrowserBridge for browser clicks
             live_state_provider: Optional LiveStateProvider for live game context
+            event_store: Optional EventStoreService for recording control
         """
         self.root = root
         self.game_state = game_state
@@ -78,6 +82,8 @@ class MinimalWindow:
         self.config = config
         self.browser_bridge = browser_bridge
         self.live_state_provider = live_state_provider
+        self.event_store = event_store
+        self.logger = logging.getLogger(__name__)
 
         # Configure root window
         self.root.title("VECTRA-PLAYER - Minimal UI")
@@ -99,6 +105,8 @@ class MinimalWindow:
         self.balance_label: tk.Label | None = None
         self.bet_entry: tk.Entry | None = None
         self.percentage_buttons: dict[float, dict] = {}
+        self.rec_button: tk.Button | None = None
+        self.recording_controller: RecordingController | None = None
 
         # Build UI first (before TradingController, as it needs bet_entry)
         self._create_ui()
@@ -108,6 +116,13 @@ class MinimalWindow:
         self.trading_controller = trading_controller
         if self.trading_controller is None and self.bet_entry is not None:
             self._create_trading_controller()
+
+        # Recording controller for 1-click recording toggle (Task 4)
+        if self.event_store is not None:
+            self.recording_controller = RecordingController(
+                event_store=self.event_store,
+                event_bus=self.event_bus,
+            )
 
         # Subscribe to EventBus events for status updates (Task 3)
         self._subscribe_to_events()
@@ -169,6 +184,21 @@ class MinimalWindow:
             row1, text="UNKNOWN", bg=BG_COLOR, fg=YELLOW_COLOR, font=("Arial", 10, "bold")
         )
         self.phase_label.pack(side=tk.LEFT, padx=(0, 20))
+
+        # REC button (before connection indicator) - only if event_store provided
+        if self.event_store is not None:
+            self.rec_button = tk.Button(
+                row1,
+                text="REC",
+                font=("Consolas", 9, "bold"),
+                width=4,
+                height=1,
+                bg="gray",
+                fg="white",
+                activebackground="darkgray",
+                command=self._on_rec_clicked,
+            )
+            self.rec_button.pack(side=tk.RIGHT, padx=(5, 10))
 
         # CONNECTION (indicator dot + CONNECT button on right)
         connection_frame = tk.Frame(row1, bg=BG_COLOR)
@@ -472,7 +502,14 @@ class MinimalWindow:
         self.event_bus.subscribe(Events.WS_CONNECTED, self._on_ws_connected, weak=False)
         self.event_bus.subscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected, weak=False)
         self.event_bus.subscribe(Events.PLAYER_UPDATE, self._on_player_update, weak=False)
-        logger.debug("MinimalWindow subscribed to EventBus events")
+
+        # Recording state changes (Task 4)
+        self.event_bus.subscribe(
+            Events.RECORDING_TOGGLED,
+            self._on_recording_toggled,
+            weak=False,
+        )
+        self.logger.debug("MinimalWindow subscribed to EventBus events")
 
     def _unsubscribe_from_events(self):
         """Unsubscribe from all EventBus events (for cleanup)."""
@@ -481,9 +518,10 @@ class MinimalWindow:
             self.event_bus.unsubscribe(Events.WS_CONNECTED, self._on_ws_connected)
             self.event_bus.unsubscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected)
             self.event_bus.unsubscribe(Events.PLAYER_UPDATE, self._on_player_update)
-            logger.debug("MinimalWindow unsubscribed from EventBus events")
+            self.event_bus.unsubscribe(Events.RECORDING_TOGGLED, self._on_recording_toggled)
+            self.logger.debug("MinimalWindow unsubscribed from EventBus events")
         except Exception as e:
-            logger.warning(f"Error unsubscribing from events: {e}")
+            self.logger.warning(f"Error unsubscribing from events: {e}")
 
     @staticmethod
     def _detect_phase(event_data: dict) -> str:
@@ -669,8 +707,45 @@ class MinimalWindow:
         from browser.bridge import BridgeStatus
 
         connected = status == BridgeStatus.CONNECTED
-        logger.debug(f"Browser status changed: {status.value} -> connected={connected}")
+        self.logger.debug(f"Browser status changed: {status.value} -> connected={connected}")
         self.root.after(0, lambda: self.update_connection(connected))
+
+    # =========================================================================
+    # RECORDING CONTROL (Task 4: 1-click recording toggle)
+    # =========================================================================
+
+    def _on_rec_clicked(self) -> None:
+        """Handle REC button click."""
+        if not self.recording_controller:
+            self.logger.warning("Recording controller not available")
+            return
+
+        is_recording = self.recording_controller.toggle()
+        self.update_recording_state(is_recording=is_recording)
+
+    def update_recording_state(self, is_recording: bool) -> None:
+        """Update REC button visual state."""
+        if self.rec_button is None:
+            return
+
+        if is_recording:
+            self.rec_button.config(
+                text="\u25cf REC",  # bullet + REC
+                bg="red",
+                fg="white",
+                activebackground="darkred",
+            )
+        else:
+            self.rec_button.config(
+                text="REC",
+                bg="gray",
+                fg="white",
+                activebackground="darkgray",
+            )
+
+    def _on_recording_toggled(self, data: dict) -> None:
+        """Handle recording state change from EventBus."""
+        self.root.after(0, lambda: self.update_recording_state(data.get("is_recording", False)))
 
     # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)
