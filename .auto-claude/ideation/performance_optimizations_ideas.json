@@ -1,0 +1,112 @@
+{
+  "performance_optimizations": [
+    {
+      "id": "perf-001",
+      "type": "performance_optimizations",
+      "title": "Cache PyArrow schema in ParquetWriter to avoid repeated construction",
+      "description": "The ParquetWriter._events_to_table() method reconstructs the PyArrow schema on every flush (~100 events). This involves creating 16 field objects and a schema object each time. Moving schema construction to __init__ and reusing it would eliminate this overhead.",
+      "rationale": "Schema construction is deterministic and never changes during writer lifetime. With default buffer_size=100 events and 5s flush intervals, during a 1-hour live session this would eliminate ~720 unnecessary schema constructions.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/services/event_store/writer.py"
+      ],
+      "currentMetric": "Schema constructed on every flush (~100 events batch)",
+      "expectedImprovement": "~1-2ms per flush eliminated, reduced GC pressure from short-lived objects",
+      "implementation": "1. Move pa.schema() construction to __init__()\n2. Store as self._schema instance variable\n3. Reference self._schema in _events_to_table()\n4. Add test verifying schema consistency",
+      "tradeoffs": "Minimal - schema is static, no downsides to caching",
+      "estimatedEffort": "trivial"
+    },
+    {
+      "id": "perf-002",
+      "type": "performance_optimizations",
+      "title": "Use binary search for LiveRingBuffer.get_tick_range() lookups",
+      "description": "The get_tick_range() method uses a linear O(n) list comprehension to filter ticks. Since ticks in the ring buffer are ordered by tick number, binary search could find the range boundaries in O(log n) time.",
+      "rationale": "With max_size=5000 ticks, worst case is scanning all 5000 elements. For ML feature extraction that queries tick ranges frequently, this becomes a bottleneck. Binary search would reduce 5000 comparisons to ~13.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/core/live_ring_buffer.py"
+      ],
+      "currentMetric": "O(n) scan of up to 5000 elements per range query",
+      "expectedImprovement": "O(log n) lookup, ~380x faster for full buffer (5000 elements -> ~13 comparisons)",
+      "implementation": "1. Import bisect module\n2. Create helper methods _find_start_index() and _find_end_index() using bisect\n3. Slice the deque directly using found indices\n4. Return list(islice(self._buffer, start_idx, end_idx+1))",
+      "tradeoffs": "Slightly more complex code, requires ticks to remain sorted (already guaranteed by append-only pattern)",
+      "estimatedEffort": "small"
+    },
+    {
+      "id": "perf-003",
+      "type": "performance_optimizations",
+      "title": "Implement incremental volatility calculation in FeatureExtractor",
+      "description": "calculate_volatility() computes mean absolute percentage changes by iterating through the entire price history on every tick. Using Welford's online algorithm or a running sum would compute volatility incrementally in O(1) per tick.",
+      "rationale": "During live games, feature extraction runs on every tick (~1-2 per second). With 500+ ticks per game and 14-feature extraction, the O(n) volatility calculation dominates. This is critical for real-time bot decision latency.",
+      "category": "runtime",
+      "impact": "high",
+      "affectedAreas": [
+        "src/ml/feature_extractor.py"
+      ],
+      "currentMetric": "O(n) price iteration per tick, ~500 iterations at end of game",
+      "expectedImprovement": "O(1) per tick, consistent 1-3ms feature extraction regardless of game length",
+      "implementation": "1. Add running_sum and running_count instance variables\n2. Update incrementally in extract_features()\n3. For baseline volatility (first 40 ticks), compute once and cache\n4. For current window (last 10 ticks), maintain a sliding window sum\n5. Add reset_for_new_game() to clear state",
+      "tradeoffs": "More complex state management, need to handle edge cases (price=0, insufficient data)",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-004",
+      "type": "performance_optimizations",
+      "title": "Batch JSONL parsing with orjson for 3-5x faster data loading",
+      "description": "GameDataProcessor.process_game_file() uses stdlib json.loads() for each line. orjson is a high-performance JSON library that's 3-10x faster. Combined with reading files in larger chunks, this would significantly speed up ML training data loading.",
+      "rationale": "Processing hundreds of game files for ML training (process_multiple_games) is I/O and JSON-parse bound. With ~200 events per game and 500+ games, that's 100K+ json.loads() calls. orjson's SIMD-optimized parsing would cut this time significantly.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/ml/data_processor.py",
+        "pyproject.toml"
+      ],
+      "currentMetric": "~100K+ json.loads() calls per training run, ~50ms per file",
+      "expectedImprovement": "3-5x faster JSON parsing, ~15ms per file with orjson",
+      "implementation": "1. Add orjson to dependencies in pyproject.toml\n2. Replace json.loads with orjson.loads in process_game_file()\n3. Consider reading entire file and splitting vs line-by-line\n4. Add benchmark comparing json vs orjson performance",
+      "tradeoffs": "Additional dependency (~200KB). orjson returns bytes for strings, may need decode(). Well-maintained and widely used.",
+      "estimatedEffort": "small"
+    },
+    {
+      "id": "perf-005",
+      "type": "performance_optimizations",
+      "title": "Add connection pooling for DuckDB queries with warm cache",
+      "description": "EventStoreQuery creates a fresh DuckDB connection for every query and closes it immediately. While the docs claim ~1ms overhead, maintaining a connection pool would enable query plan caching, metadata caching, and eliminate repeated parquet schema discovery.",
+      "rationale": "During RL training with iter_episodes(), hundreds of queries execute sequentially. Each connection: opens file handles, reads parquet metadata, builds query plan. A warm connection pool would amortize these costs across queries.",
+      "category": "database",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/services/event_store/duckdb.py"
+      ],
+      "currentMetric": "Fresh connection per query, ~1-2ms overhead + cold metadata reads",
+      "expectedImprovement": "~50% reduction in query overhead for repeated queries, better memory utilization",
+      "implementation": "1. Add optional connection_pool_size parameter to __init__()\n2. Use queue.Queue to manage connection pool\n3. Acquire connection at start of query, return to pool after\n4. Add max_idle_time to evict stale connections\n5. Ensure thread-safety with proper locking\n6. Keep existing per-query connection as fallback for simple use cases",
+      "tradeoffs": "Added complexity, need to handle connection cleanup on shutdown, potential for connection leaks if not properly managed",
+      "estimatedEffort": "medium"
+    }
+  ],
+  "metadata": {
+    "totalDependencies": 9,
+    "heavyDependencies": [
+      "sentence-transformers (embedding models ~600MB)",
+      "playwright (browser automation)",
+      "pandas (dataframe operations)"
+    ],
+    "filesAnalyzed": 15,
+    "primaryBottlenecks": [
+      "Feature extraction O(n) volatility calculations",
+      "JSON parsing for ML training data",
+      "Ring buffer linear range queries",
+      "Per-query DuckDB connections"
+    ],
+    "existingOptimizations": [
+      "Buffered Parquet writes with configurable flush",
+      "Ring buffer with maxlen for bounded memory",
+      "Token bucket rate limiting for WebSocket flood protection",
+      "Async bot execution to prevent UI blocking"
+    ],
+    "generatedAt": "2026-01-03T21:56:00Z"
+  }
+}

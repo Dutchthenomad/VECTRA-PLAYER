@@ -1,0 +1,124 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: VECTRA-PLAYER Automated Path Migration
+Workspace: /home/devops/Desktop/VECTRA-PLAYER
+Started: 2026-01-03 22:40 UTC
+
+Workflow Type: feature
+Rationale: Creating new automation infrastructure with safety mechanisms (backup, verify, rollback) that doesn't currently exist. Feature workflow allows building script incrementally with testing at each stage.
+
+Session 1 (Planner):
+- Created implementation_plan.json
+- Phases: 5
+- Total subtasks: 14
+- Created init.sh
+- Updated context.json with files to modify and patterns
+
+Phase Summary:
+
+Phase 1 - Script Setup & Structure (2 subtasks)
+  - Setup migration script skeleton with CLI
+  - Add logging and constants
+  Dependencies: None
+  Status: PENDING
+
+Phase 2 - Core Migration Functions (4 subtasks)
+  - Implement backup creation
+  - Implement path replacement with counting
+  - Implement verification function
+  - Implement rollback function
+  Dependencies: Phase 1
+  Status: PENDING
+
+Phase 3 - Migration Orchestration (3 subtasks)
+  - Implement dry-run mode
+  - Implement execute mode workflow
+  - Implement rollback mode command
+  Dependencies: Phase 2
+  Status: PENDING
+
+Phase 4 - Test Suite Creation (3 subtasks)
+  - Create unit tests for core functions
+  - Create integration tests for workflow
+  - Create edge case tests
+  Dependencies: Phase 3
+  Status: PENDING
+
+Phase 5 - Integration & Verification (4 subtasks)
+  - Execute dry-run on actual codebase
+  - Execute actual migration on 22 files
+  - Run regression tests
+  - Add script documentation
+  Dependencies: Phase 4
+  Status: PENDING
+
+Services Involved:
+- main (Python project) - Migration script implementation and testing
+
+Files to Create:
+- scripts/migrate_paths.py - Main migration script
+- src/tests/test_scripts/test_migrate_paths.py - Test suite
+
+Files to Modify (22 files in Phase 5):
+- CLAUDE.md
+- scripts/capture_gamehistory.py
+- docs/ML_RL_SYSTEM_OVERVIEW_AND_RESEARCH_PROMPT.md
+- .claude/scratchpad.md
+- docs/plans/GLOBAL-DEVELOPMENT-PLAN.md
+- setup_pyright_lsp.sh
+- docs/reports/TRADING-ARCHITECTURE-REFACTOR-AND-UI-SIMPLIFICATION-HANDOFF-2025-12-28.md
+- docs/plans/PIPELINE-D-VALIDATION-PROMPT.md
+- docs/plans/2025-12-28-pipeline-d-training-data-implementation.md
+- scripts/FLOW-CHARTS/observation-space-design.md
+- docs/DEVELOPMENT-PLAN-DASHBOARD.html
+- docs/DEBUGGING_GUIDE.md
+- start_debugging.sh
+- docs/CROSS_REPO_COORDINATION.md
+- scripts/vectra_index.py
+- .github/copilot-instructions.md
+- src/bot/code-audit-bot-folder
+- scripts/schema_inventory.py
+- docs/rag/socket_kb.jsonl
+- docs/CI_CD_GUIDE.md
+- .github/workflows/guardrails.yml
+- src/verify_tests.sh
+
+Parallelism Analysis:
+- Max parallel phases: 1
+- Recommended workers: 1
+- Speedup estimate: Sequential execution required (each phase depends on previous)
+- Reason: Each phase builds upon the previous. Cannot parallelize.
+
+Verification Strategy:
+- Risk Level: medium
+- Test Types Required: unit, integration
+- Security Scanning: No
+- Staging Deployment: No
+- Key Acceptance Criteria:
+  * All 63 path references updated
+  * Backup directory created with all 22 files
+  * Zero old paths remain after migration
+  * All existing tests pass (no regressions)
+  * Script passes Ruff linting
+
+=== STARTUP COMMAND ===
+
+To continue building this spec, run:
+
+  source .venv/bin/activate && cd .auto-claude && python -m auto_claude.run --spec 001 --parallel 1
+
+Example (from project root):
+  cd /home/devops/Desktop/VECTRA-PLAYER
+  source .venv/bin/activate
+  cd .auto-claude
+  python -m auto_claude.run --spec 001 --parallel 1
+
+=== END SESSION 1 ===
+
+Next Session: Coder Agent will implement subtasks sequentially
+- Start with Phase 1, Subtask 1: Create migration script skeleton
+- Each subtask must pass verification before proceeding
+- Tests will be created in Phase 4
+- Actual migration execution happens in Phase 5
+
+⚠️  IMPORTANT: Do NOT commit spec files to git - they are gitignored

@@ -1,0 +1,111 @@
+{
+  "documentation_gaps": [
+    {
+      "id": "doc-001",
+      "type": "documentation_gaps",
+      "title": "Create missing WEBSOCKET_EVENTS_SPEC.md specification",
+      "description": "The README.md and multiple docs (ONBOARDING.md, DEBUGGING_GUIDE.md, copilot-instructions.md) reference 'docs/specs/WEBSOCKET_EVENTS_SPEC.md' but this file does not exist. The docs/specs/ directory is completely empty. This creates broken documentation links and leaves developers without critical protocol documentation.",
+      "rationale": "This specification is referenced as the primary documentation for WebSocket event schemas, which is the core data flowing through the system. Developers have no authoritative source for understanding event structure, leading to confusion when working with EventStore or building bot strategies.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "docs/specs/WEBSOCKET_EVENTS_SPEC.md (missing)",
+        "README.md (broken link)",
+        "docs/ONBOARDING.md (broken link)",
+        "docs/DEBUGGING_GUIDE.md (broken link)",
+        ".github/copilot-instructions.md (broken link)"
+      ],
+      "currentDocumentation": "Referenced but missing - no docs/specs/ directory exists",
+      "proposedContent": "Create comprehensive WebSocket event specification covering: all event types (playerUpdate, gameTick, newTrade, etc.), payload structures with field descriptions, timing/sequencing expectations, and example payloads. Reference src/services/event_store/schema.py DocType enum and src/models/events/ for source material.",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-002",
+      "type": "documentation_gaps",
+      "title": "Add environment variable reference documentation",
+      "description": "The project uses 11 environment variables (RUGS_DATA_DIR, RUGS_EMBEDDING_MODEL, RUGS_LEGACY_RECORDERS, RUGS_RECORDINGS_DIR, RUGS_CONFIG_DIR, RUGS_LOG_DIR, RUGS_AUTO_RECORDING, RUGS_AUTO_CONNECT_LIVE_FEED, LOG_LEVEL, CHROME_BINARY, CHROME_PROFILE) but there is no central documentation explaining each variable, their valid values, defaults, and use cases.",
+      "rationale": "Environment variables control critical application behavior including data paths, Chrome browser configuration, logging, and auto-connect features. Without documentation, developers must read config.py source code to understand configuration options, slowing onboarding and leading to misconfiguration.",
+      "category": "readme",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/config.py",
+        "README.md",
+        "docs/ONBOARDING.md",
+        ".env.example (missing)"
+      ],
+      "currentDocumentation": "README mentions RUGS_DATA_DIR in quick start but no comprehensive reference exists",
+      "proposedContent": "Add 'Environment Variables' section to README or create dedicated docs/CONFIGURATION.md covering: variable name, description, valid values/type, default value, required vs optional status, and example usage. Include recommended .env.example file.",
+      "priority": "high",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "doc-003",
+      "type": "documentation_gaps",
+      "title": "Document bot strategy development guide",
+      "description": "The src/bot/strategies/ directory contains 5 trading strategies (aggressive.py, conservative.py, foundational.py, sidebet.py, base.py) but there's no guide explaining how to develop custom strategies. The TradingStrategy base class has minimal documentation about expected inputs (observation dict, info dict) and output format.",
+      "rationale": "Bot/ML development is a key project goal (mentioned in README and CLAUDE.md). Developers wanting to create custom trading strategies must reverse-engineer existing implementations. A development guide would accelerate ML/RL experimentation and contributions.",
+      "category": "examples",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/bot/strategies/base.py",
+        "src/bot/strategies/aggressive.py",
+        "src/bot/strategies/conservative.py",
+        "src/bot/__init__.py"
+      ],
+      "currentDocumentation": "base.py has docstrings for decide() method but lacks comprehensive guidance on observation/info dict structures",
+      "proposedContent": "Create docs/BOT_STRATEGY_GUIDE.md covering: observation dict structure and fields, info dict structure (valid_actions, constraints), action types (BUY, SELL, SIDE, WAIT), decision logic patterns, example custom strategy implementation, testing strategies, and integration with the bot controller.",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-004",
+      "type": "documentation_gaps",
+      "title": "Add EventStore and EventBus API reference",
+      "description": "The EventStore (src/services/event_store/) and EventBus (src/services/event_bus.py) are the backbone of the data architecture but have no API reference documentation. EventStore has 6 modules (writer.py, schema.py, duckdb.py, paths.py, service.py, __init__.py) with public methods that developers need to understand.",
+      "rationale": "CLAUDE.md emphasizes that 'EventStore is canonical' and all event producers publish through EventBus. Without API docs, developers building new event sources or consumers must read source code to understand the interface. This is critical for the 'RAG integration' and 'Protocol Explorer UI' roadmap items.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/services/event_store/writer.py",
+        "src/services/event_store/schema.py",
+        "src/services/event_store/service.py",
+        "src/services/event_bus.py",
+        "src/services/event_store/CONTEXT.md"
+      ],
+      "currentDocumentation": "CONTEXT.md exists but is minimal; class docstrings exist but are incomplete",
+      "proposedContent": "Create API reference covering: EventEnvelope factory methods and fields, EventStore.write() and flush behavior, DuckDB query helpers, EventBus publish/subscribe pattern, Events enum values and when each fires, and integration examples for new event producers.",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-005",
+      "type": "documentation_gaps",
+      "title": "Document configuration options in config.py",
+      "description": "src/config.py defines extensive configuration categories (FINANCIAL, GAME_RULES, PLAYBACK, UI, MEMORY) with 50+ settings but there's no user-facing documentation. Developers must read source code to understand what 'sidebet_window_ticks', 'rug_liquidation_price', or 'blocked_phases' mean.",
+      "rationale": "These configuration values directly affect trading behavior, game rules interpretation, and UI rendering. Undocumented settings lead to confusion about application behavior and make it difficult to tune the system for different use cases or debugging scenarios.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/config.py",
+        "docs/CONFIGURATION.md (missing)"
+      ],
+      "currentDocumentation": "config.py has section comments (e.g., '# ========== Financial Settings ==========') but no descriptions of individual settings",
+      "proposedContent": "Add inline docstrings to each configuration value in config.py, or create docs/CONFIGURATION.md with tables describing: setting name, type, default value, description, and acceptable range/values. Cover FINANCIAL, GAME_RULES, PLAYBACK, UI, MEMORY, and NETWORK sections.",
+      "priority": "low",
+      "estimatedEffort": "low"
+    }
+  ],
+  "metadata": {
+    "filesAnalyzed": 68,
+    "documentedFunctions": 45,
+    "undocumentedFunctions": 120,
+    "readmeLastUpdated": "2025-12-22",
+    "docsFilesFound": 25,
+    "brokenDocLinks": 4,
+    "missingSpecFiles": 1,
+    "environmentVariables": 11,
+    "configurationSettings": 50,
+    "generatedAt": "2026-01-03T21:58:00Z"
+  }
+}

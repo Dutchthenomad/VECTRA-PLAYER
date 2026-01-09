@@ -1,0 +1,171 @@
+{
+  "project_root": "/home/devops/Desktop/VECTRA-PLAYER",
+  "project_type": "single",
+  "services": {
+    "main": {
+      "name": "main",
+      "path": "/home/devops/Desktop/VECTRA-PLAYER",
+      "language": "Python",
+      "framework": null,
+      "type": "unknown",
+      "package_manager": "pip",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        }
+      },
+      "testing": "pytest",
+      "environment": {
+        "variables": {
+          "RUGS_DATA_DIR": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_EMBEDDING_MODEL": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_LEGACY_RECORDERS": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_RECORDINGS_DIR": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_CONFIG_DIR": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_LOG_DIR": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_AUTO_RECORDING": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "RUGS_AUTO_CONNECT_LIVE_FEED": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "LOG_LEVEL": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "CHROME_BINARY": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          },
+          "CHROME_PROFILE": {
+            "value": null,
+            "source": "code:src/config.py",
+            "type": "string",
+            "sensitive": false,
+            "required": false
+          }
+        },
+        "required_count": 0,
+        "optional_count": 11,
+        "detected_count": 11
+      },
+      "database": {
+        "models": {
+          "Temporary": {
+            "table": "temp_test",
+            "fields": {
+              "id": {
+                "type": "Integer",
+                "primary_key": true,
+                "unique": false,
+                "nullable": true
+              },
+              "spam": {
+                "type": "Unknown",
+                "primary_key": false,
+                "unique": false,
+                "nullable": true
+              }
+            },
+            "file": ".venv/lib/python3.12/site-packages/pandas/tests/io/test_sql.py",
+            "orm": "SQLAlchemy"
+          },
+          "Test": {
+            "table": "temp_test",
+            "fields": {
+              "id": {
+                "type": "Integer",
+                "primary_key": true,
+                "unique": false,
+                "nullable": true
+              },
+              "string_column": {
+                "type": "String",
+                "primary_key": false,
+                "unique": false,
+                "nullable": true
+              }
+            },
+            "file": ".venv/lib/python3.12/site-packages/pandas/tests/io/test_sql.py",
+            "orm": "SQLAlchemy"
+          }
+        },
+        "total_models": 2,
+        "model_names": [
+          "Temporary",
+          "Test"
+        ]
+      }
+    }
+  },
+  "infrastructure": {
+    "ci": "GitHub Actions",
+    "ci_workflows": [
+      "code-review.yml",
+      "claude.yml",
+      "review-synthesis.yml",
+      "pr-labeler.yml",
+      "quality.yml",
+      "guardrails.yml",
+      "coverage.yml",
+      "ci.yml",
+      "security.yml",
+      "release.yml"
+    ]
+  },
+  "conventions": {
+    "python_linting": "Ruff",
+    "git_hooks": "pre-commit"
+  }
+}

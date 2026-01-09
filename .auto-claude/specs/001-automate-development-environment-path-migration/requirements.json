@@ -1,0 +1,6 @@
+{
+  "task_description": "Create a fully automated migration script to update all hardcoded paths from /home/nomad to /home/devops across the VECTRA-PLAYER codebase. Script must handle 63 references across 22 files, create safety backups, verify directory structure, update environment configuration, and provide verification checks. Includes rollback capability and comprehensive logging.",
+  "workflow_type": "feature",
+  "services_involved": [],
+  "created_at": "2026-01-03T22:31:20.933123"
+}

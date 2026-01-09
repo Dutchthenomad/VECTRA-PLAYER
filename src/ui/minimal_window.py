@@ -106,6 +106,8 @@ class MinimalWindow:
         self.bet_entry: tk.Entry | None = None
         self.percentage_buttons: dict[float, dict] = {}
         self.rec_button: tk.Button | None = None
+        self.rec_status_label: tk.Label | None = None
+        self._rec_update_timer: str | None = None
         self.recording_controller: RecordingController | None = None
 
         # Build UI first (before TradingController, as it needs bet_entry)
@@ -185,20 +187,38 @@ class MinimalWindow:
         )
         self.phase_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # REC button (before connection indicator) - only if event_store provided
+        # REC button with status label (before connection indicator) - only if event_store provided
         if self.event_store is not None:
+            # Frame to hold REC button and status label together
+            rec_frame = tk.Frame(row1, bg=BG_COLOR)
+            rec_frame.pack(side=tk.RIGHT, padx=(5, 10))
+
+            # Status label (shows event count and game_id when recording)
+            self.rec_status_label = tk.Label(
+                rec_frame,
+                text="",
+                font=("Consolas", 8),
+                bg=BG_COLOR,
+                fg=TEXT_DIM,
+            )
+            self.rec_status_label.pack(side=tk.LEFT, padx=(0, 3))
+
+            # REC button
             self.rec_button = tk.Button(
-                row1,
+                rec_frame,
                 text="REC",
                 font=("Consolas", 9, "bold"),
-                width=4,
+                width=5,
                 height=1,
                 bg="gray",
                 fg="white",
                 activebackground="darkgray",
                 command=self._on_rec_clicked,
             )
-            self.rec_button.pack(side=tk.RIGHT, padx=(5, 10))
+            self.rec_button.pack(side=tk.LEFT)
+
+            # Timer ID for periodic status updates
+            self._rec_update_timer: str | None = None
 
         # CONNECTION (indicator dot + CONNECT button on right)
         connection_frame = tk.Frame(row1, bg=BG_COLOR)
@@ -724,7 +744,7 @@ class MinimalWindow:
         self.update_recording_state(is_recording=is_recording)
 
     def update_recording_state(self, is_recording: bool) -> None:
-        """Update REC button visual state."""
+        """Update REC button and status label visual state."""
         if self.rec_button is None:
             return
 
@@ -735,6 +755,8 @@ class MinimalWindow:
                 fg="white",
                 activebackground="darkred",
             )
+            # Start periodic status updates
+            self._start_rec_status_updates()
         else:
             self.rec_button.config(
                 text="REC",
@@ -742,6 +764,60 @@ class MinimalWindow:
                 fg="white",
                 activebackground="darkgray",
             )
+            # Stop updates and clear status
+            self._stop_rec_status_updates()
+            if self.rec_status_label:
+                self.rec_status_label.config(text="", fg=TEXT_DIM)
+
+    def _start_rec_status_updates(self) -> None:
+        """Start periodic updates of recording status label."""
+        self._update_rec_status()
+
+    def _stop_rec_status_updates(self) -> None:
+        """Stop periodic updates of recording status label."""
+        if self._rec_update_timer:
+            self.root.after_cancel(self._rec_update_timer)
+            self._rec_update_timer = None
+
+    def _update_rec_status(self) -> None:
+        """Update the recording status label with event count and game_id."""
+        if not self.rec_status_label or not self.recording_controller:
+            return
+
+        try:
+            # Get current status from controller
+            status = self.recording_controller.get_status()
+            event_count = status.get("event_count", 0)
+            game_count = status.get("game_count", 0)
+
+            # Get current game_id from LiveStateProvider
+            game_id = None
+            if self.live_state_provider:
+                game_id = self.live_state_provider.game_id
+
+            # Format display: "5 evts | 242b2d81"
+            if game_id:
+                # Truncate game_id to last 8 chars (the UUID portion)
+                short_id = game_id.split("-")[-1][:8] if "-" in game_id else game_id[:8]
+                status_text = f"{event_count} | {short_id}"
+            else:
+                status_text = f"{event_count} evts"
+
+            # Show game count if we have captured complete games
+            if game_count > 0:
+                status_text = f"{event_count} | {game_count}g"
+                if game_id:
+                    short_id = game_id.split("-")[-1][:8] if "-" in game_id else game_id[:8]
+                    status_text = f"{event_count} | {game_count}g | {short_id}"
+
+            self.rec_status_label.config(text=status_text, fg="#FF6B6B")  # Light red
+
+            # Schedule next update if still recording
+            if self.recording_controller.is_recording:
+                self._rec_update_timer = self.root.after(1000, self._update_rec_status)
+
+        except Exception as e:
+            self.logger.debug(f"Error updating rec status: {e}")
 
     def _on_recording_toggled(self, data: dict) -> None:
         """Handle recording state change from EventBus."""

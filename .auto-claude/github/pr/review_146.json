@@ -1,0 +1,32 @@
+{
+  "pr_number": 146,
+  "repo": "Dutchthenomad/VECTRA-PLAYER",
+  "success": false,
+  "findings": [],
+  "summary": "",
+  "overall_status": "comment",
+  "review_id": null,
+  "reviewed_at": "2026-01-03T23:56:06.703588",
+  "error": "GHCommandError: gh pr failed: Unknown JSON field: \"baseRefOid\"\nAvailable fields:\n  additions\n  assignees\n  author\n  autoMergeRequest\n  baseRefName\n  body\n  changedFiles\n  closed\n  closedAt\n  comments\n  commits\n  createdAt\n  deletions\n  files\n  headRefName\n  headRefOid\n  headRepository\n  headRepositoryOwner\n  id\n  isCrossRepository\n  isDraft\n  labels\n  latestReviews\n  maintainerCanModify\n  mergeCommit\n  mergeStateStatus\n  mergeable\n  mergedAt\n  mergedBy\n  milestone\n  number\n  potentialMergeCommit\n  projectCards\n  projectItems\n  reactionGroups\n  reviewDecision\n  reviewRequests\n  reviews\n  state\n  statusCheckRollup\n  title\n  updatedAt\n  url\n\n\nTraceback:\nTraceback (most recent call last):\n  File \"/home/devops/Desktop/AUTO-CLAUDE/Auto-Claude/apps/backend/runners/github/orchestrator.py\", line 313, in review_pr\n    pr_context = await gatherer.gather()\n                 ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/devops/Desktop/AUTO-CLAUDE/Auto-Claude/apps/backend/runners/github/context_gatherer.py\", line 238, in gather\n    pr_data = await self._fetch_pr_metadata()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/devops/Desktop/AUTO-CLAUDE/Auto-Claude/apps/backend/runners/github/context_gatherer.py\", line 321, in _fetch_pr_metadata\n    return await self.gh_client.pr_get(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/devops/Desktop/AUTO-CLAUDE/Auto-Claude/apps/backend/runners/github/gh_client.py\", line 366, in pr_get\n    result = await self.run(args)\n             ^^^^^^^^^^^^^^^^^^^^\n  File \"/home/devops/Desktop/AUTO-CLAUDE/Auto-Claude/apps/backend/runners/github/gh_client.py\", line 232, in run\n    raise GHCommandError(\ngh_client.GHCommandError: gh pr failed: Unknown JSON field: \"baseRefOid\"\nAvailable fields:\n  additions\n  assignees\n  author\n  autoMergeRequest\n  baseRefName\n  body\n  changedFiles\n  closed\n  closedAt\n  comments\n  commits\n  createdAt\n  deletions\n  files\n  headRefName\n  headRefOid\n  headRepository\n  headRepositoryOwner\n  id\n  isCrossRepository\n  isDraft\n  labels\n  latestReviews\n  maintainerCanModify\n  mergeCommit\n  mergeStateStatus\n  mergeable\n  mergedAt\n  mergedBy\n  milestone\n  number\n  potentialMergeCommit\n  projectCards\n  projectItems\n  reactionGroups\n  reviewDecision\n  reviewRequests\n  reviews\n  state\n  statusCheckRollup\n  title\n  updatedAt\n  url\n\n",
+  "verdict": "ready_to_merge",
+  "verdict_reasoning": "",
+  "blockers": [],
+  "risk_assessment": {
+    "complexity": "low",
+    "security_impact": "none",
+    "scope_coherence": "good"
+  },
+  "structural_issues": [],
+  "ai_comment_triages": [],
+  "quick_scan_summary": {},
+  "reviewed_commit_sha": null,
+  "reviewed_file_blobs": {},
+  "is_followup_review": false,
+  "previous_review_id": null,
+  "resolved_findings": [],
+  "unresolved_findings": [],
+  "new_findings_since_last_review": [],
+  "has_posted_findings": false,
+  "posted_finding_ids": [],
+  "posted_at": null
+}

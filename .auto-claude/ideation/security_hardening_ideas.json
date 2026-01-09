@@ -1,0 +1,127 @@
+{
+  "security_hardening": [
+    {
+      "id": "sec-001",
+      "type": "security_hardening",
+      "title": "Secure Chrome DevTools Protocol (CDP) port exposure",
+      "description": "The CDPBrowserManager in src/browser/manager.py exposes Chrome on port 9222 for remote debugging. While necessary for browser automation, this port is accessible to any local process, allowing potential attackers on the same machine to control the browser session, including accessing wallet interactions.",
+      "rationale": "CDP port exposure on localhost allows any local process to connect and control the browser. Since this application manages cryptocurrency wallet operations, an attacker with local access could intercept transactions, steal funds, or manipulate trading decisions.",
+      "category": "configuration",
+      "severity": "high",
+      "affectedFiles": [
+        "src/browser/manager.py",
+        "src/config.py"
+      ],
+      "vulnerability": "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute (analogous - sensitive interface exposed)",
+      "currentRisk": "Local attackers can connect to CDP port 9222 and take control of browser automation sessions with wallet access",
+      "remediation": "1. Add optional authentication/security token for CDP connections. 2. Consider binding CDP to a random high port instead of fixed 9222. 3. Add process-level validation that only the parent VECTRA-PLAYER process can connect. 4. Document the security implications in user-facing docs and CLAUDE.md.",
+      "references": [
+        "https://chromedevtools.github.io/devtools-protocol/",
+        "https://owasp.org/www-community/attacks/Man-in-the-browser_attack"
+      ],
+      "compliance": ["SOC2"]
+    },
+    {
+      "id": "sec-002",
+      "type": "security_hardening",
+      "title": "Add input validation for JSONL game recordings",
+      "description": "The GameDataProcessor in src/ml/data_processor.py reads JSONL files using json.loads() without validating the structure or bounds of the data. Maliciously crafted game recordings could cause denial of service through memory exhaustion or exploit type confusion vulnerabilities.",
+      "rationale": "JSONL files from external sources (recordings shared between users or downloaded from repositories) could contain malformed or malicious data designed to crash the application or cause unexpected behavior in the ML pipeline.",
+      "category": "input_validation",
+      "severity": "medium",
+      "affectedFiles": [
+        "src/ml/data_processor.py",
+        "src/sources/socketio_parser.py"
+      ],
+      "vulnerability": "CWE-20: Improper Input Validation",
+      "currentRisk": "Processing malicious JSONL files could cause memory exhaustion, crashes, or unexpected ML model training behavior",
+      "remediation": "1. Add schema validation using pydantic or jsonschema for JSONL records. 2. Implement size limits for individual records (e.g., max 1MB per line). 3. Add bounds checking for numeric fields (price, tick, etc.). 4. Consider sandboxing file processing in a separate process with resource limits.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Improper_Data_Validation",
+        "https://cwe.mitre.org/data/definitions/20.html"
+      ],
+      "compliance": ["SOC2", "PCI-DSS"]
+    },
+    {
+      "id": "sec-003",
+      "type": "security_hardening",
+      "title": "Protect sensitive wallet profile directory",
+      "description": "The Chrome profile directory at ~/.gamebot/chrome_profiles/rugs_bot contains sensitive wallet extension data and potentially cached credentials. This directory is created with default permissions and could be read by other local users or compromised processes.",
+      "rationale": "The wallet profile contains Phantom/Solflare extension data which may include encrypted keys, session tokens, and transaction history. If an attacker gains read access, they could potentially extract wallet secrets or session data.",
+      "category": "data_protection",
+      "severity": "high",
+      "affectedFiles": [
+        "src/browser/manager.py",
+        "src/browser/cdp/launcher.py",
+        "src/browser/profiles.py"
+      ],
+      "vulnerability": "CWE-732: Incorrect Permission Assignment for Critical Resource",
+      "currentRisk": "Wallet extension data in profile directory could be read by unauthorized local users or processes",
+      "remediation": "1. Set restrictive permissions (0700) on ~/.gamebot directory and all subdirectories during creation. 2. Use os.chmod() after mkdir to ensure proper permissions. 3. Add integrity checks to detect if profile has been tampered with. 4. Consider encrypting sensitive profile data at rest.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/732.html",
+        "https://owasp.org/www-community/vulnerabilities/Insecure_Storage"
+      ],
+      "compliance": ["SOC2", "PCI-DSS"]
+    },
+    {
+      "id": "sec-004",
+      "type": "security_hardening",
+      "title": "Sanitize sensitive data in logs",
+      "description": "The logging system in src/services/logger.py and throughout the codebase logs full WebSocket payloads, event data, and browser interaction details. This could inadvertently capture sensitive information such as wallet addresses, transaction details, or user identifiers in log files.",
+      "rationale": "Log files may be shared during debugging, stored insecurely, or accessed by unauthorized personnel. Sensitive trading data, wallet addresses, and potential PII should be redacted or hashed before logging to prevent data leakage.",
+      "category": "data_protection",
+      "severity": "medium",
+      "affectedFiles": [
+        "src/services/logger.py",
+        "src/sources/cdp_websocket_interceptor.py",
+        "src/browser/manager.py"
+      ],
+      "vulnerability": "CWE-532: Insertion of Sensitive Information into Log File",
+      "currentRisk": "Sensitive wallet addresses, transaction data, and user identifiers may be exposed in log files",
+      "remediation": "1. Implement a log sanitizer that redacts wallet addresses (regex for Solana base58 addresses). 2. Truncate or hash sensitive payload data before logging. 3. Add a 'sensitive' flag to log entries that require redaction. 4. Configure log rotation with secure deletion of old logs.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Information_exposure_through_log_files",
+        "https://cwe.mitre.org/data/definitions/532.html"
+      ],
+      "compliance": ["SOC2", "GDPR", "PCI-DSS"]
+    },
+    {
+      "id": "sec-005",
+      "type": "security_hardening",
+      "title": "Add pip-audit to CI security pipeline",
+      "description": "The current security.yml workflow includes dependency-review and CodeQL but lacks explicit vulnerability scanning for Python dependencies using pip-audit. Known CVEs in dependencies like websocket-client, playwright, or pyarrow could introduce security vulnerabilities.",
+      "rationale": "Third-party dependencies can contain known vulnerabilities that are actively exploited. While dependency-review catches some issues on PRs, a dedicated pip-audit scan provides more comprehensive Python-specific vulnerability detection and should run on all pushes.",
+      "category": "dependencies",
+      "severity": "medium",
+      "affectedFiles": [
+        ".github/workflows/security.yml",
+        "pyproject.toml"
+      ],
+      "vulnerability": "CWE-1035: OWASP Top Ten 2017 Category A9 - Using Components with Known Vulnerabilities",
+      "currentRisk": "Dependencies may contain known CVEs that are not detected by current CI pipeline",
+      "remediation": "1. Add pip-audit to the security.yml workflow: `pip install pip-audit && pip-audit`. 2. Configure pip-audit to fail on HIGH/CRITICAL severity issues. 3. Add Safety or Snyk as an alternative or complementary scanner. 4. Create a dependabot.yml for automated dependency updates.",
+      "references": [
+        "https://pypi.org/project/pip-audit/",
+        "https://owasp.org/www-project-dependency-check/"
+      ],
+      "compliance": ["SOC2"]
+    }
+  ],
+  "metadata": {
+    "dependenciesScanned": 12,
+    "knownVulnerabilities": 0,
+    "filesAnalyzed": 45,
+    "criticalIssues": 0,
+    "highIssues": 2,
+    "mediumIssues": 3,
+    "lowIssues": 0,
+    "generatedAt": "2026-01-03T22:00:00Z",
+    "analysisNotes": [
+      "CodeQL and dependency-review already configured in CI",
+      "No hardcoded secrets found in source code",
+      "Subprocess usage is safe (no shell=True)",
+      "Environment variables used appropriately for configuration"
+    ]
+  }
+}

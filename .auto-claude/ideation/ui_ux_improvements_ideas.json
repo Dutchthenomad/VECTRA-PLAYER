@@ -1,0 +1,93 @@
+{
+  "ui_ux_improvements": [
+    {
+      "id": "uiux-001",
+      "type": "ui_ux_improvements",
+      "title": "Add Keyboard Shortcuts to MinimalWindow",
+      "description": "Implement keyboard shortcuts for trading actions (B=Buy, S=Sell, D=Sidebet) and utility functions in MinimalWindow, which currently has no keyboard bindings unlike the archived MainWindow.",
+      "rationale": "The archived MainWindow had comprehensive keyboard shortcuts (B/S/D for trading, Space for playback, H for help). MinimalWindow lacks all of these, forcing users to use mouse-only interaction. For a trading application where speed matters, keyboard shortcuts are essential for reducing latency between decision and action.",
+      "category": "usability",
+      "affected_components": ["src/ui/minimal_window.py"],
+      "screenshots": [],
+      "current_state": "MinimalWindow has no keyboard bindings. All trading actions require mouse clicks on buttons. The archived keyboard_shortcuts.py mixin shows B/S/D/Space/H shortcuts existed but are not implemented in the current minimal UI.",
+      "proposed_change": "Add _setup_keyboard_shortcuts() method to MinimalWindow that binds: B/b for BUY, S/s for SELL, D/d for SIDEBET, 1-4 for percentage buttons (10%/25%/50%/100%), H/h for help dialog showing shortcuts, Escape to clear bet entry. Use self.root.bind() pattern from archived code.",
+      "user_benefit": "Traders can execute actions 50-100ms faster with keyboard shortcuts vs mouse. In high-frequency trading scenarios, this latency reduction can mean the difference between profitable and unprofitable trades.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:30:00.000000Z"
+    },
+    {
+      "id": "uiux-002",
+      "type": "ui_ux_improvements",
+      "title": "Enhanced Connection Status with Text Labels",
+      "description": "Replace the single colored dot connection indicator with a more descriptive status display showing connection state text alongside the indicator dot.",
+      "rationale": "The current connection indicator is just a Unicode circle character (\\u25cf) that changes color between gray and green. This provides minimal information - users can't distinguish between 'never connected', 'disconnected', 'connecting', or 'error' states. The CONNECT button also just toggles between CONNECT/CONNECTED text.",
+      "category": "usability",
+      "affected_components": ["src/ui/minimal_window.py"],
+      "screenshots": [],
+      "current_state": "Connection status uses self.connection_label with text='\\u25cf' (filled circle) that changes fg color between GRAY_COLOR and GREEN_COLOR. States like CONNECTING, ERROR, or RECONNECTING from BridgeStatus enum are not visually distinct.",
+      "proposed_change": "Update update_connection() to accept a status string parameter instead of boolean. Add status text label next to the dot that shows: 'Disconnected' (gray), 'Connecting...' (yellow, animated), 'Connected' (green), 'Error' (red), 'Reconnecting...' (yellow). Map BridgeStatus enum values from browser/bridge.py to these visual states.",
+      "user_benefit": "Users can immediately understand the connection state without guessing what the color means. Critical for debugging connection issues and knowing when the system is ready for trading.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:31:00.000000Z"
+    },
+    {
+      "id": "uiux-003",
+      "type": "ui_ux_improvements",
+      "title": "Add Tooltips to Trading Buttons",
+      "description": "Add hover tooltips to all buttons explaining their function, especially the action buttons (BUY/SELL/SIDEBET) and utility buttons (1/2, X2, MAX) which may not be immediately clear to new users.",
+      "rationale": "The UI has multiple button types (percentage, increment, utility, action) with terse labels like '1/2', 'X2', 'MAX'. New users may not understand what these do. Tooltips provide contextual help without cluttering the compact interface.",
+      "category": "usability",
+      "affected_components": ["src/ui/minimal_window.py"],
+      "screenshots": [],
+      "current_state": "No tooltips exist on any buttons. Button labels are minimal: 'BUY', 'SELL', 'SIDEBET', '+0.001', '1/2', 'X2', 'MAX', 'X'. Users must learn through trial or documentation.",
+      "proposed_change": "Create a ToolTip class using tk.Toplevel that appears on button hover after 500ms delay. Add tooltips: BUY='Open position at current price (keyboard: B)', SELL='Close position at selected percentage (keyboard: S)', SIDEBET='Bet on rug occurring within 40 ticks (keyboard: D)', 1/2='Halve current bet amount', X2='Double current bet amount', MAX='Set bet to full balance', X='Clear bet amount to zero'.",
+      "user_benefit": "New users can learn the interface without documentation. Tooltips showing keyboard shortcuts help users discover faster input methods. Reduces onboarding friction.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:32:00.000000Z"
+    },
+    {
+      "id": "uiux-004",
+      "type": "ui_ux_improvements",
+      "title": "Visual Feedback for Button Actions",
+      "description": "Add visual feedback when action buttons are clicked - brief animation/flash to confirm the action was registered and sent to the server.",
+      "rationale": "Currently buttons only have activebackground color change during click. There's no visual confirmation that an action was sent to the server. In fast-paced trading, users may rapidly click wondering if their action registered, leading to multiple unintended trades.",
+      "category": "interaction",
+      "affected_components": ["src/ui/minimal_window.py", "src/ui/controllers/trading_controller.py"],
+      "screenshots": [],
+      "current_state": "Buttons have activebackground color (e.g., BUY has activebackground='#00cc55') that shows during click, but immediately reverts. No lasting feedback that action was processed. TradingController logs 'BUY sent to server' but no UI indication.",
+      "proposed_change": "Add _flash_button(button, color, duration_ms=200) method that temporarily changes button background to a highlight color then reverts. Call this in _on_buy_clicked(), _on_sell_clicked(), _on_sidebet_clicked() after delegating to TradingController. Use yellow flash for 'pending' state. Could also briefly disable button during server round-trip to prevent double-clicks.",
+      "user_benefit": "Users get immediate visual confirmation their action was registered. Reduces anxiety about whether clicks worked. Prevents accidental double-clicks that could result in unintended trades.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:33:00.000000Z"
+    },
+    {
+      "id": "uiux-005",
+      "type": "ui_ux_improvements",
+      "title": "Bet Entry Validation with Visual Feedback",
+      "description": "Add real-time validation to the bet entry field with visual feedback for invalid inputs (negative numbers, exceeding balance, below minimum bet).",
+      "rationale": "The bet entry field accepts any text input. Validation only happens when get_bet_amount() is called in TradingController, showing toast errors. Users should see immediately if their entered amount is invalid before attempting a trade.",
+      "category": "usability",
+      "affected_components": ["src/ui/minimal_window.py", "src/ui/controllers/trading_controller.py"],
+      "screenshots": [],
+      "current_state": "bet_entry is a plain tk.Entry with initial value '0.000'. No input validation occurs during typing. TradingController.get_bet_amount() validates min_bet (0.001), max_bet (1.0), and balance checks, showing toast errors only when trade is attempted.",
+      "proposed_change": "Bind bet_entry to <KeyRelease> event to validate on each keystroke. Add validation states: normal (white bg), warning (yellow bg for amount > balance), error (red bg for invalid format). Show validation message below entry field. Optionally disable BUY button when bet is invalid to prevent wasted clicks.",
+      "user_benefit": "Users see immediately if their bet amount is valid without attempting a trade. Prevents frustration of entering amount, clicking BUY, and getting error toast. Faster iteration on setting correct bet amounts.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:34:00.000000Z"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-01-04T00:35:00.000000Z",
+    "agent": "ui_ux_improvements_ideation_agent",
+    "analysis_method": "static_code_analysis",
+    "note": "Puppeteer browser automation not available for this Tkinter desktop application. Analysis based on comprehensive code review of minimal_window.py, trading_controller.py, and archived UI components.",
+    "files_analyzed": [
+      "src/ui/minimal_window.py",
+      "src/ui/controllers/trading_controller.py",
+      "src/ui/controllers/browser_bridge_controller.py",
+      "src/ui/_archived/interactions/keyboard_shortcuts.py",
+      "src/config.py",
+      "src/main.py"
+    ]
+  }
+}

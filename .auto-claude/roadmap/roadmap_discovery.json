@@ -1,0 +1,114 @@
+{
+  "project_name": "VECTRA-PLAYER",
+  "project_type": "desktop-app",
+  "tech_stack": {
+    "primary_language": "Python",
+    "frameworks": ["ttkbootstrap", "Playwright", "DuckDB", "ChromaDB", "PyArrow"],
+    "key_dependencies": ["websocket-client", "python-socketio", "playwright", "duckdb", "pyarrow", "pandas", "sentence-transformers", "pydantic"]
+  },
+  "target_audience": {
+    "primary_persona": "Crypto traders on rugs.fun who want automated trading bots and game replay analysis",
+    "secondary_personas": [
+      "ML/RL researchers training trading models",
+      "Data scientists analyzing trading patterns and market behavior",
+      "Developers building trading automation tools"
+    ],
+    "pain_points": [
+      "No way to capture and replay trading sessions for analysis",
+      "Local calculations often conflict with server state in live trading",
+      "Difficulty collecting high-quality training data for RL models",
+      "Lack of semantic search across trading event history",
+      "Manual trading is error-prone and slow compared to bots"
+    ],
+    "goals": [
+      "Record and replay trading sessions with full event fidelity",
+      "Train RL models on historical trading data",
+      "Execute trades automatically via bot with human-like timing",
+      "Analyze trading patterns using semantic search and RAG",
+      "Monitor live game sessions with server-authoritative state"
+    ],
+    "usage_context": "Desktop application for monitoring rugs.fun crypto trading games, capturing WebSocket events for ML training, and running automated trading bots in various execution modes"
+  },
+  "product_vision": {
+    "one_liner": "Unified game replay and live trading platform with DuckDB/Parquet storage and VectorDB semantic search for rugs.fun",
+    "problem_statement": "Crypto traders on rugs.fun lack tools to capture trading sessions, replay them for analysis, and train automated trading bots. Manual trading is slow and inconsistent, while local state calculations conflict with server state.",
+    "value_proposition": "VECTRA-PLAYER provides canonical truth storage in Parquet files, server-authoritative state management, multiple execution modes (recording, training, validation, live), and RAG-powered semantic search - enabling traders to build, train, and deploy sophisticated trading bots",
+    "success_metrics": [
+      "100% event capture fidelity with latency tracking",
+      "RL model training accuracy on captured data",
+      "Sub-second trade execution in live mode",
+      "High test coverage (target 70%+, currently 60%+)",
+      "Zero data loss during live trading sessions"
+    ]
+  },
+  "current_state": {
+    "maturity": "mvp",
+    "existing_features": [
+      "EventStore - single writer Parquet persistence with DuckDB queries",
+      "LiveStateProvider - server-authoritative state management",
+      "BotActionInterface - 4-mode execution (RECORDING, TRAINING, VALIDATION, LIVE)",
+      "HumanActionInterceptor - capture human trades with full context",
+      "WebSocket event capture and replay",
+      "MinimalWindow UI for RL training data collection",
+      "CDP browser automation via rugs_bot Chrome profile",
+      "Schema v2.0.0 with 11 event types",
+      "ChromaDB integration for semantic search via claude-flow",
+      "Comprehensive CI/CD with 9 GitHub Actions workflows"
+    ],
+    "known_gaps": [
+      "Protocol Explorer UI (Phase 12E pending)",
+      "Shorting integration deferred (no protocol data captured)",
+      "GUI thread-safety improvements (Phase 3)",
+      "Full production deployment pipeline",
+      "Performance optimization for high-frequency trading"
+    ],
+    "technical_debt": [
+      "Legacy recorders being removed (demo_recorder, recorder_sink, unified_recorder)",
+      "Ruff linting rules temporarily ignored (B904, N806, N803, etc.)",
+      "MyPy settings relaxed during migration",
+      "Some os.path usage instead of pathlib",
+      "Inherited naming conventions from REPLAYER fork"
+    ]
+  },
+  "competitive_context": {
+    "alternatives": [
+      "Manual trading on rugs.fun web interface",
+      "Generic crypto trading bots (not rugs.fun specific)",
+      "Custom Python scripts for WebSocket monitoring",
+      "Browser extension based trading helpers"
+    ],
+    "differentiators": [
+      "Purpose-built for rugs.fun protocol with deep WebSocket understanding",
+      "Canonical Parquet storage with DuckDB analytical queries",
+      "Four execution modes for complete bot development lifecycle",
+      "Server-authoritative state eliminates local/server conflicts",
+      "RAG integration enables natural language queries over trading history",
+      "Latency tracking chain (client_ts -> server_ts -> confirmed_ts)"
+    ],
+    "market_position": "Specialized trading platform and bot development toolkit for the rugs.fun ecosystem, combining data engineering (Parquet/DuckDB), ML infrastructure (RL training modes), and automation (CDP browser control) in a single integrated solution",
+    "competitor_pain_points": [],
+    "competitor_analysis_available": false
+  },
+  "constraints": {
+    "technical": [
+      "Chrome with CDP required for browser automation",
+      "Phantom wallet extension must be pre-configured in rugs_bot profile",
+      "Python 3.11+ required",
+      "Linux/macOS primary (Windows via WSL)",
+      "External ChromaDB infrastructure in claude-flow project"
+    ],
+    "resources": [
+      "Solo developer (Dutchthenomad)",
+      "Active development with regular commits",
+      "Comprehensive test coverage required (60%+ maintained)"
+    ],
+    "dependencies": [
+      "rugs.fun WebSocket API (external, undocumented)",
+      "claude-flow project for ChromaDB/RAG infrastructure",
+      "rugs-rl-bot project for RL training integration",
+      "Phantom wallet for blockchain transactions",
+      "Chrome DevTools Protocol for browser automation"
+    ]
+  },
+  "created_at": "2026-01-03T19:45:00Z"
+}

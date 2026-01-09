@@ -1,0 +1,533 @@
+{
+  "feature": "Pipeline D: Training Data Implementation",
+  "description": "# Pipeline D: Training Data Implementation\n\nComplete the training data pipeline to transform Parquet event data into RL-ready training batches. This enables machine learning models to train on historical trading data with proper observation/action/reward structures.\n\n## Rationale\nCore blocker for RL model training - users cannot train bots without a working data pipeline. This directly addresses the pain point of 'Difficulty collecting high-quality training data for RL models'.\n\n## User Stories\n- As an ML researcher, I want to load captured trading sessions as training data so that I can train RL models on historical patterns\n- As a data scientist, I want consistent feature extraction so that model training is reproducible\n\n## Acceptance Criteria\n- [ ] Observation schema extracts 36 features from Parquet events\n- [ ] Transitions (obs, action, reward, next_obs, done) are correctly generated\n- [ ] Batch loader provides training-ready data to RL frameworks\n- [ ] Integration tests verify pipeline with real captured data\n- [ ] Documentation explains feature engineering choices\n",
+  "created_at": "2026-01-04T04:25:36.954Z",
+  "updated_at": "2026-01-04T05:14:17.184Z",
+  "status": "human_review",
+  "planStatus": "review",
+  "phases": [
+    {
+      "phase_id": "1",
+      "name": "Schema Definition & Setup",
+      "description": "Define observation schema with 36 features and create ML package structure",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "1.1",
+          "title": "Create ML test package structure",
+          "description": "Create src/tests/test_ml/ directory and __init__.py",
+          "status": "pending",
+          "files_to_modify": [
+            "src/tests/test_ml/__init__.py"
+          ],
+          "verification": "Test package imports successfully"
+        },
+        {
+          "subtask_id": "1.2",
+          "title": "Define Observation schema with 36 features",
+          "description": "Create ml/schemas.py with Observation dataclass, FEATURE_NAMES (36 features), and to_numpy() method",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/schemas.py",
+            "src/tests/test_ml/test_schemas.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_schemas.py -v",
+          "acceptance_criteria": [
+            "FEATURE_COUNT == 36",
+            "Observation.to_numpy() returns (36,) np.float32 array",
+            "Feature names match observation field order",
+            "All 5 feature groups represented (Server State 9, Player State 5, Session Stats 6, Derived 6, Player Action 3, Execution 5+2 optional)"
+          ]
+        },
+        {
+          "subtask_id": "1.3",
+          "title": "Add action and reward schemas",
+          "description": "Define Action enum (BUY, SELL, HOLD) and reward calculation helpers in schemas.py",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/schemas.py",
+            "src/tests/test_ml/test_schemas.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_schemas.py::test_action_schema -v",
+          "acceptance_criteria": [
+            "Action enum with BUY, SELL, HOLD, WAIT",
+            "Transition dataclass with (obs, action, reward, next_obs, done)",
+            "Schema validation passes"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "2",
+      "name": "Episode Segmentation",
+      "description": "Load Parquet data and segment into game episodes",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "2.1",
+          "title": "Create Episode dataclass",
+          "description": "Define Episode structure with game_id, events, is_terminal, terminal_tick",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/episode_segmenter.py",
+            "src/tests/test_ml/test_episode_segmenter.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_episode_segmenter.py::test_episode_dataclass -v",
+          "acceptance_criteria": [
+            "Episode has game_id, events list, is_terminal flag",
+            "Episode tracks terminal_tick for rugged games"
+          ]
+        },
+        {
+          "subtask_id": "2.2",
+          "title": "Implement EpisodeSegmenter.segment()",
+          "description": "Group events by game_id, detect terminal states (rugged=True), filter short episodes",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/episode_segmenter.py",
+            "src/tests/test_ml/test_episode_segmenter.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_episode_segmenter.py::TestSegmentation -v",
+          "acceptance_criteria": [
+            "Events grouped by game_id correctly",
+            "Terminal states detected from rugged=True",
+            "Episodes < min_ticks filtered out",
+            "Episode boundaries correct"
+          ]
+        },
+        {
+          "subtask_id": "2.3",
+          "title": "Implement EpisodeSegmenter.from_parquet()",
+          "description": "Load events from Parquet files using DuckDB, return Episode list",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/episode_segmenter.py",
+            "src/tests/test_ml/test_episode_segmenter.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_episode_segmenter.py::test_from_parquet -v",
+          "acceptance_criteria": [
+            "Loads ws_event doc_type from Parquet",
+            "Handles glob patterns for file paths",
+            "Respects limit parameter",
+            "Returns valid Episode objects"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "3",
+      "name": "Observation Builder",
+      "description": "Extract 36-feature observation vectors from events",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "3.1",
+          "title": "Create ObservationBuilder skeleton",
+          "description": "Initialize ObservationBuilder with state tracking for server state, player state, price history",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_initialization -v",
+          "acceptance_criteria": [
+            "ObservationBuilder initializes state containers",
+            "Price history buffer created",
+            "Player state defaults set"
+          ]
+        },
+        {
+          "subtask_id": "3.2",
+          "title": "Implement server state extraction (9 features)",
+          "description": "Extract tick, price, phase, cooldown_timer_ms, active, rugged, connected_players, game_id from gameStateUpdate",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_server_state_extraction -v",
+          "acceptance_criteria": [
+            "All 9 server state features extracted correctly",
+            "game_id hashed to numeric value",
+            "Boolean flags converted to 0/1"
+          ]
+        },
+        {
+          "subtask_id": "3.3",
+          "title": "Implement player state extraction (5 features)",
+          "description": "Extract balance, position_qty, avg_entry_price, cumulative_pnl, total_invested from playerUpdate",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_generator.py::test_player_state_extraction -v",
+          "acceptance_criteria": [
+            "Player state features extracted from playerUpdate events",
+            "State interpolated between sparse updates",
+            "Defaults used when no playerUpdate received yet"
+          ]
+        },
+        {
+          "subtask_id": "3.4",
+          "title": "Implement session stats extraction (6 features)",
+          "description": "Extract rugpool stats (amount, threshold, instarug_count) and game stats (average_multiplier, count2x/10x/50x/100x, highest_today)",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_session_stats_extraction -v",
+          "acceptance_criteria": [
+            "Rugpool features extracted (3 features)",
+            "Session statistics extracted (6 features total including rugpool)",
+            "Missing stats handled gracefully with defaults"
+          ]
+        },
+        {
+          "subtask_id": "3.5",
+          "title": "Implement derived features (6 features)",
+          "description": "Calculate price_velocity, price_acceleration, unrealized_pnl, position_pnl_pct, rugpool_ratio, balance_at_risk_pct",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_derived_features -v",
+          "acceptance_criteria": [
+            "Velocity calculated from price deltas",
+            "Acceleration calculated from velocity deltas",
+            "PnL calculations correct",
+            "Ratios calculated correctly (rugpool, balance_at_risk)"
+          ]
+        },
+        {
+          "subtask_id": "3.6",
+          "title": "Implement player action tracking (3 features)",
+          "description": "Track time_in_position, ticks_since_last_action, bet_amount from ButtonEvent history",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_action_tracking -v",
+          "acceptance_criteria": [
+            "time_in_position increments while holding",
+            "ticks_since_last_action resets on action",
+            "bet_amount tracks last bet size"
+          ]
+        },
+        {
+          "subtask_id": "3.7",
+          "title": "Implement execution tracking (5 optional features)",
+          "description": "Track execution_tick, execution_price, trade_id, client_timestamp, latency_ms when available",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_execution_tracking -v",
+          "acceptance_criteria": [
+            "Execution features populated from playerUpdate",
+            "Default to 0 when not available",
+            "Latency calculated from timestamps when present"
+          ]
+        },
+        {
+          "subtask_id": "3.8",
+          "title": "Implement ObservationBuilder.to_numpy()",
+          "description": "Convert current observation state to np.ndarray(36,) with correct dtype",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/observation_builder.py",
+            "src/tests/test_ml/test_observation_builder.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_observation_builder.py::test_to_numpy -v",
+          "acceptance_criteria": [
+            "Returns np.ndarray with shape (36,)",
+            "dtype is np.float32",
+            "No NaN values in output",
+            "Feature order matches FEATURE_NAMES"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "4",
+      "name": "Training Data Generation",
+      "description": "Generate (obs, action, reward, next_obs, done) tuples for RL training",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "4.1",
+          "title": "Create TrainingDataGenerator skeleton",
+          "description": "Initialize TrainingDataGenerator with observation builder and episode segmenter",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_initialization -v",
+          "acceptance_criteria": [
+            "TrainingDataGenerator initializes dependencies",
+            "ObservationBuilder and EpisodeSegmenter created"
+          ]
+        },
+        {
+          "subtask_id": "4.2",
+          "title": "Implement action-observation alignment",
+          "description": "Match ButtonEvent actions to corresponding game ticks with tolerance window (±1 tick)",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_action_alignment -v",
+          "acceptance_criteria": [
+            "ButtonEvents matched to correct ticks",
+            "Tolerance window handles timing jitter",
+            "Unmatched actions handled gracefully",
+            "Action encoding correct (BUY=0, SELL=1, HOLD=2)"
+          ]
+        },
+        {
+          "subtask_id": "4.3",
+          "title": "Implement reward calculation",
+          "description": "Calculate rewards based on PnL changes between ticks, with terminal reward for rug/exit",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_reward_calculation -v",
+          "acceptance_criteria": [
+            "Reward = delta_pnl for intermediate steps",
+            "Terminal reward accounts for final position",
+            "Rug events give negative terminal reward if holding",
+            "Successful exit gives positive terminal reward"
+          ]
+        },
+        {
+          "subtask_id": "4.4",
+          "title": "Implement episode processing",
+          "description": "Process Episode into list of (obs, action, reward, next_obs, done) transitions",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_episode_processing -v",
+          "acceptance_criteria": [
+            "Each tick generates a transition",
+            "Observations built incrementally",
+            "Terminal states marked with done=True",
+            "Transition data structure correct"
+          ]
+        },
+        {
+          "subtask_id": "4.5",
+          "title": "Implement from_parquet() loader",
+          "description": "Load ws_event and button_event Parquet data, generate training dataset",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_from_parquet -v",
+          "acceptance_criteria": [
+            "Loads both ws_event and button_event data",
+            "Segments episodes correctly",
+            "Generates valid transitions",
+            "Returns list of (obs, action, reward, next_obs, done) tuples"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "5",
+      "name": "Batch Interface",
+      "description": "Provide batched data interface for RL frameworks",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "5.1",
+          "title": "Implement get_batch() method",
+          "description": "Sample batch of transitions and convert to dict of numpy arrays",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_batch_generation -v",
+          "acceptance_criteria": [
+            "Returns dict with keys: observations, actions, rewards, next_observations, dones",
+            "All arrays have correct batch dimension",
+            "observations.shape == (batch_size, 36)",
+            "actions.shape == (batch_size,)",
+            "rewards.shape == (batch_size,)",
+            "dones.shape == (batch_size,)"
+          ]
+        },
+        {
+          "subtask_id": "5.2",
+          "title": "Add data normalization",
+          "description": "Optionally normalize observations (z-score) for stable training",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_normalization -v",
+          "acceptance_criteria": [
+            "Normalization can be enabled/disabled",
+            "Mean and std computed from dataset",
+            "Normalized features have mean≈0, std≈1",
+            "Normalization parameters saved for inference"
+          ]
+        },
+        {
+          "subtask_id": "5.3",
+          "title": "Add PyTorch tensor conversion",
+          "description": "Optional method to convert batches to PyTorch tensors",
+          "status": "pending",
+          "files_to_modify": [
+            "src/ml/training_generator.py",
+            "src/tests/test_ml/test_training_generator.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_generator.py::test_torch_conversion -v",
+          "acceptance_criteria": [
+            "get_batch(as_torch=True) returns torch tensors",
+            "Tensor shapes match numpy array shapes",
+            "Tensors on correct device (cpu/cuda)"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "6",
+      "name": "Integration & Documentation",
+      "description": "End-to-end testing with real data and documentation",
+      "status": "pending",
+      "subtasks": [
+        {
+          "subtask_id": "6.1",
+          "title": "Create integration test with real Parquet data",
+          "description": "Test full pipeline from Parquet → Episodes → Observations → Transitions → Batches",
+          "status": "pending",
+          "files_to_modify": [
+            "src/tests/test_ml/test_training_integration.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_integration.py -v",
+          "acceptance_criteria": [
+            "Loads real data from ~/rugs_data/events_parquet/",
+            "Generates >0 training samples",
+            "No NaN values in observations",
+            "Batch shapes correct for RL training",
+            "Feature statistics within expected ranges"
+          ]
+        },
+        {
+          "subtask_id": "6.2",
+          "title": "Add data quality validation",
+          "description": "Validate feature ranges, check for NaN/Inf, verify action distribution",
+          "status": "pending",
+          "files_to_modify": [
+            "src/tests/test_ml/test_training_integration.py"
+          ],
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/test_training_integration.py::test_data_quality -v",
+          "acceptance_criteria": [
+            "All features finite (no NaN/Inf)",
+            "Feature ranges reasonable (no extreme outliers)",
+            "Action distribution matches expected",
+            "Terminal states properly marked"
+          ]
+        },
+        {
+          "subtask_id": "6.3",
+          "title": "Create feature engineering documentation",
+          "description": "Document the 36 features, their calculations, and design rationale",
+          "status": "pending",
+          "files_to_modify": [
+            "docs/ML_TRAINING_DATA_PIPELINE.md"
+          ],
+          "verification": "Documentation complete and reviewed",
+          "acceptance_criteria": [
+            "All 36 features documented with formulas",
+            "Feature groups explained (Server State, Player State, etc.)",
+            "Derived feature calculations shown",
+            "Design decisions explained",
+            "Usage examples provided"
+          ]
+        },
+        {
+          "subtask_id": "6.4",
+          "title": "Create usage guide and examples",
+          "description": "Write examples for loading data, generating batches, training with Stable Baselines 3",
+          "status": "pending",
+          "files_to_modify": [
+            "docs/ML_TRAINING_DATA_PIPELINE.md",
+            "examples/train_from_parquet.py"
+          ],
+          "verification": "Example scripts run successfully",
+          "acceptance_criteria": [
+            "Example script loads data successfully",
+            "Demonstrates batch generation",
+            "Shows integration with SB3/PyTorch",
+            "Includes data quality checks"
+          ]
+        },
+        {
+          "subtask_id": "6.5",
+          "title": "Run full test suite and verify",
+          "description": "Run all tests, ensure >30 new tests pass, update test count in docs",
+          "status": "pending",
+          "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/ -v --tb=short",
+          "acceptance_criteria": [
+            "All ML tests pass (target: >30 tests)",
+            "Test coverage for all components",
+            "Integration tests pass with real data",
+            "No test failures or warnings"
+          ]
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "external": [
+      "numpy",
+      "pandas",
+      "pyarrow",
+      "duckdb"
+    ],
+    "internal": [
+      "src/services/event_store/schema.py",
+      "src/services/event_store/duckdb.py"
+    ]
+  },
+  "testing": {
+    "total_tests_target": 30,
+    "test_directory": "src/tests/test_ml/",
+    "test_command": "cd src && ../.venv/bin/python -m pytest tests/test_ml/ -v --tb=short",
+    "integration_test_data": "~/rugs_data/events_parquet/"
+  },
+  "deliverables": [
+    "src/ml/schemas.py - Observation, Action, Transition schemas",
+    "src/ml/episode_segmenter.py - Episode boundary detection",
+    "src/ml/observation_builder.py - 36-feature extraction",
+    "src/ml/training_generator.py - Training batch generation",
+    "src/tests/test_ml/ - Complete test suite (>30 tests)",
+    "docs/ML_TRAINING_DATA_PIPELINE.md - Feature engineering documentation",
+    "examples/train_from_parquet.py - Usage example"
+  ],
+  "acceptance_criteria_summary": [
+    "Observation schema extracts 36 features from Parquet events",
+    "Transitions (obs, action, reward, next_obs, done) correctly generated",
+    "Batch loader provides training-ready data to RL frameworks",
+    "Integration tests verify pipeline with real captured data",
+    "Documentation explains feature engineering choices",
+    "All tests pass (>30 new tests)",
+    "No NaN values in generated features",
+    "Data quality validation passes"
+  ],
+  "recoveryNote": "Task recovered from stuck state at 2026-01-04T05:12:35.063Z"
+}

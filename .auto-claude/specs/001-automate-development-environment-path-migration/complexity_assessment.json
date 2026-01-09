@@ -1,0 +1,71 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "Standard complexity due to 22-file scope with backup/rollback requirements. No external integrations or unfamiliar technologies, but significant cross-cutting impact requiring careful verification.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 24,
+      "estimated_services": 1,
+      "is_cross_cutting": true,
+      "notes": "22 existing files to modify + 1-2 new files (migration script + tests). Full codebase impact across documentation, configuration, and code."
+    },
+    "integrations": {
+      "external_services": [],
+      "new_dependencies": [],
+      "research_needed": false,
+      "notes": "Pure Python standard library task. No external APIs or unfamiliar technologies."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "Environment configuration files need updating. No Docker/container or database schema changes. Development environment migration only."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": false,
+      "unfamiliar_tech": [],
+      "notes": "Standard Python scripting: file I/O, regex/string replacement, backup/restore patterns. Well-established patterns exist in the ecosystem."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "System breakage if paths incorrectly updated",
+        "Data loss if backup mechanism fails",
+        "Incomplete migration if not all 63 references updated",
+        "Rollback complexity if verification fails",
+        "Different file types (Python, MD, config) need correct handling"
+      ],
+      "notes": "Medium risk due to potential system impact. Mitigated by backup/rollback requirements. No security or data privacy concerns."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": false,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "Medium risk requires unit tests for script logic (backup/rollback/replacement) and integration tests to verify end-to-end migration on test files. No security concerns (path updates only). No staging needed (dev environment migration)."
+  },
+
+  "created_at": "2026-01-03T22:33:00.000000Z"
+}

@@ -1,0 +1,162 @@
+{
+  "code_quality": [
+    {
+      "id": "cq-001",
+      "type": "code_quality",
+      "title": "Split GameState class into domain-focused modules",
+      "description": "The file src/core/game_state.py has grown to 1065 lines and handles multiple distinct responsibilities: core state management, position trading, sidebet management, observer pattern implementation, server reconciliation, and analytics/metrics. This violates single responsibility and makes the code hard to navigate, test individually, and maintain.",
+      "rationale": "Very large monolithic classes increase cognitive load, make testing harder (all tests require full class instantiation), and often lead to merge conflicts. Domain-driven decomposition enables focused unit testing, easier reasoning about behavior, and parallel development.",
+      "category": "large_files",
+      "severity": "major",
+      "affectedFiles": [
+        "src/core/game_state.py"
+      ],
+      "currentState": "Single 1065-line class handling: state access (get/snapshot), position management (open/close/partial), sidebet management, sell percentage, server reconciliation, observer pattern, history/analytics, WebSocket event handling, and validation",
+      "proposedChange": "Split into focused modules:\n- src/core/state/core.py - Core state container and thread-safe access\n- src/core/state/position_manager.py - Position open/close/partial logic\n- src/core/state/sidebet_manager.py - Sidebet placement/resolution\n- src/core/state/reconciliation.py - Server state reconciliation\n- src/core/state/observers.py - Observer pattern implementation\n- src/core/state/analytics.py - Metrics and history tracking\n- src/core/game_state.py - Facade that composes all managers (for backwards compatibility)",
+      "codeExample": "# Current:\nclass GameState:\n    def open_position(...): pass\n    def close_position(...): pass\n    def place_sidebet(...): pass\n    def reconcile_with_server(...): pass\n    def calculate_metrics(...): pass\n    # ... 1000+ more lines\n\n# Proposed:\nclass GameState:\n    def __init__(self):\n        self._position = PositionManager(self._state)\n        self._sidebet = SidebetManager(self._state)\n        self._reconciler = StateReconciler(self._state)\n        self._analytics = AnalyticsTracker(self._state)\n    \n    # Delegate methods\n    def open_position(self, data):\n        return self._position.open(data)",
+      "bestPractice": "Single Responsibility Principle - each module should have one reason to change. Facade pattern maintains backwards compatibility while enabling internal refactoring.",
+      "metrics": {
+        "lineCount": 1065,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Ensure comprehensive test coverage before refactoring (tests exist: test_core/test_game_state.py)",
+        "Create interface contracts for each manager"
+      ]
+    },
+    {
+      "id": "cq-002",
+      "type": "code_quality",
+      "title": "Extract browser button click strategies into shared utility",
+      "description": "Similar button finding and clicking logic is duplicated between src/browser/bridge.py (950 lines) and src/browser/executor.py (937 lines). Both implement multi-strategy selector systems (text matching, CSS selectors, class patterns) with retry logic and visibility checking.",
+      "rationale": "Code duplication leads to bugs when fixes are applied inconsistently and increases maintenance burden. The nearly-identical JavaScript evaluation code for finding buttons is repeated across both files.",
+      "category": "duplication",
+      "severity": "major",
+      "affectedFiles": [
+        "src/browser/bridge.py",
+        "src/browser/executor.py"
+      ],
+      "currentState": "Two 900+ line files each implementing their own:\n- SelectorStrategy class with BUTTON_TEXT_PATTERNS, BUTTON_CSS_SELECTORS, CLASS_PATTERNS\n- Multi-strategy click methods (_try_text_based_click, _try_css_selector_click)\n- Visibility/enabled checking JavaScript\n- Retry with exponential backoff logic",
+      "proposedChange": "Create shared utility:\n- src/browser/dom/click_strategy.py - Unified button finding strategies\n- src/browser/dom/retry.py - Shared retry/backoff logic\n- Refactor bridge.py and executor.py to use shared utilities\n- Keep bridge.py focused on UI→browser coordination\n- Keep executor.py focused on bot→browser execution",
+      "codeExample": "# Current (duplicated in both files):\nclass SelectorStrategy:\n    BUTTON_TEXT_PATTERNS = {...}  # 50+ lines\n    BUTTON_CSS_SELECTORS = {...}  # 80+ lines\n\n# Proposed (shared):\n# src/browser/dom/click_strategy.py\nclass ButtonClickStrategy:\n    def __init__(self, page):\n        self.page = page\n    \n    async def click_button(self, button: str, max_retries: int = 3) -> ClickResult:\n        \"\"\"Unified button click with all strategies and retry.\"\"\"\n        ...\n\n# Both files use:\nfrom browser.dom.click_strategy import ButtonClickStrategy",
+      "bestPractice": "DRY (Don't Repeat Yourself) - extract common logic into reusable utilities. Single source of truth for selector patterns.",
+      "metrics": {
+        "lineCount": 1887,
+        "complexity": null,
+        "duplicateLines": 150,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Identify all shared selector patterns",
+        "Create test fixtures for browser mocking"
+      ]
+    },
+    {
+      "id": "cq-003",
+      "type": "code_quality",
+      "title": "Clean up archived dead code directories",
+      "description": "The codebase contains 41+ Python files in _archived directories that are no longer used but remain in the repository. These include deprecated UI builders, handlers, controllers, and test files that were superseded during the VECTRA-PLAYER refactoring.",
+      "rationale": "Dead code creates confusion about what's current, bloats repository size, and can accidentally be imported or referenced. Per CLAUDE.md, legacy recorders were marked for deletion but some archived code remains.",
+      "category": "dead_code",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/ui/_archived/audio_cue_player.py",
+        "src/ui/_archived/balance_edit_dialog.py",
+        "src/ui/_archived/builders/action_builder.py",
+        "src/ui/_archived/builders/betting_builder.py",
+        "src/ui/_archived/builders/chart_builder.py",
+        "src/ui/_archived/debug_terminal.py",
+        "src/ui/_archived/main_window.py",
+        "src/ui/_archived/controllers/bot_manager.py",
+        "src/ui/_archived/controllers/replay_controller.py",
+        "src/tests/_archived/test_ui/test_builders/*.py",
+        "src/scripts/_archived/debug_bot_session.py"
+      ],
+      "currentState": "41 files across _archived directories:\n- src/ui/_archived/ (25+ files)\n- src/tests/_archived/ (10+ files)\n- src/scripts/_archived/ (2+ files)\n\nThese include complete UI systems, controllers, handlers, and their tests that were deprecated.",
+      "proposedChange": "1. Verify no imports reference _archived modules (grep for patterns)\n2. Move _archived directories to a separate branch or tag for historical reference\n3. Remove _archived directories from main branch\n4. Update .gitignore to prevent accidental recreation\n\nAlternatively: Create a DEPRECATED.md documenting what was archived and why, then delete.",
+      "codeExample": "# Verification command:\ngrep -r \"from.*_archived\\|import.*_archived\" src/\n\n# If no matches, safe to remove:\nrm -rf src/ui/_archived/\nrm -rf src/tests/_archived/\nrm -rf src/scripts/_archived/",
+      "bestPractice": "Keep codebase clean by removing dead code. Use git history or tags for archaeological purposes rather than keeping dead code in main branch.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": false,
+      "prerequisites": [
+        "Verify no active imports from _archived",
+        "Tag current commit for reference before deletion"
+      ]
+    },
+    {
+      "id": "cq-004",
+      "type": "code_quality",
+      "title": "Externalize embedded JavaScript from Python browser modules",
+      "description": "The browser automation modules (bridge.py, executor.py) contain large inline JavaScript strings (~150+ lines) for DOM manipulation, button finding, and visibility checking. These are hard to maintain, lack syntax highlighting, and can't be tested independently.",
+      "rationale": "Inline JavaScript in Python strings loses IDE support (syntax highlighting, linting, formatting), is error-prone to edit, and makes the Python files unnecessarily large. Externalizing enables JS-specific tooling and testing.",
+      "category": "code_smells",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/browser/bridge.py",
+        "src/browser/executor.py"
+      ],
+      "currentState": "Large JavaScript template strings embedded in Python:\n- _try_text_based_click: 70+ lines of JS\n- _force_socketio_reconnect: 50+ lines of JS\n- _get_available_buttons: 10+ lines of JS\n- Various visibility/enabled checking snippets",
+      "proposedChange": "1. Create src/browser/dom/scripts/ directory\n2. Move JavaScript to .js files:\n   - button_finder.js\n   - visibility_checker.js\n   - socketio_reconnect.js\n3. Create JS loader utility that reads and caches scripts\n4. Optionally add ESLint config for JS files",
+      "codeExample": "# Current:\nasync def _try_text_based_click(self, page, button: str):\n    js_code = \"\"\"\n    (patterns) => {\n        const allButtons = Array.from(...);\n        // 70+ more lines of JS\n    }\n    \"\"\"\n    result = await page.evaluate(js_code, patterns)\n\n# Proposed:\n# src/browser/dom/scripts/button_finder.js\nexport function findAndClickButton(patterns) {\n    const allButtons = Array.from(...);\n    // ... with proper JS tooling support\n}\n\n# src/browser/dom/js_loader.py\nclass JSLoader:\n    _cache = {}\n    \n    @classmethod\n    def load(cls, script_name: str) -> str:\n        if script_name not in cls._cache:\n            path = Path(__file__).parent / 'scripts' / f'{script_name}.js'\n            cls._cache[script_name] = path.read_text()\n        return cls._cache[script_name]",
+      "bestPractice": "Separation of concerns - keep JavaScript in JS files for proper tooling. Single source of truth for DOM manipulation logic.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": false,
+      "prerequisites": []
+    },
+    {
+      "id": "cq-005",
+      "type": "code_quality",
+      "title": "Organize config.py into structured sections with validation",
+      "description": "The src/config.py file at 554 lines contains flat configuration with mixed concerns: paths, feature flags, timeouts, memory limits, UI settings, and environment variable loading. While functional, it lacks structure and runtime validation.",
+      "rationale": "Large flat config files become hard to navigate and prone to inconsistent usage. Structured configuration enables IDE autocomplete, type checking, validation at startup, and clear documentation of available options.",
+      "category": "structure",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/config.py"
+      ],
+      "currentState": "Single config module with:\n- Environment variable parsing\n- Path configuration\n- Feature flags (RUGS_LEGACY_RECORDERS, etc.)\n- Memory limits (MEMORY dict)\n- UI settings\n- Chrome/browser configuration\n- All accessed via config.SETTING_NAME pattern",
+      "proposedChange": "Restructure into dataclass-based config sections:\n- src/config/paths.py - All path configuration\n- src/config/features.py - Feature flags\n- src/config/memory.py - Memory/buffer limits\n- src/config/browser.py - Chrome/CDP settings\n- src/config/__init__.py - Load and validate all configs\n\nUse pydantic or dataclasses with validation.",
+      "codeExample": "# Current:\nconfig.MEMORY.get('max_state_history', 1000)\nconfig.CHROME_PROFILE\nconfig.RUGS_DATA_DIR\n\n# Proposed:\n@dataclass\nclass MemoryConfig:\n    max_state_history: int = 1000\n    max_transaction_log: int = 1000\n    max_closed_positions: int = 500\n\n@dataclass\nclass BrowserConfig:\n    chrome_profile: str = 'rugs_bot'\n    chrome_binary: str | None = None\n    cdp_port: int = 9222\n\n@dataclass\nclass Config:\n    memory: MemoryConfig\n    browser: BrowserConfig\n    paths: PathsConfig\n    features: FeaturesConfig\n\nconfig = Config.from_env()  # Loads and validates\n\n# Usage:\nconfig.memory.max_state_history\nconfig.browser.chrome_profile",
+      "bestPractice": "Structured configuration with validation catches errors at startup rather than runtime. Dataclass-based configs enable IDE support and type checking.",
+      "metrics": {
+        "lineCount": 554,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": true,
+      "prerequisites": [
+        "Audit all config.X usages across codebase",
+        "Create migration guide for new config access patterns"
+      ]
+    }
+  ],
+  "metadata": {
+    "filesAnalyzed": 150,
+    "largeFilesFound": 5,
+    "duplicateBlocksFound": 2,
+    "lintingConfigured": true,
+    "testsPresent": true,
+    "archivedFilesFound": 41,
+    "generatedAt": "2026-01-03T22:00:00Z"
+  }
+}
