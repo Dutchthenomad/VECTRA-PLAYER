@@ -77,6 +77,10 @@ temp/
 # ML Models (large binary files - commented to track in git for now)
 # models/*.pkl
 
+# Large ML training data files
+Machine Learning/models/*/training_data/*.parquet
+Machine Learning/models/*/runs/
+
 # Game recordings (large data files - stored externally)
 # Legacy recordings: ~/rugs_recordings/
 # Modern data: ~/rugs_data/

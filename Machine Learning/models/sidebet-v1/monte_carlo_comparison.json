@@ -1,0 +1,418 @@
+{
+  "fixed_baseline": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "fixed",
+      "kelly_fraction": 0.25,
+      "take_profit_target": 1.5
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10062847819111717,
+      "median_final_bankroll": 0.09930178812806544,
+      "std_final_bankroll": 0.005666620891924601
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.4546,
+      "probability_2x": 0.0,
+      "probability_target": 0.0
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.031704917144334405,
+      "median_max_drawdown": 0.03702091209331404,
+      "worst_max_drawdown": 0.08017274902873156,
+      "mean_recovery_time": 0.84403
+    },
+    "var_metrics": {
+      "var_95": -0.05018146188892403,
+      "var_99": -0.06753411550251427,
+      "cvar_95": -0.05850326604355855
+    },
+    "performance": {
+      "expected_return": 0.006284781911171606,
+      "return_std": 0.056666208919246015,
+      "sharpe_ratio": 0.11090881198930978,
+      "sortino_ratio": 0.4002877090412289,
+      "calmar_ratio": 0.19822735642425995
+    },
+    "percentiles": {
+      "1": 0.09324658844974858,
+      "5": 0.0949818538111076,
+      "10": 0.09528088953924499,
+      "25": 0.09602857361957653,
+      "50": 0.09930178812806544,
+      "75": 0.10386978275131864,
+      "90": 0.10838769825872405,
+      "95": 0.11167522021864214,
+      "99": 0.11815715846421883
+    }
+  },
+  "quarter_kelly": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "kelly",
+      "kelly_fraction": 0.25,
+      "take_profit_target": 1.5
+    },
+    "summary": {
+      "mean_final_bankroll": 0.1015647386183788,
+      "median_final_bankroll": 0.08967711255175276,
+      "std_final_bankroll": 0.026201140919482977
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.33647,
+      "probability_2x": 0.01241,
+      "probability_target": 0.11376
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.08927958608153974,
+      "median_max_drawdown": 0.11187891045833467,
+      "worst_max_drawdown": 0.17005514627939583,
+      "mean_recovery_time": 0.72374
+    },
+    "var_metrics": {
+      "var_95": -0.1558756662277437,
+      "var_99": -0.16108600060434866,
+      "cvar_95": -0.15940832242602088
+    },
+    "performance": {
+      "expected_return": 0.01564738618378773,
+      "return_std": 0.26201140919482974,
+      "sharpe_ratio": 0.05972024741927345,
+      "sortino_ratio": 0.5296915831574821,
+      "calmar_ratio": 0.1752627545729978
+    },
+    "percentiles": {
+      "1": 0.08389139993956514,
+      "5": 0.08441243337722563,
+      "10": 0.08476078600831036,
+      "25": 0.0860381363235796,
+      "50": 0.08967711255175276,
+      "75": 0.10530022170059253,
+      "90": 0.1517862804813965,
+      "95": 0.1587704983006052,
+      "99": 0.20649082079586847
+    }
+  },
+  "half_kelly_aggressive": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "kelly",
+      "kelly_fraction": 0.5,
+      "take_profit_target": 2.0
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10268336947393963,
+      "median_final_bankroll": 0.07924361257100182,
+      "std_final_bankroll": 0.05383694018868456
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.22261,
+      "probability_2x": 0.10915,
+      "probability_target": 0.10915
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.1725544553151657,
+      "median_max_drawdown": 0.2104614818815688,
+      "worst_max_drawdown": 0.25000000000000006,
+      "mean_recovery_time": 0.85008
+    },
+    "var_metrics": {
+      "var_95": -0.2494090376397122,
+      "var_99": -0.24999999999999994,
+      "cvar_95": -0.2499546320068468
+    },
+    "performance": {
+      "expected_return": 0.026833694739396407,
+      "return_std": 0.5383694018868457,
+      "sharpe_ratio": 0.04984253311081804,
+      "sortino_ratio": 0.4982667456126996,
+      "calmar_ratio": 0.1555085592567601
+    },
+    "percentiles": {
+      "1": 0.07500000000000001,
+      "5": 0.07505909623602879,
+      "10": 0.07593331734497663,
+      "25": 0.0772832176223292,
+      "50": 0.07924361257100182,
+      "75": 0.09946786183752523,
+      "90": 0.2028115972556648,
+      "95": 0.21707878588251003,
+      "99": 0.351717730420493
+    }
+  },
+  "anti_martingale": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "anti_martingale",
+      "kelly_fraction": 0.25,
+      "take_profit_target": 1.5
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10062174422258642,
+      "median_final_bankroll": 0.0992828163211381,
+      "std_final_bankroll": 0.005695433231287935
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.45421,
+      "probability_2x": 0.0,
+      "probability_target": 0.0
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.03170914029577094,
+      "median_max_drawdown": 0.03709552392004101,
+      "worst_max_drawdown": 0.07991645510507128,
+      "mean_recovery_time": 0.84362
+    },
+    "var_metrics": {
+      "var_95": -0.05038984372217281,
+      "var_99": -0.06766893790269105,
+      "cvar_95": -0.058831653377608324
+    },
+    "performance": {
+      "expected_return": 0.006217442225863968,
+      "return_std": 0.05695433231287934,
+      "sharpe_ratio": 0.10916539573685759,
+      "sortino_ratio": 0.3962588320731439,
+      "calmar_ratio": 0.19607728774321867
+    },
+    "percentiles": {
+      "1": 0.0932331062097309,
+      "5": 0.09496101562778272,
+      "10": 0.09527844315470005,
+      "25": 0.0959935846881104,
+      "50": 0.0992828163211381,
+      "75": 0.10387985909737076,
+      "90": 0.10836006316172439,
+      "95": 0.11168419314763002,
+      "99": 0.11840393757553788
+    }
+  },
+  "theta_bayesian_aggressive": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "theta_bayesian",
+      "kelly_fraction": 0.5,
+      "take_profit_target": 2.0
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10298222330652443,
+      "median_final_bankroll": 0.07927567910433399,
+      "std_final_bankroll": 0.054029172368782186
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.22562,
+      "probability_2x": 0.1114,
+      "probability_target": 0.1114
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.17174904363244145,
+      "median_max_drawdown": 0.21015477520726605,
+      "worst_max_drawdown": 0.25000000000000006,
+      "mean_recovery_time": 0.84651
+    },
+    "var_metrics": {
+      "var_95": -0.2494090376397122,
+      "var_99": -0.24999999999999994,
+      "cvar_95": -0.24995753042307065
+    },
+    "performance": {
+      "expected_return": 0.02982223306524407,
+      "return_std": 0.5402917236878219,
+      "sharpe_ratio": 0.05519653875445115,
+      "sortino_ratio": 0.555715982229549,
+      "calmar_ratio": 0.17363842286694975
+    },
+    "percentiles": {
+      "1": 0.07500000000000001,
+      "5": 0.07505909623602879,
+      "10": 0.07596542828252555,
+      "25": 0.07728820417828533,
+      "50": 0.07927567910433399,
+      "75": 0.09950945963894292,
+      "90": 0.20334057865154756,
+      "95": 0.2175409966012104,
+      "99": 0.34969869465843334
+    }
+  },
+  "theta_bayesian_conservative": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "theta_bayesian",
+      "kelly_fraction": 0.25,
+      "take_profit_target": 1.3
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10133325661410289,
+      "median_final_bankroll": 0.08886515015711025,
+      "std_final_bankroll": 0.024125001854973502
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.26773,
+      "probability_2x": 8e-05,
+      "probability_target": 0.18364
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.08749440030746991,
+      "median_max_drawdown": 0.11140095567889946,
+      "worst_max_drawdown": 0.14939532543926687,
+      "mean_recovery_time": 0.73379
+    },
+    "var_metrics": {
+      "var_95": -0.14275958918830212,
+      "var_99": -0.14801817196554282,
+      "cvar_95": -0.14600305659560256
+    },
+    "performance": {
+      "expected_return": 0.013332566141028741,
+      "return_std": 0.24125001854973502,
+      "sharpe_ratio": 0.055264518615073845,
+      "sortino_ratio": 1.0340597739874766,
+      "calmar_ratio": 0.1523819363773668
+    },
+    "percentiles": {
+      "1": 0.08519818280344572,
+      "5": 0.0857240410811698,
+      "10": 0.08629579889622159,
+      "25": 0.08774493576101594,
+      "50": 0.08886515015711025,
+      "75": 0.11056064776024156,
+      "90": 0.1490562450680302,
+      "95": 0.15627469463820634,
+      "99": 0.16279599681880622
+    }
+  },
+  "volatility_focused": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.001,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "volatility_adjusted",
+      "kelly_fraction": 0.25,
+      "take_profit_target": 1.5
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10062989306818386,
+      "median_final_bankroll": 0.0993020133393854,
+      "std_final_bankroll": 0.0056787934561797655
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.45621,
+      "probability_2x": 0.0,
+      "probability_target": 0.0
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.03171292921379231,
+      "median_max_drawdown": 0.03704620617697969,
+      "worst_max_drawdown": 0.08033100686281214,
+      "mean_recovery_time": 0.84262
+    },
+    "var_metrics": {
+      "var_95": -0.050236797455044946,
+      "var_99": -0.06773570370436736,
+      "cvar_95": -0.05855900819002652
+    },
+    "performance": {
+      "expected_return": 0.006298930681838628,
+      "return_std": 0.056787934561797655,
+      "sharpe_ratio": 0.11092022857397672,
+      "sortino_ratio": 0.40292801147384744,
+      "calmar_ratio": 0.19862342703742272
+    },
+    "percentiles": {
+      "1": 0.09322642962956326,
+      "5": 0.09497632025449551,
+      "10": 0.09527844315470005,
+      "25": 0.09601909124318705,
+      "50": 0.0993020133393854,
+      "75": 0.10386901069973878,
+      "90": 0.10838707014506953,
+      "95": 0.11164976131456675,
+      "99": 0.11834479853381973
+    }
+  },
+  "ultra_aggressive": {
+    "config": {
+      "initial_bankroll": 0.1,
+      "base_bet_size": 0.002,
+      "win_rate": 0.185,
+      "num_games": 500,
+      "num_iterations": 100000,
+      "scaling_mode": "theta_bayesian",
+      "kelly_fraction": 0.75,
+      "take_profit_target": 3.0
+    },
+    "summary": {
+      "mean_final_bankroll": 0.10442410122033056,
+      "median_final_bankroll": 0.07056567961361089,
+      "std_final_bankroll": 0.08133560798504598
+    },
+    "risk_metrics": {
+      "risk_of_ruin": 0.0,
+      "probability_profit": 0.27471,
+      "probability_2x": 0.0595,
+      "probability_target": 0.03438
+    },
+    "drawdown": {
+      "mean_max_drawdown": 0.2330254666318548,
+      "median_max_drawdown": 0.29901792383772813,
+      "worst_max_drawdown": 0.32524378427085054,
+      "mean_recovery_time": 0.86021
+    },
+    "var_metrics": {
+      "var_95": -0.3156466643074883,
+      "var_99": -0.31963929575511474,
+      "cvar_95": -0.3182681951015175
+    },
+    "performance": {
+      "expected_return": 0.044241012203305584,
+      "return_std": 0.8133560798504599,
+      "sharpe_ratio": 0.054393165919949284,
+      "sortino_ratio": 0.5458437851729298,
+      "calmar_ratio": 0.18985483794009403
+    },
+    "percentiles": {
+      "1": 0.06803607042448853,
+      "5": 0.06843533356925117,
+      "10": 0.06868597798757066,
+      "25": 0.06929733118772227,
+      "50": 0.07056567961361089,
+      "75": 0.10252800335642179,
+      "90": 0.1577496804471325,
+      "95": 0.22318751539212073,
+      "99": 0.50625
+    }
+  }
+}

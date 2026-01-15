@@ -1,0 +1,23 @@
+{
+  "name": "beta-strat-03",
+  "initial_balance": 0.1,
+  "params": {
+    "entry_tick": 219,
+    "num_bets": 4,
+    "bet_sizes": [
+      0.0027,
+      0.0027,
+      0.0027,
+      0.0027
+    ],
+    "use_kelly_sizing": false,
+    "kelly_fraction": 0.25,
+    "use_dynamic_sizing": true,
+    "high_confidence_threshold": 52,
+    "high_confidence_multiplier": 2.5,
+    "reduce_on_drawdown": true,
+    "max_drawdown_pct": 0.5,
+    "take_profit_target": 1.85
+  },
+  "created": "2026-01-11T23:57:01Z"
+}
