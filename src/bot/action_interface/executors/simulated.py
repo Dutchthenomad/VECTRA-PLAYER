@@ -77,7 +77,10 @@ class SimulatedExecutor(ActionExecutor):
 
             # Handle different action types
             if params.action_type == ActionType.BUY:
-                result_dict = self._trade_manager.execute_buy(params.amount)
+                if params.amount is None:
+                    result_dict = {"success": False, "reason": "BUY requires amount parameter"}
+                else:
+                    result_dict = self._trade_manager.execute_buy(params.amount)
 
             elif params.action_type == ActionType.SELL:
                 # Set percentage first if provided and not 100%
@@ -86,7 +89,10 @@ class SimulatedExecutor(ActionExecutor):
                 result_dict = self._trade_manager.execute_sell()
 
             elif params.action_type == ActionType.SIDEBET:
-                result_dict = self._trade_manager.execute_sidebet(params.amount)
+                if params.amount is None:
+                    result_dict = {"success": False, "reason": "SIDEBET requires amount parameter"}
+                else:
+                    result_dict = self._trade_manager.execute_sidebet(params.amount)
 
             elif params.action_type == ActionType.BET_INCREMENT:
                 # Bet increment doesn't execute trades, just a no-op

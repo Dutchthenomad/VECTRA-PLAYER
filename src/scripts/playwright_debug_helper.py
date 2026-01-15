@@ -25,6 +25,8 @@ from pathlib import Path
 # Add parent directory to Python path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+# Import browser manager after path setup
+from browser.rugs_browser_manager import RugsBrowserManager
 
 # Setup logging
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

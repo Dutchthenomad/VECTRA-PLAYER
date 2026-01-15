@@ -23,12 +23,15 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from bot.execution_bridge import BotExecutionBridge
     from core.game_state import GameState
+    from recording_ui.services.live_backtest_service import LiveBacktestService
     from services.event_store.service import EventStoreService
     from ui.controllers.trading_controller import TradingController
 
 from services.event_bus import EventBus, Events
 from ui.controllers.recording_controller import RecordingController
+from ui.widgets.toggle_switch import RecordingToggle
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +108,15 @@ class MinimalWindow:
         self.balance_label: tk.Label | None = None
         self.bet_entry: tk.Entry | None = None
         self.percentage_buttons: dict[float, dict] = {}
-        self.rec_button: tk.Button | None = None
-        self.rec_status_label: tk.Label | None = None
+        self.recording_toggle: RecordingToggle | None = None
         self._rec_update_timer: str | None = None
         self.recording_controller: RecordingController | None = None
+
+        # Bot execution state (Phase 2)
+        self.execute_toggle: tk.Button | None = None
+        self._execution_enabled: bool = False
+        self._execution_bridge: BotExecutionBridge | None = None
+        self._live_backtest_service: LiveBacktestService | None = None
 
         # Build UI first (before TradingController, as it needs bet_entry)
         self._create_ui()
@@ -187,35 +195,15 @@ class MinimalWindow:
         )
         self.phase_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        # REC button with status label (before connection indicator) - only if event_store provided
+        # Recording toggle (before connection indicator) - only if event_store provided
         if self.event_store is not None:
-            # Frame to hold REC button and status label together
-            rec_frame = tk.Frame(row1, bg=BG_COLOR)
-            rec_frame.pack(side=tk.RIGHT, padx=(5, 10))
-
-            # Status label (shows event count and game_id when recording)
-            self.rec_status_label = tk.Label(
-                rec_frame,
-                text="",
-                font=("Consolas", 8),
+            # Recording toggle with built-in status label
+            self.recording_toggle = RecordingToggle(
+                row1,
+                command=self._on_rec_toggled,
                 bg=BG_COLOR,
-                fg=TEXT_DIM,
             )
-            self.rec_status_label.pack(side=tk.LEFT, padx=(0, 3))
-
-            # REC button
-            self.rec_button = tk.Button(
-                rec_frame,
-                text="REC",
-                font=("Consolas", 9, "bold"),
-                width=5,
-                height=1,
-                bg="gray",
-                fg="white",
-                activebackground="darkgray",
-                command=self._on_rec_clicked,
-            )
-            self.rec_button.pack(side=tk.LEFT)
+            self.recording_toggle.pack(side=tk.RIGHT, padx=(5, 10))
 
             # Timer ID for periodic status updates
             self._rec_update_timer: str | None = None
@@ -244,6 +232,20 @@ class MinimalWindow:
             command=self._on_connect_clicked,
         )
         self.connect_button.pack(side=tk.LEFT)
+
+        # EXECUTE toggle (Phase 2 - bot execution)
+        self.execute_toggle = tk.Button(
+            connection_frame,
+            text="EXECUTE: OFF",
+            bg="#cc3333",  # Red = disabled
+            fg="white",
+            font=("Arial", 9, "bold"),
+            relief=tk.RAISED,
+            bd=2,
+            padx=10,
+            command=self._on_execute_toggled,
+        )
+        self.execute_toggle.pack(side=tk.LEFT, padx=(10, 0))
 
         # Row 2: USER, BALANCE
         row2 = tk.Frame(status_frame, bg=BG_COLOR)
@@ -734,40 +736,36 @@ class MinimalWindow:
     # RECORDING CONTROL (Task 4: 1-click recording toggle)
     # =========================================================================
 
-    def _on_rec_clicked(self) -> None:
-        """Handle REC button click."""
+    def _on_rec_toggled(self) -> bool:
+        """Handle recording toggle - called by RecordingToggle widget."""
         if not self.recording_controller:
             self.logger.warning("Recording controller not available")
-            return
+            return False
 
         is_recording = self.recording_controller.toggle()
-        self.update_recording_state(is_recording=is_recording)
 
-    def update_recording_state(self, is_recording: bool) -> None:
-        """Update REC button and status label visual state."""
-        if self.rec_button is None:
-            return
-
+        # Start/stop status updates
         if is_recording:
-            self.rec_button.config(
-                text="\u25cf REC",  # bullet + REC
-                bg="red",
-                fg="white",
-                activebackground="darkred",
-            )
-            # Start periodic status updates
             self._start_rec_status_updates()
         else:
-            self.rec_button.config(
-                text="REC",
-                bg="gray",
-                fg="white",
-                activebackground="darkgray",
-            )
-            # Stop updates and clear status
             self._stop_rec_status_updates()
-            if self.rec_status_label:
-                self.rec_status_label.config(text="", fg=TEXT_DIM)
+            if self.recording_toggle:
+                self.recording_toggle.update_status(0)
+
+        return is_recording
+
+    def update_recording_state(self, is_recording: bool) -> None:
+        """Update recording toggle visual state (for external sync via EventBus)."""
+        if self.recording_toggle is None:
+            return
+
+        self.recording_toggle.set_state(is_recording)
+
+        if is_recording:
+            self._start_rec_status_updates()
+        else:
+            self._stop_rec_status_updates()
+            self.recording_toggle.update_status(0)
 
     def _start_rec_status_updates(self) -> None:
         """Start periodic updates of recording status label."""
@@ -780,37 +778,22 @@ class MinimalWindow:
             self._rec_update_timer = None
 
     def _update_rec_status(self) -> None:
-        """Update the recording status label with event count and game_id."""
-        if not self.rec_status_label or not self.recording_controller:
+        """Update the recording status display with event count and game_id."""
+        if not self.recording_toggle or not self.recording_controller:
             return
 
         try:
             # Get current status from controller
             status = self.recording_controller.get_status()
             event_count = status.get("event_count", 0)
-            game_count = status.get("game_count", 0)
 
             # Get current game_id from LiveStateProvider
             game_id = None
             if self.live_state_provider:
                 game_id = self.live_state_provider.game_id
 
-            # Format display: "5 evts | 242b2d81"
-            if game_id:
-                # Truncate game_id to last 8 chars (the UUID portion)
-                short_id = game_id.split("-")[-1][:8] if "-" in game_id else game_id[:8]
-                status_text = f"{event_count} | {short_id}"
-            else:
-                status_text = f"{event_count} evts"
-
-            # Show game count if we have captured complete games
-            if game_count > 0:
-                status_text = f"{event_count} | {game_count}g"
-                if game_id:
-                    short_id = game_id.split("-")[-1][:8] if "-" in game_id else game_id[:8]
-                    status_text = f"{event_count} | {game_count}g | {short_id}"
-
-            self.rec_status_label.config(text=status_text, fg="#FF6B6B")  # Light red
+            # Update toggle's status display
+            self.recording_toggle.update_status(event_count, game_id)
 
             # Schedule next update if still recording
             if self.recording_controller.is_recording:
@@ -1009,6 +992,83 @@ class MinimalWindow:
     def get_sell_percentage(self) -> float:
         """Get current sell percentage."""
         return self.current_sell_percentage
+
+    # =========================================================================
+    # BOT EXECUTION CONTROL (Phase 2)
+    # =========================================================================
+
+    def set_execution_bridge(
+        self,
+        execution_bridge: "BotExecutionBridge",
+        live_backtest_service: "LiveBacktestService | None" = None,
+    ) -> None:
+        """
+        Wire execution bridge for bot trading.
+
+        Args:
+            execution_bridge: BotExecutionBridge instance for button clicks
+            live_backtest_service: Optional LiveBacktestService for real execution mode
+        """
+        self._execution_bridge = execution_bridge
+        self._live_backtest_service = live_backtest_service
+
+        # Wire to LiveBacktestService if provided
+        if live_backtest_service:
+            live_backtest_service.set_execution_bridge(execution_bridge)
+
+        logger.info("Execution bridge wired to MinimalWindow")
+
+    def _on_execute_toggled(self) -> None:
+        """
+        Handle EXECUTE toggle button click.
+
+        Enables/disables real execution mode for bot trading.
+        WARNING: When enabled, bot decisions will place real bets!
+        """
+        self._execution_enabled = not self._execution_enabled
+
+        if self._execution_enabled:
+            # Enable execution
+            if self._execution_bridge is None:
+                logger.warning("Cannot enable execution: no execution bridge set")
+                self._execution_enabled = False
+                return
+
+            # Check browser connection
+            if self.browser_bridge and not self.browser_bridge.is_connected():
+                logger.warning("Cannot enable execution: browser not connected")
+                self._execution_enabled = False
+                if self.execute_toggle:
+                    self.execute_toggle.config(text="EXECUTE: NO BROWSER", bg="#cc3333")
+                return
+
+            # Enable in bridge and service
+            self._execution_bridge.enable()
+            if self._live_backtest_service:
+                self._live_backtest_service.enable_real_execution()
+
+            # Update toggle appearance
+            if self.execute_toggle:
+                self.execute_toggle.config(text="EXECUTE: ON", bg="#00cc55")
+
+            logger.warning("EXECUTE mode ENABLED - Bot will place real bets!")
+        else:
+            # Disable execution
+            if self._execution_bridge:
+                self._execution_bridge.disable()
+            if self._live_backtest_service:
+                self._live_backtest_service.disable_real_execution()
+
+            # Update toggle appearance
+            if self.execute_toggle:
+                self.execute_toggle.config(text="EXECUTE: OFF", bg="#cc3333")
+
+            logger.info("EXECUTE mode disabled")
+
+    @property
+    def execution_enabled(self) -> bool:
+        """Check if execution mode is enabled."""
+        return self._execution_enabled
 
 
 class _NullBrowserBridge:

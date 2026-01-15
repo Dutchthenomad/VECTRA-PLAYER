@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 """
+DEPRECATED: This script is archived and may not work with the current codebase.
+It depends on ui.main_window which has been archived.
+
+See scripts/automated_bot_test.py for the current testing framework.
+
+---
+
 Debug Bot Session - Automated testing with screenshots and detailed logging
 
 This script runs the bot in REPLAYER and captures:
@@ -19,6 +26,14 @@ Output:
       - screenshots/ (numbered screenshots)
       - metrics.json (performance data)
 """
+
+import warnings
+
+warnings.warn(
+    "debug_bot_session.py is deprecated. Use scripts/automated_bot_test.py instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import json
 import logging
@@ -203,7 +218,7 @@ def run_debug_session(game_file: str = None, duration_seconds: int = 60):
         # Import UI components (needs to be after logging setup)
         import tkinter as tk
 
-        from ui.main_window import MainWindow
+        from ui._archived.main_window import MainWindow
 
         # Create tkinter root
         root = tk.Tk()

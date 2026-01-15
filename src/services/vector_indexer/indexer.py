@@ -144,17 +144,19 @@ class VectorIndexer:
 
         query = f"""
             SELECT * FROM read_parquet('{parquet_pattern}')
-            WHERE ts > '{since}'
+            WHERE ts > $since
             ORDER BY ts ASC
         """
 
+        conn = duckdb.connect()
         try:
-            conn = duckdb.connect()
-            df = conn.execute(query).df()
+            df = conn.execute(query, {"since": since}).df()
             return df.to_dict("records")
         except Exception as e:
             logger.warning(f"DuckDB query failed: {e}")
             return []
+        finally:
+            conn.close()
 
     def build_incremental(self, batch_size: int = 1000) -> dict:
         """Incrementally index new events.

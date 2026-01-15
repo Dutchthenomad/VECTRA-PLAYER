@@ -32,6 +32,9 @@ dependencies = [
     "pyarrow>=14.0.0",
     "pandas>=2.2.0",
     "sentence-transformers>=2.2.0",
+    # Live backtest mode
+    "flask>=3.0.0",
+    "flask-socketio>=5.3.0",
 ]
 
 [project.optional-dependencies]

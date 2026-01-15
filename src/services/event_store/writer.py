@@ -270,6 +270,10 @@ class ParquetWriter:
                 ("action_type", pa.string()),
                 ("cash", pa.string()),  # Decimal stored as string
                 ("position_qty", pa.string()),  # Decimal stored as string
+                ("button_id", pa.string()),
+                ("button_category", pa.string()),
+                ("sequence_id", pa.string()),
+                ("sequence_position", pa.int64()),
             ]
         )
 

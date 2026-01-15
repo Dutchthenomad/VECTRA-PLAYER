@@ -1,6 +1,16 @@
 """
 GameHistoryCaptureService - Captures gameHistory[] for CANONICAL verification.
 
+NOTE: This is a SPECIALIZED capture service for RAG knowledge extraction,
+separate from EventStoreService which handles production recording.
+
+Use this for:
+- Capturing rug event pairs for analysis
+- Building RAG knowledge base
+- Verifying gameHistory structure
+
+For production recording, use EventStoreService instead.
+
 Phase: RAG Knowledge Extraction
 
 This service subscribes to WS_RAW_EVENT and captures:

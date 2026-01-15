@@ -4,12 +4,20 @@ Event Store Service - EventBus integration for Parquet persistence
 Phase 12B, Issue #25
 
 Subscribes to EventBus events and persists them to Parquet storage.
+
+IPC Features (for Flask dashboard):
+- Polls ~/.rugs_data/.recording_control.json for external commands
+- Writes ~/.rugs_data/.recording_status.json with current state
 """
 
+import json
 import logging
 import threading
+import time
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from services.event_bus import EventBus, Events
@@ -18,6 +26,10 @@ from services.event_store.schema import EventEnvelope, EventSource
 from services.event_store.writer import ParquetWriter
 
 logger = logging.getLogger(__name__)
+
+# IPC file locations (in data directory)
+DEFAULT_CONTROL_FILE = Path.home() / "rugs_data" / ".recording_control.json"
+DEFAULT_STATUS_FILE = Path.home() / "rugs_data" / ".recording_status.json"
 
 
 class EventStoreService:
@@ -70,6 +82,14 @@ class EventStoreService:
         self._paused = True  # Start paused by default (no recording until toggled)
         self._recorded_game_ids: set[str] = set()  # Track unique game_ids for deduplication
         self._total_events_recorded = 0  # Count of events persisted
+
+        # IPC for Flask dashboard control
+        self._control_file = DEFAULT_CONTROL_FILE
+        self._status_file = DEFAULT_STATUS_FILE
+        self._control_poll_thread: threading.Thread | None = None
+        self._control_poll_interval = 2.0  # seconds
+        self._last_status_write = 0.0
+        self._status_write_interval = 1.0  # seconds
 
         logger.info(f"EventStoreService initialized: session_id={self._session_id}")
 
@@ -129,6 +149,92 @@ class EventStoreService:
             self.pause()
         return self.is_recording
 
+    # =========================================================================
+    # IPC: File-based control for Flask dashboard
+    # =========================================================================
+
+    def _start_control_polling(self) -> None:
+        """Start background thread to poll control file for external commands."""
+        if self._control_poll_thread is not None:
+            return
+
+        def poll_loop():
+            logger.info(f"Control polling started: {self._control_file}")
+            while self._started:
+                try:
+                    self._check_control_file()
+                    self._write_status_file()
+                except Exception as e:
+                    logger.debug(f"Control poll error (non-fatal): {e}")
+                time.sleep(self._control_poll_interval)
+            logger.info("Control polling stopped")
+
+        self._control_poll_thread = threading.Thread(
+            target=poll_loop, daemon=True, name="EventStoreControlPoll"
+        )
+        self._control_poll_thread.start()
+
+    def _check_control_file(self) -> None:
+        """Check control file for external commands (from Flask dashboard)."""
+        if not self._control_file.exists():
+            return
+
+        try:
+            with open(self._control_file) as f:
+                control = json.load(f)
+
+            should_record = control.get("recording", False)
+            command_ts = control.get("timestamp", 0)
+
+            # Only act on commands newer than 10 seconds (avoid stale commands)
+            now = time.time()
+            if now - command_ts > 10:
+                return
+
+            current_recording = self.is_recording
+            if should_record and not current_recording:
+                logger.info("External command: START recording (from dashboard)")
+                self.resume()
+            elif not should_record and current_recording:
+                logger.info("External command: STOP recording (from dashboard)")
+                self.pause()
+
+        except json.JSONDecodeError:
+            pass  # Ignore malformed control file
+        except Exception as e:
+            logger.debug(f"Error reading control file: {e}")
+
+    def _write_status_file(self) -> None:
+        """Write current status to file for Flask dashboard to read."""
+        now = time.time()
+        if now - self._last_status_write < self._status_write_interval:
+            return
+
+        try:
+            # Ensure parent directory exists
+            self._status_file.parent.mkdir(parents=True, exist_ok=True)
+
+            with self._state_lock:
+                status = {
+                    "is_recording": self._started and not self._paused,
+                    "event_count": self._total_events_recorded,
+                    "game_count": len(self._recorded_game_ids),
+                    "session_id": self._session_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now,
+                }
+
+            # Atomic write (write to temp, then rename)
+            temp_file = self._status_file.with_suffix(".tmp")
+            with open(temp_file, "w") as f:
+                json.dump(status, f)
+            temp_file.replace(self._status_file)
+
+            self._last_status_write = now
+
+        except Exception as e:
+            logger.debug(f"Error writing status file: {e}")
+
     def start(self) -> None:
         """Start service and subscribe to events"""
         if self._started:
@@ -158,12 +264,30 @@ class EventStoreService:
         logger.info("EventStoreService subscribed to BUTTON_PRESS for RL training")
 
         self._started = True
+
+        # Start IPC control polling for Flask dashboard
+        self._start_control_polling()
+
         logger.info("EventStoreService started")
 
     def stop(self) -> None:
         """Stop service and flush remaining events"""
         if not self._started:
             return
+
+        # Mark as stopped (will cause control poll thread to exit)
+        self._started = False
+
+        # Wait for control poll thread to finish
+        if self._control_poll_thread is not None:
+            self._control_poll_thread.join(timeout=5.0)
+            self._control_poll_thread = None
+
+        # Write final status
+        try:
+            self._write_status_file()
+        except Exception:
+            pass
 
         # Unsubscribe from all events
         self._event_bus.unsubscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event)
@@ -178,7 +302,6 @@ class EventStoreService:
         # Flush and close writer
         self._writer.close()
 
-        self._started = False
         logger.info(f"EventStoreService stopped: {self._seq} events processed")
 
     def flush(self) -> list | None:

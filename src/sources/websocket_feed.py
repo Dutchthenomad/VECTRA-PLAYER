@@ -536,8 +536,16 @@ class WebSocketFeed:
         self.logger.info(f"   Server: {self.server_url}")
         self.logger.info("   Mode: READ-ONLY (0% noise, 9 signal fields only)")
 
+        # CORS: Server requires Origin header for connection validation
+        headers = {"Origin": "https://rugs.fun"}
+
         try:
-            self.sio.connect(self.server_url, transports=["websocket", "polling"], wait_timeout=20)
+            self.sio.connect(
+                self.server_url,
+                transports=["websocket", "polling"],
+                wait_timeout=20,
+                headers=headers,
+            )
         except Exception as e:
             self.logger.error(f"🚨 Connection failed: {e}")
             raise
