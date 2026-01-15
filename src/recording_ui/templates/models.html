@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}ML Models - VECTRA Recording Dashboard{% endblock %}
+
+{% block content %}
+<div class="models-container">
+    <!-- Header -->
+    <div class="models-header">
+        <span class="models-header-title">ML TRAINING RUNS</span>
+        <div class="models-status">
+            <span id="models-status-text">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Runs List -->
+    <div class="models-runs-list" id="runs-list">
+        <!-- Populated by JS -->
+    </div>
+
+    <hr class="models-divider">
+
+    <!-- Selected Run Details -->
+    <div class="models-details" id="run-details" style="display: none;">
+        <div class="models-details-header">
+            <span class="models-details-title" id="selected-run-id">--</span>
+        </div>
+
+        <!-- Metrics -->
+        <div class="models-metrics">
+            <ul class="stats-tree">
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">Total Episodes:</span>
+                    <span class="stats-tree-value" id="metric-episodes">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">Win Rate:</span>
+                    <span class="stats-tree-value" id="metric-win-rate">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">Bet Rate:</span>
+                    <span class="stats-tree-value" id="metric-bet-rate">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">Wins / Losses / Skips:</span>
+                    <span class="stats-tree-value" id="metric-wls">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">└─</span>
+                    <span class="stats-tree-key">Final Reward:</span>
+                    <span class="stats-tree-value" id="metric-final-reward">--</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Chart -->
+        <div class="models-chart-container">
+            <canvas id="training-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- No selection message -->
+    <div class="models-no-selection" id="no-selection">
+        <p>Select a training run above to view details</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/models.js') }}"></script>
+{% endblock %}

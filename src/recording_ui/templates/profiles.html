@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+
+{% block title %}Trading Profiles - VECTRA Recording Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profiles-container {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        padding: 16px;
+        height: calc(100vh - 160px);
+    }
+
+    .profiles-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .profiles-main {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .profiles-card {
+        background: #1e1e2e;
+        border: 1px solid #313244;
+        border-radius: 8px;
+        padding: 14px;
+    }
+
+    .profiles-card h3 {
+        color: #cdd6f4;
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    /* Profile List */
+    .profile-list {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 400px;
+    }
+
+    .profile-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-bottom: 4px;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .profile-item:hover {
+        background: #313244;
+    }
+
+    .profile-item.selected {
+        background: #313244;
+        border-color: #89b4fa;
+    }
+
+    .profile-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        font-size: 14px;
+    }
+
+    .profile-icon.has-mc {
+        background: #a6e3a1;
+        color: #1e1e2e;
+    }
+
+    .profile-icon.no-mc {
+        background: #6c7086;
+        color: #cdd6f4;
+    }
+
+    .profile-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .profile-name {
+        color: #cdd6f4;
+        font-weight: 500;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .profile-meta {
+        color: #6c7086;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    .profile-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 8px;
+    }
+
+    .profile-badge.low { background: #a6e3a1; color: #1e1e2e; }
+    .profile-badge.medium { background: #f9e2af; color: #1e1e2e; }
+    .profile-badge.high { background: #fab387; color: #1e1e2e; }
+    .profile-badge.very-high { background: #f38ba8; color: #1e1e2e; }
+
+    /* Profile Actions */
+    .profile-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .profile-actions .btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    /* Profile Details */
+    .profile-details {
+        flex: 1;
+    }
+
+    .detail-section {
+        margin-bottom: 16px;
+    }
+
+    .detail-section h4 {
+        color: #89b4fa;
+        font-size: 12px;
+        margin: 0 0 8px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #313244;
+    }
+
+    .detail-label {
+        color: #6c7086;
+        font-size: 12px;
+    }
+
+    .detail-value {
+        color: #cdd6f4;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* Test Modes */
+    .test-modes {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .test-mode-btn {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 6px;
+        color: #cdd6f4;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .test-mode-btn:hover:not(:disabled) {
+        border-color: #89b4fa;
+        background: #3e4054;
+    }
+
+    .test-mode-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .test-mode-icon {
+        font-size: 18px;
+        margin-right: 12px;
+        width: 24px;
+        text-align: center;
+    }
+
+    .test-mode-info {
+        flex: 1;
+    }
+
+    .test-mode-title {
+        font-weight: 500;
+        font-size: 13px;
+    }
+
+    .test-mode-desc {
+        color: #6c7086;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    /* Live Session View */
+    .live-session {
+        display: none;
+    }
+
+    .live-session.active {
+        display: block;
+    }
+
+    .live-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .live-connection {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .live-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #f38ba8;
+    }
+
+    .live-dot.connected {
+        background: #a6e3a1;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .live-status-text {
+        font-size: 12px;
+        color: #a6adc8;
+    }
+
+    .live-mode-badge {
+        background: #f9e2af;
+        color: #1e1e2e;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    /* Game Info Bar */
+    .game-info-bar {
+        display: flex;
+        gap: 16px;
+        padding: 12px;
+        background: #313244;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .game-stat {
+        text-align: center;
+    }
+
+    .game-stat-label {
+        color: #6c7086;
+        font-size: 10px;
+        text-transform: uppercase;
+    }
+
+    .game-stat-value {
+        color: #cdd6f4;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    /* Wallet Display */
+    .wallet-display {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .wallet-stat {
+        background: #313244;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .wallet-stat-label {
+        color: #6c7086;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .wallet-stat-value {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .wallet-stat-value.positive { color: #a6e3a1; }
+    .wallet-stat-value.negative { color: #f38ba8; }
+    .wallet-stat-value.neutral { color: #cdd6f4; }
+
+    /* Active Bets */
+    .active-bets-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .bet-slot {
+        padding: 10px;
+        background: #313244;
+        border-radius: 6px;
+        text-align: center;
+        border: 2px solid transparent;
+    }
+
+    .bet-slot.active {
+        border-color: #89b4fa;
+    }
+
+    .bet-slot.won {
+        border-color: #a6e3a1;
+        background: rgba(166, 227, 161, 0.1);
+    }
+
+    .bet-slot.lost {
+        border-color: #f38ba8;
+        background: rgba(243, 139, 168, 0.1);
+    }
+
+    .bet-slot-number {
+        font-size: 10px;
+        color: #6c7086;
+    }
+
+    .bet-slot-amount {
+        font-size: 14px;
+        font-weight: 600;
+        color: #cdd6f4;
+    }
+
+    .bet-slot-status {
+        font-size: 10px;
+        margin-top: 4px;
+        color: #a6adc8;
+    }
+
+    /* Decision Log */
+    .decision-log {
+        flex: 1;
+        min-height: 150px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .log-entry {
+        display: flex;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid #313244;
+        font-size: 11px;
+    }
+
+    .log-time {
+        color: #6c7086;
+        font-family: monospace;
+        white-space: nowrap;
+    }
+
+    .log-message {
+        color: #cdd6f4;
+        flex: 1;
+    }
+
+    .log-entry.bet { border-left: 2px solid #89b4fa; padding-left: 8px; }
+    .log-entry.win { border-left: 2px solid #a6e3a1; padding-left: 8px; }
+    .log-entry.loss { border-left: 2px solid #f38ba8; padding-left: 8px; }
+    .log-entry.game { border-left: 2px solid #f9e2af; padding-left: 8px; }
+
+    /* Empty States */
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c7086;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+
+    .empty-state-title {
+        color: #cdd6f4;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .empty-state-desc {
+        font-size: 12px;
+    }
+
+    /* Stop button */
+    .btn-stop {
+        background: #f38ba8;
+        color: #1e1e2e;
+        border-color: #f38ba8;
+    }
+
+    .btn-stop:hover {
+        background: #e76a8a;
+    }
+
+    /* MC Metrics Preview */
+    .mc-preview {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 10px;
+        background: #313244;
+        border-radius: 6px;
+    }
+
+    .mc-metric {
+        text-align: center;
+    }
+
+    .mc-metric-label {
+        color: #6c7086;
+        font-size: 10px;
+    }
+
+    .mc-metric-value {
+        color: #cdd6f4;
+        font-size: 14px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profiles-container">
+    <!-- Left Sidebar: Profile List -->
+    <div class="profiles-sidebar">
+        <div class="profiles-card">
+            <h3>
+                Trading Profiles
+                <button class="btn btn-sm" onclick="refreshProfiles()">Refresh</button>
+            </h3>
+
+            <div class="profile-list" id="profile-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📁</div>
+                    <div class="empty-state-title">No Profiles</div>
+                    <div class="empty-state-desc">
+                        Import from Monte Carlo or create manually
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-actions">
+                <button class="btn" onclick="window.location.href='/explorer'">
+                    + From Monte Carlo
+                </button>
+            </div>
+        </div>
+
+        <!-- WebSocket Status -->
+        <div class="profiles-card">
+            <h3>WebSocket Status</h3>
+            <div class="live-connection">
+                <span class="live-dot" id="ws-status-dot"></span>
+                <span class="live-status-text" id="ws-status-text">Checking...</span>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #6c7086;">
+                Active Sessions: <span id="active-sessions">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="profiles-main">
+        <!-- Profile Details (shown when profile selected) -->
+        <div class="profiles-card profile-details" id="profile-details" style="display: none;">
+            <h3 id="selected-profile-name">Profile Details</h3>
+
+            <div class="detail-section">
+                <h4>Execution Config</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Entry Tick</span>
+                        <span class="detail-value" id="detail-entry-tick">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Num Bets</span>
+                        <span class="detail-value" id="detail-num-bets">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Bet Sizes</span>
+                        <span class="detail-value" id="detail-bet-sizes">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Initial Balance</span>
+                        <span class="detail-value" id="detail-balance">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Scaling Config</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Mode</span>
+                        <span class="detail-value" id="detail-scaling-mode">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Kelly Fraction</span>
+                        <span class="detail-value" id="detail-kelly">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Theta Range</span>
+                        <span class="detail-value" id="detail-theta">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Volatility Scaling</span>
+                        <span class="detail-value" id="detail-volatility">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Risk Controls</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Max Drawdown</span>
+                        <span class="detail-value" id="detail-max-dd">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Take Profit</span>
+                        <span class="detail-value" id="detail-take-profit">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MC Metrics Preview (if available) -->
+            <div class="detail-section" id="mc-metrics-section" style="display: none;">
+                <h4>Monte Carlo Metrics</h4>
+                <div class="mc-preview">
+                    <div class="mc-metric">
+                        <div class="mc-metric-label">P(Profit)</div>
+                        <div class="mc-metric-value" id="mc-prob-profit">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="mc-metric-label">Sortino</div>
+                        <div class="mc-metric-value" id="mc-sortino">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="mc-metric-label">Mean DD</div>
+                        <div class="mc-metric-value" id="mc-mean-dd">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="mc-metric-label">Risk Level</div>
+                        <div class="mc-metric-value" id="mc-risk-level">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Modes -->
+        <div class="profiles-card" id="test-modes-card">
+            <h3>Test This Profile</h3>
+            <div class="test-modes">
+                <button class="test-mode-btn" id="btn-backtest" onclick="startBacktest()" disabled>
+                    <span class="test-mode-icon">▶</span>
+                    <div class="test-mode-info">
+                        <div class="test-mode-title">Historical Backtest</div>
+                        <div class="test-mode-desc">Replay against recorded games</div>
+                    </div>
+                </button>
+                <button class="test-mode-btn" id="btn-live" onclick="startLiveSession()" disabled>
+                    <span class="test-mode-icon">◉</span>
+                    <div class="test-mode-info">
+                        <div class="test-mode-title">Live Paper Trading</div>
+                        <div class="test-mode-desc">Test on real-time WebSocket feed</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Session View (shown when live session is active) -->
+        <div class="profiles-card live-session" id="live-session">
+            <div class="live-header">
+                <h3>
+                    <span class="live-mode-badge">PAPER</span>
+                    <span id="live-profile-name">Live Session</span>
+                </h3>
+                <button class="btn btn-stop" onclick="stopLiveSession()">Stop Session</button>
+            </div>
+
+            <!-- Game Info -->
+            <div class="game-info-bar">
+                <div class="game-stat">
+                    <div class="game-stat-label">Game</div>
+                    <div class="game-stat-value" id="live-game-id">--</div>
+                </div>
+                <div class="game-stat">
+                    <div class="game-stat-label">Tick</div>
+                    <div class="game-stat-value" id="live-tick">--</div>
+                </div>
+                <div class="game-stat">
+                    <div class="game-stat-label">Price</div>
+                    <div class="game-stat-value" id="live-price">--</div>
+                </div>
+                <div class="game-stat">
+                    <div class="game-stat-label">Phase</div>
+                    <div class="game-stat-value" id="live-phase">--</div>
+                </div>
+            </div>
+
+            <!-- Wallet -->
+            <div class="wallet-display">
+                <div class="wallet-stat">
+                    <div class="wallet-stat-label">Balance</div>
+                    <div class="wallet-stat-value neutral" id="live-balance">0.0000</div>
+                </div>
+                <div class="wallet-stat">
+                    <div class="wallet-stat-label">P&L</div>
+                    <div class="wallet-stat-value neutral" id="live-pnl">+0.00%</div>
+                </div>
+                <div class="wallet-stat">
+                    <div class="wallet-stat-label">Drawdown</div>
+                    <div class="wallet-stat-value neutral" id="live-drawdown">0.0%</div>
+                </div>
+            </div>
+
+            <!-- Active Bets -->
+            <h4 style="color: #89b4fa; font-size: 11px; margin-bottom: 8px;">ACTIVE BETS</h4>
+            <div class="active-bets-grid" id="live-bets">
+                <div class="bet-slot">
+                    <div class="bet-slot-number">Bet 1</div>
+                    <div class="bet-slot-amount">--</div>
+                    <div class="bet-slot-status">waiting</div>
+                </div>
+                <div class="bet-slot">
+                    <div class="bet-slot-number">Bet 2</div>
+                    <div class="bet-slot-amount">--</div>
+                    <div class="bet-slot-status">waiting</div>
+                </div>
+                <div class="bet-slot">
+                    <div class="bet-slot-number">Bet 3</div>
+                    <div class="bet-slot-amount">--</div>
+                    <div class="bet-slot-status">waiting</div>
+                </div>
+                <div class="bet-slot">
+                    <div class="bet-slot-number">Bet 4</div>
+                    <div class="bet-slot-amount">--</div>
+                    <div class="bet-slot-status">waiting</div>
+                </div>
+            </div>
+
+            <!-- Decision Log -->
+            <h4 style="color: #89b4fa; font-size: 11px; margin-bottom: 8px;">DECISION LOG</h4>
+            <div class="decision-log" id="decision-log">
+                <div class="log-entry game">
+                    <span class="log-time">--:--:--</span>
+                    <span class="log-message">Waiting for session to start...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State (shown when no profile selected) -->
+        <div class="profiles-card" id="no-profile-selected">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-title">Select a Profile</div>
+                <div class="empty-state-desc">
+                    Choose a trading profile from the list to view details and test it.
+                    <br><br>
+                    Profiles can be imported from the Monte Carlo tab in Explorer.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/profiles.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,1184 @@
+{% extends "base.html" %}
+
+{% block title %}Game Explorer - VECTRA Recording Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .explorer-container {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 20px;
+        padding: 20px;
+        height: calc(100vh - 180px); /* Account for header + fixed footer */
+    }
+
+    .explorer-main {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .explorer-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .explorer-card {
+        background: #1e1e2e;
+        border: 1px solid #313244;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .explorer-card h3 {
+        color: #cdd6f4;
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Controls */
+    .controls-row {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .control-group label {
+        color: #a6adc8;
+        font-size: 12px;
+    }
+
+    .control-group input[type="range"] {
+        width: 200px;
+        accent-color: #89b4fa;
+    }
+
+    .control-group input[type="number"] {
+        width: 80px;
+        padding: 6px 8px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 14px;
+    }
+
+    .control-value {
+        color: #89b4fa;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .bet-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .bet-btn {
+        padding: 6px 16px;
+        border: 1px solid #45475a;
+        background: #313244;
+        color: #cdd6f4;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .bet-btn:hover {
+        background: #45475a;
+    }
+
+    .bet-btn.active {
+        background: #89b4fa;
+        color: #1e1e2e;
+        border-color: #89b4fa;
+    }
+
+    /* Chart container */
+    .chart-container {
+        flex: 1;
+        min-height: 300px;
+        position: relative;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Strategy stats */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .stat-box {
+        background: #313244;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .stat-box .stat-label {
+        color: #a6adc8;
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .stat-box .stat-value {
+        color: #cdd6f4;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .stat-box .stat-value.positive {
+        color: #a6e3a1;
+    }
+
+    .stat-box .stat-value.negative {
+        color: #f38ba8;
+    }
+
+    .stat-box .stat-value.neutral {
+        color: #f9e2af;
+    }
+
+    /* Cumulative stats table */
+    .cumulative-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .cumulative-table th,
+    .cumulative-table td {
+        padding: 8px 6px;
+        text-align: center;
+        border-bottom: 1px solid #313244;
+    }
+
+    .cumulative-table th {
+        color: #a6adc8;
+        font-weight: 500;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .cumulative-table td {
+        color: #cdd6f4;
+    }
+
+    .cumulative-table tr.profitable td {
+        background: rgba(166, 227, 161, 0.1);
+    }
+
+    .cumulative-table tr.unprofitable td {
+        background: rgba(243, 139, 168, 0.1);
+    }
+
+    .win-rate {
+        font-weight: 600;
+    }
+
+    .win-rate.good {
+        color: #a6e3a1;
+    }
+
+    .win-rate.bad {
+        color: #f38ba8;
+    }
+
+    /* Windows visualization */
+    .windows-viz {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 0;
+        font-size: 12px;
+    }
+
+    .window-block {
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #1e1e2e;
+    }
+
+    .window-block.bet1 { background: #89b4fa; }
+    .window-block.bet2 { background: #94e2d5; }
+    .window-block.bet3 { background: #f9e2af; }
+    .window-block.bet4 { background: #cba6f7; }
+    .window-block.cooldown { background: #45475a; width: 20px; }
+
+    .window-label {
+        color: #a6adc8;
+        font-size: 10px;
+    }
+
+    /* Loading state */
+    .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+        color: #a6adc8;
+    }
+
+    /* Legend */
+    .chart-legend {
+        display: flex;
+        gap: 16px;
+        padding: 8px 0;
+        font-size: 12px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+    }
+
+    .legend-dot.green { background: rgba(166, 227, 161, 0.8); }
+    .legend-dot.red { background: rgba(243, 139, 168, 0.8); }
+    .legend-dot.gray { background: rgba(166, 173, 200, 0.4); }
+
+    /* Tab navigation */
+    .tab-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #313244;
+        padding-bottom: 8px;
+    }
+
+    .tab-btn {
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid #45475a;
+        border-radius: 4px 4px 0 0;
+        color: #a6adc8;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .tab-btn:hover {
+        background: #313244;
+    }
+
+    .tab-btn.active {
+        background: #89b4fa;
+        color: #1e1e2e;
+        border-color: #89b4fa;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Position sizing controls */
+    .sizing-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .sizing-input {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sizing-input label {
+        color: #a6adc8;
+        font-size: 11px;
+    }
+
+    .sizing-input input {
+        width: 100%;
+        padding: 8px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .sizing-input input:focus {
+        border-color: #89b4fa;
+        outline: none;
+    }
+
+    .sizing-input .sol-suffix {
+        color: #a6adc8;
+        font-size: 10px;
+        text-align: center;
+    }
+
+    /* Simulation results */
+    .sim-results {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .sim-stat {
+        background: #313244;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .sim-stat .label {
+        color: #a6adc8;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .sim-stat .value {
+        color: #cdd6f4;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .sim-stat .value.profit {
+        color: #a6e3a1;
+    }
+
+    .sim-stat .value.loss {
+        color: #f38ba8;
+    }
+
+    /* Run simulation button */
+    .run-sim-btn {
+        padding: 10px 24px;
+        background: #89b4fa;
+        border: none;
+        border-radius: 4px;
+        color: #1e1e2e;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .run-sim-btn:hover {
+        background: #b4befe;
+    }
+
+    .run-sim-btn:disabled {
+        background: #45475a;
+        cursor: not-allowed;
+    }
+
+    /* Equity curve chart */
+    .equity-chart-container {
+        height: 200px;
+        margin-top: 16px;
+    }
+
+    /* Preset buttons */
+    .preset-buttons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .preset-btn {
+        padding: 6px 12px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .preset-btn:hover {
+        background: #45475a;
+    }
+
+    /* Kelly suggestion box */
+    .kelly-box {
+        background: #313244;
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .kelly-box h4 {
+        color: #f9e2af;
+        margin: 0 0 8px 0;
+        font-size: 12px;
+    }
+
+    .kelly-box p {
+        color: #a6adc8;
+        font-size: 12px;
+        margin: 4px 0;
+    }
+
+    .kelly-box .kelly-value {
+        color: #89b4fa;
+        font-weight: 600;
+    }
+
+    /* Strategy Save Section */
+    .strategy-save-card {
+        border: 2px solid #89b4fa;
+    }
+
+    .strategy-save-card h3 {
+        color: #89b4fa;
+    }
+
+    .param-summary h4 {
+        color: #cdd6f4;
+        margin: 0 0 12px 0;
+        font-size: 13px;
+    }
+
+    .param-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        background: #313244;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .param-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 12px;
+    }
+
+    .param-row span:first-child {
+        color: #a6adc8;
+    }
+
+    .param-row span:last-child {
+        color: #cdd6f4;
+        font-weight: 600;
+    }
+
+    .name-input-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .name-input-row label {
+        color: #a6adc8;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .name-input-row input[type="text"] {
+        flex: 1;
+        padding: 10px 12px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 14px;
+    }
+
+    .name-input-row input[type="text"]:focus {
+        border-color: #89b4fa;
+        outline: none;
+    }
+
+    .save-location {
+        color: #6c7086;
+        font-size: 11px;
+    }
+
+    .save-success {
+        color: #a6e3a1;
+        font-size: 12px;
+        margin-top: 8px;
+        display: none;
+    }
+
+    /* Monte Carlo Tab Styles */
+    .mc-select {
+        padding: 8px 12px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .mc-select:focus {
+        border-color: #89b4fa;
+        outline: none;
+    }
+
+    .mc-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 12px;
+        background: #181825;
+        border-radius: 4px;
+        color: #89b4fa;
+    }
+
+    .mc-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #45475a;
+        border-top-color: #89b4fa;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .mc-table-container {
+        overflow-x: auto;
+    }
+
+    .mc-comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .mc-comparison-table th,
+    .mc-comparison-table td {
+        padding: 10px 12px;
+        text-align: center;
+        border-bottom: 1px solid #313244;
+    }
+
+    .mc-comparison-table th {
+        background: #181825;
+        color: #a6adc8;
+        font-weight: 500;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+
+    .mc-comparison-table td:first-child {
+        text-align: left;
+        font-weight: 500;
+    }
+
+    .mc-comparison-table tr {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .mc-comparison-table tr:hover {
+        background: #313244;
+    }
+
+    .mc-comparison-table tr.selected {
+        background: #45475a;
+    }
+
+    .mc-comparison-table .mc-placeholder td {
+        color: #6c7086;
+        font-style: italic;
+        cursor: default;
+    }
+
+    .mc-comparison-table .best-cell {
+        color: #a6e3a1;
+        font-weight: 600;
+    }
+
+    .mc-comparison-table .strategy-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mc-comparison-table .strategy-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .mc-comparison-table .risk-badge {
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+
+    .mc-comparison-table .risk-low { background: #a6e3a133; color: #a6e3a1; }
+    .mc-comparison-table .risk-medium { background: #f9e2af33; color: #f9e2af; }
+    .mc-comparison-table .risk-high { background: #fab38733; color: #fab387; }
+    .mc-comparison-table .risk-very-high { background: #f38ba833; color: #f38ba8; }
+
+    .mc-charts-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .mc-chart-card {
+        min-height: 250px;
+    }
+
+    .mc-chart-container {
+        height: 200px;
+        position: relative;
+    }
+
+    .mc-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .mc-metric {
+        text-align: center;
+        padding: 12px;
+        background: #181825;
+        border-radius: 4px;
+    }
+
+    .mc-metric .label {
+        color: #6c7086;
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .mc-metric .value {
+        color: #cdd6f4;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .mc-description {
+        color: #a6adc8;
+        font-size: 13px;
+        padding: 12px;
+        background: #181825;
+        border-radius: 4px;
+        border-left: 3px solid #89b4fa;
+    }
+
+    .mc-info {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #181825;
+        border-radius: 4px;
+        color: #6c7086;
+        font-size: 12px;
+    }
+
+    .mc-info #mc-best {
+        color: #a6e3a1;
+        font-weight: 500;
+    }
+
+    /* Tab content flex layout for Monte Carlo */
+    #tab-monte-carlo {
+        display: none;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    #tab-monte-carlo.active {
+        display: flex;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="explorer-container">
+    <div class="explorer-main">
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="strategy">Strategy Analysis</button>
+            <button class="tab-btn" data-tab="bankroll">Bankroll Simulation</button>
+            <button class="tab-btn" data-tab="monte-carlo">Monte Carlo</button>
+        </div>
+
+        <!-- TAB 1: Strategy Analysis -->
+        <div class="tab-content active" id="tab-strategy">
+            <!-- Controls -->
+            <div class="explorer-card">
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>Entry Tick</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="entry-tick-slider" min="50" max="400" value="200">
+                            <span class="control-value" id="entry-tick-value">200</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Number of Bets</label>
+                        <div class="bet-buttons">
+                            <button class="bet-btn" data-bets="1">1</button>
+                            <button class="bet-btn" data-bets="2">2</button>
+                            <button class="bet-btn" data-bets="3">3</button>
+                            <button class="bet-btn active" data-bets="4">4</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Games to Show</label>
+                        <input type="number" id="game-limit" min="10" max="200" value="50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Windows Visualization -->
+            <div class="explorer-card">
+                <h3>Bet Windows</h3>
+                <div class="windows-viz" id="windows-viz">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Price Curves Chart -->
+            <div class="explorer-card" style="flex: 1;">
+                <h3>Price Curves</h3>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot green"></div>
+                        <span>Win (rugged in window)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot red"></div>
+                        <span>Loss (survived all windows)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot gray"></div>
+                        <span>Early rug (before entry)</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="price-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Bankroll Simulation -->
+        <div class="tab-content" id="tab-bankroll">
+            <!-- Wallet Configuration -->
+            <div class="explorer-card">
+                <h3>Wallet Configuration</h3>
+                <div class="controls-row" style="margin-bottom: 16px;">
+                    <div class="control-group">
+                        <label>Starting Balance (SOL)</label>
+                        <input type="number" id="wallet-balance" min="0.01" max="100" step="0.01" value="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Entry Tick</label>
+                        <input type="number" id="sim-entry-tick" min="50" max="500" value="200">
+                    </div>
+                    <div class="control-group">
+                        <label>Max Drawdown %</label>
+                        <input type="number" id="max-drawdown" min="10" max="100" value="50">
+                    </div>
+                </div>
+
+                <h3>Bet Sizes (SOL)</h3>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="fixed">Fixed (0.001 each)</button>
+                    <button class="preset-btn" data-preset="progressive">Progressive (2x)</button>
+                    <button class="preset-btn" data-preset="kelly">Kelly Suggested</button>
+                </div>
+                <div class="sizing-grid">
+                    <div class="sizing-input">
+                        <label>Bet 1</label>
+                        <input type="number" id="bet-size-1" min="0.0001" max="1" step="0.0001" value="0.001">
+                        <span class="sol-suffix">SOL</span>
+                    </div>
+                    <div class="sizing-input">
+                        <label>Bet 2</label>
+                        <input type="number" id="bet-size-2" min="0.0001" max="1" step="0.0001" value="0.001">
+                        <span class="sol-suffix">SOL</span>
+                    </div>
+                    <div class="sizing-input">
+                        <label>Bet 3</label>
+                        <input type="number" id="bet-size-3" min="0.0001" max="1" step="0.0001" value="0.001">
+                        <span class="sol-suffix">SOL</span>
+                    </div>
+                    <div class="sizing-input">
+                        <label>Bet 4</label>
+                        <input type="number" id="bet-size-4" min="0.0001" max="1" step="0.0001" value="0.001">
+                        <span class="sol-suffix">SOL</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="run-sim-btn" id="run-simulation">Run Simulation</button>
+                    <span id="total-risk" style="color: #a6adc8; font-size: 13px;">
+                        Total risk per game: <span id="risk-amount">0.004</span> SOL
+                        (<span id="risk-pct">4.0</span>%)
+                    </span>
+                </div>
+            </div>
+
+            <!-- Advanced Position Sizing -->
+            <div class="explorer-card">
+                <h3>Advanced Position Sizing</h3>
+                <div class="controls-row" style="margin-bottom: 12px;">
+                    <div class="control-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="use-kelly-sizing">
+                            <span>Kelly Sizing (scales with balance)</span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="use-dynamic-sizing">
+                            <span>Dynamic Sizing (probability boost)</span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="reduce-on-drawdown">
+                            <span>Reduce on drawdown</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="controls-row" id="kelly-options" style="display: none; margin-bottom: 12px;">
+                    <div class="control-group">
+                        <label>Kelly Fraction (%)</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="kelly-fraction-slider" min="5" max="100" value="25" style="width: 150px;">
+                            <span class="control-value" id="kelly-fraction-value">25%</span>
+                        </div>
+                        <span style="color: #6c7086; font-size: 10px;">25% = conservative, 100% = full Kelly</span>
+                    </div>
+                </div>
+
+                <div class="controls-row" id="dynamic-options" style="display: none;">
+                    <div class="control-group">
+                        <label>Confidence Threshold (%)</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="confidence-threshold" min="30" max="90" value="60" style="width: 150px;">
+                            <span class="control-value" id="confidence-value">60%</span>
+                        </div>
+                        <span style="color: #6c7086; font-size: 10px;">Bet larger when win probability exceeds this</span>
+                    </div>
+                    <div class="control-group">
+                        <label>Bet Multiplier</label>
+                        <input type="number" id="bet-multiplier" min="1" max="10" step="0.5" value="2" style="width: 70px;">
+                        <span style="color: #6c7086; font-size: 10px;">e.g. 2x = double bet size</span>
+                    </div>
+                </div>
+
+                <div class="controls-row" style="margin-top: 12px;">
+                    <div class="control-group">
+                        <label>Take Profit Target (%)</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="take-profit" min="0" max="1000" step="10" value="" placeholder="e.g. 50" style="width: 80px;">
+                            <span style="color: #6c7086; font-size: 11px;">Stop when wallet grows by this % (leave empty = no limit)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kelly-box" id="sizing-analysis" style="margin-top: 12px;">
+                    <h4>Position Sizing Analysis</h4>
+                    <p>Estimated win probability: <span class="kelly-value" id="est-win-prob">--</span></p>
+                    <p>Kelly fraction: <span class="kelly-value" id="kelly-fraction">--</span></p>
+                    <p>Suggested bet (¼ Kelly): <span class="kelly-value" id="suggested-bet">--</span> SOL</p>
+                </div>
+            </div>
+
+            <!-- Simulation Results -->
+            <div class="explorer-card" id="sim-results-card" style="display: none;">
+                <h3>Simulation Results</h3>
+                <div class="sim-results">
+                    <div class="sim-stat">
+                        <div class="label">Starting</div>
+                        <div class="value" id="sim-starting">--</div>
+                    </div>
+                    <div class="sim-stat">
+                        <div class="label">Ending</div>
+                        <div class="value" id="sim-ending">--</div>
+                    </div>
+                    <div class="sim-stat">
+                        <div class="label">Profit/Loss</div>
+                        <div class="value" id="sim-profit">--</div>
+                    </div>
+                    <div class="sim-stat">
+                        <div class="label">Win Rate</div>
+                        <div class="value" id="sim-winrate">--</div>
+                    </div>
+                    <div class="sim-stat">
+                        <div class="label">Max Drawdown</div>
+                        <div class="value" id="sim-maxdd">--</div>
+                    </div>
+                    <div class="sim-stat">
+                        <div class="label">ROI</div>
+                        <div class="value" id="sim-roi">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy Save Section -->
+            <div class="explorer-card strategy-save-card" id="strategy-save-section" style="display: none;">
+                <h3>Save as Strategy Profile</h3>
+
+                <!-- Parameter Summary -->
+                <div class="param-summary">
+                    <h4>Configuration to Save:</h4>
+                    <div class="param-grid">
+                        <div class="param-row"><span>Entry Tick:</span> <span id="save-entry-tick">--</span></div>
+                        <div class="param-row"><span>Number of Bets:</span> <span id="save-num-bets">--</span></div>
+                        <div class="param-row"><span>Initial Balance:</span> <span id="save-initial-balance">--</span></div>
+                        <div class="param-row"><span>Bet Sizes:</span> <span id="save-bet-sizes">--</span></div>
+                        <div class="param-row"><span>Max Drawdown:</span> <span id="save-max-drawdown">--</span></div>
+                        <div class="param-row"><span>Take Profit:</span> <span id="save-take-profit">--</span></div>
+                        <div class="param-row"><span>Kelly Sizing:</span> <span id="save-kelly-sizing">--</span></div>
+                        <div class="param-row"><span>Kelly Fraction:</span> <span id="save-kelly-fraction">--</span></div>
+                        <div class="param-row"><span>Dynamic Sizing:</span> <span id="save-dynamic-sizing">--</span></div>
+                        <div class="param-row"><span>Confidence Threshold:</span> <span id="save-confidence-threshold">--</span></div>
+                        <div class="param-row"><span>Confidence Multiplier:</span> <span id="save-confidence-multiplier">--</span></div>
+                        <div class="param-row"><span>Reduce on Drawdown:</span> <span id="save-reduce-drawdown">--</span></div>
+                    </div>
+                </div>
+
+                <!-- Strategy Name Input -->
+                <div class="name-input-row">
+                    <label for="strategy-name">Strategy Name:</label>
+                    <input type="text" id="strategy-name" placeholder="e.g., Kelly-55-2x">
+                    <button class="run-sim-btn" id="btn-save-strategy">Save Strategy</button>
+                </div>
+
+                <div class="save-location">
+                    Saves to: Machine Learning/strategies/
+                </div>
+                <div class="save-success" id="save-success">
+                    Strategy saved successfully! View in Backtest tab.
+                </div>
+            </div>
+
+            <!-- Equity Curve -->
+            <div class="explorer-card" style="flex: 1;">
+                <h3>Equity Curve</h3>
+                <div class="equity-chart-container">
+                    <canvas id="equity-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Monte Carlo Comparison -->
+        <div class="tab-content" id="tab-monte-carlo">
+            <!-- Controls -->
+            <div class="explorer-card">
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>Iterations</label>
+                        <select id="mc-iterations" class="mc-select">
+                            <option value="1000">1,000 (Quick ~5s)</option>
+                            <option value="10000" selected>10,000 (Standard ~45s)</option>
+                            <option value="100000">100,000 (Precise ~7min)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Win Rate</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="mc-win-rate" min="10" max="30" step="0.1" value="18.5" style="width: 70px;">
+                            <span class="control-value">%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Initial Bankroll</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="mc-bankroll" min="0.01" max="10" step="0.01" value="0.1" style="width: 70px;">
+                            <span class="control-value">SOL</span>
+                        </div>
+                    </div>
+                    <button class="run-sim-btn" id="btn-run-mc" style="margin-left: auto;">
+                        Run All 8 Strategies
+                    </button>
+                </div>
+                <div class="mc-status" id="mc-status" style="display: none;">
+                    <div class="mc-spinner"></div>
+                    <span id="mc-status-text">Running simulations...</span>
+                </div>
+            </div>
+
+            <!-- Strategy Comparison Table -->
+            <div class="explorer-card">
+                <h3>Strategy Comparison</h3>
+                <div class="mc-table-container">
+                    <table class="mc-comparison-table" id="mc-table">
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>Mean</th>
+                                <th>Median</th>
+                                <th>P(Profit)</th>
+                                <th>P(2x)</th>
+                                <th>Max DD</th>
+                                <th>Sortino</th>
+                                <th>Risk</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mc-table-body">
+                            <tr class="mc-placeholder">
+                                <td colspan="9">Click "Run All 8 Strategies" to start comparison</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="mc-charts-row">
+                <!-- Distribution Chart -->
+                <div class="explorer-card mc-chart-card">
+                    <h3>Final Bankroll Distribution</h3>
+                    <div class="mc-chart-container">
+                        <canvas id="mc-distribution-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sample Equity Curves -->
+                <div class="explorer-card mc-chart-card">
+                    <h3>Sample Equity Paths</h3>
+                    <div class="mc-chart-container">
+                        <canvas id="mc-equity-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Metrics Detail -->
+            <div class="explorer-card" id="mc-detail-card" style="display: none;">
+                <h3>Detailed Risk Metrics: <span id="mc-selected-strategy">--</span></h3>
+                <div class="mc-metrics-grid">
+                    <div class="mc-metric">
+                        <div class="label">VaR 95%</div>
+                        <div class="value" id="mc-var95">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="label">CVaR 95%</div>
+                        <div class="value" id="mc-cvar95">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="label">Sharpe</div>
+                        <div class="value" id="mc-sharpe">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="label">Calmar</div>
+                        <div class="value" id="mc-calmar">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="label">Recovery</div>
+                        <div class="value" id="mc-recovery">--</div>
+                    </div>
+                    <div class="mc-metric">
+                        <div class="label">Risk Level</div>
+                        <div class="value" id="mc-risk-level">--</div>
+                    </div>
+                </div>
+                <div class="mc-description" id="mc-description">--</div>
+            </div>
+
+            <!-- Computation Info -->
+            <div class="mc-info" id="mc-info" style="display: none;">
+                <span id="mc-time">Computed in -- seconds</span>
+                <span id="mc-best">Best Sortino: --</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="explorer-sidebar">
+        <!-- Strategy Stats -->
+        <div class="explorer-card">
+            <h3>Strategy Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Total Games</div>
+                    <div class="stat-value" id="total-games">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Playable</div>
+                    <div class="stat-value" id="playable-games">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Early Rug</div>
+                    <div class="stat-value neutral" id="early-rug-rate">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Breakeven</div>
+                    <div class="stat-value">20%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cumulative Win Rates -->
+        <div class="explorer-card">
+            <h3>Cumulative Win Rates</h3>
+            <table class="cumulative-table">
+                <thead>
+                    <tr>
+                        <th>Bets</th>
+                        <th>Win Rate</th>
+                        <th>EV/Seq</th>
+                        <th>Covers</th>
+                    </tr>
+                </thead>
+                <tbody id="cumulative-tbody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Duration Histogram -->
+        <div class="explorer-card" style="flex: 1;">
+            <h3>Duration Distribution</h3>
+            <div class="chart-container">
+                <canvas id="histogram-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/explorer.js') }}"></script>
+{% endblock %}

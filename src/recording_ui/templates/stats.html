@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Server Stats - VECTRA Recording Dashboard{% endblock %}
+
+{% block content %}
+<div class="stats-container">
+    <!-- Header -->
+    <div class="stats-header">
+        <span class="stats-header-title">SERVER STATS</span>
+        <div class="stats-connection">
+            <span class="stats-connection-dot" id="ws-status-dot"></span>
+            <span id="ws-status-text">rugs.fun (connecting...)</span>
+        </div>
+    </div>
+
+    <!-- Two-column stats layout -->
+    <div class="stats-columns">
+        <!-- Session Column -->
+        <div class="stats-column">
+            <div class="stats-column-title">Session</div>
+            <ul class="stats-tree">
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">avgMultiplier:</span>
+                    <span class="stats-tree-value" id="stat-avg-multiplier">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">connectedPlayers:</span>
+                    <span class="stats-tree-value" id="stat-connected-players">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">└─</span>
+                    <span class="stats-tree-key">events received:</span>
+                    <span class="stats-tree-value" id="stat-event-count">0</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Milestones Column -->
+        <div class="stats-column">
+            <div class="stats-column-title">Milestones</div>
+            <ul class="stats-tree">
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">count2x:</span>
+                    <span class="stats-tree-value" id="stat-count-2x">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">count10x:</span>
+                    <span class="stats-tree-value" id="stat-count-10x">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">├─</span>
+                    <span class="stats-tree-key">count50x:</span>
+                    <span class="stats-tree-value" id="stat-count-50x">--</span>
+                </li>
+                <li class="stats-tree-item">
+                    <span class="stats-tree-branch">└─</span>
+                    <span class="stats-tree-key">count100x:</span>
+                    <span class="stats-tree-value" id="stat-count-100x">--</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <hr class="stats-divider">
+
+    <!-- Today's High (Collapsible) -->
+    <div class="stats-collapsible" onclick="toggleSection('highest-today')">
+        <span class="stats-collapsible-icon" id="highest-today-icon">&#9654;</span>
+        <div class="stats-collapsible-summary">
+            <span>Today's High:</span>
+            <span class="stats-collapsible-highlight" id="stat-highest-today">--</span>
+            <span class="stats-collapsible-detail" id="stat-highest-today-time">@ --</span>
+            <span class="stats-collapsible-detail" id="stat-highest-today-ticks">(-- ticks)</span>
+        </div>
+    </div>
+    <div class="stats-collapsible-content" id="highest-today-content">
+        <ul class="stats-tree">
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">timestamp:</span>
+                <span class="stats-tree-value" id="stat-highest-today-ts">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">peak:</span>
+                <span class="stats-tree-value" id="stat-highest-today-peak">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">└─</span>
+                <span class="stats-tree-key">prices:</span>
+                <span class="stats-tree-value" id="stat-highest-today-prices-count">-- values</span>
+            </li>
+        </ul>
+        <div class="stats-mini-chart">
+            <canvas id="highest-today-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Rugpool (Collapsible) -->
+    <div class="stats-collapsible" onclick="toggleSection('rugpool')">
+        <span class="stats-collapsible-icon" id="rugpool-icon">&#9654;</span>
+        <div class="stats-collapsible-summary">
+            <span>Rugpool:</span>
+            <span class="stats-collapsible-highlight" id="stat-rugpool-amount">-- SOL</span>
+            <span class="stats-collapsible-detail">|</span>
+            <span class="stats-collapsible-detail">instarugs: <span id="stat-rugpool-instarugs">--</span></span>
+            <span class="stats-collapsible-detail">|</span>
+            <span class="stats-collapsible-detail">threshold: <span id="stat-rugpool-threshold">--</span></span>
+        </div>
+    </div>
+    <div class="stats-collapsible-content" id="rugpool-content">
+        <ul class="stats-tree">
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">rugpoolAmount:</span>
+                <span class="stats-tree-value" id="stat-rugpool-amount-full">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">instarugCount:</span>
+                <span class="stats-tree-value" id="stat-rugpool-instarug-count">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">threshold:</span>
+                <span class="stats-tree-value" id="stat-rugpool-threshold-full">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">├─</span>
+                <span class="stats-tree-key">totalEntries:</span>
+                <span class="stats-tree-value" id="stat-rugpool-entries">--</span>
+            </li>
+            <li class="stats-tree-item">
+                <span class="stats-tree-branch">└─</span>
+                <span class="stats-tree-key">playersWithEntries:</span>
+                <span class="stats-tree-value" id="stat-rugpool-players">--</span>
+            </li>
+        </ul>
+    </div>
+
+    <hr class="stats-divider">
+
+    <!-- Footer -->
+    <div class="stats-footer">
+        <span>last update: <span id="stat-last-update">--</span></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

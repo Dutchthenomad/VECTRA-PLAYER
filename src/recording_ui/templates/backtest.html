@@ -1,0 +1,1002 @@
+{% extends "base.html" %}
+
+{% block title %}Backtest Viewer - VECTRA Recording Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .backtest-container {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 16px;
+        padding: 16px;
+        height: calc(100vh - 160px); /* Account for header + fixed footer */
+    }
+
+    .backtest-main {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .backtest-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .backtest-card {
+        background: #1e1e2e;
+        border: 1px solid #313244;
+        border-radius: 8px;
+        padding: 14px;
+    }
+
+    .backtest-card h3 {
+        color: #cdd6f4;
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Control bar */
+    .control-bar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-group label {
+        color: #a6adc8;
+        font-size: 12px;
+    }
+
+    .control-group select {
+        padding: 6px 10px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 13px;
+    }
+
+    /* Playback buttons */
+    .playback-btn {
+        padding: 8px 16px;
+        border: 1px solid #45475a;
+        background: #313244;
+        color: #cdd6f4;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .playback-btn:hover {
+        background: #45475a;
+    }
+
+    .playback-btn.primary {
+        background: #89b4fa;
+        color: #1e1e2e;
+        border-color: #89b4fa;
+    }
+
+    .playback-btn.primary:hover {
+        background: #b4befe;
+    }
+
+    .playback-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Speed slider */
+    .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .speed-control input[type="range"] {
+        width: 120px;
+        accent-color: #89b4fa;
+    }
+
+    .speed-value {
+        color: #89b4fa;
+        font-weight: 600;
+        min-width: 40px;
+    }
+
+    /* Chart container */
+    .chart-container {
+        flex: 1;
+        min-height: 250px;
+        position: relative;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Digital ticker */
+    .digital-ticker {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(30, 30, 46, 0.95);
+        border: 1px solid #45475a;
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-family: 'JetBrains Mono', monospace;
+        z-index: 10;
+    }
+
+    .ticker-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        color: #cdd6f4;
+        font-size: 16px;
+    }
+
+    .ticker-label {
+        color: #a6adc8;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .ticker-value {
+        color: #89b4fa;
+        font-weight: 700;
+        font-size: 18px;
+    }
+
+    /* Wallet panel */
+    .wallet-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .wallet-stat {
+        background: #313244;
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .wallet-stat .label {
+        color: #a6adc8;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .wallet-stat .value {
+        color: #cdd6f4;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .wallet-stat .value.profit {
+        color: #a6e3a1;
+    }
+
+    .wallet-stat .value.loss {
+        color: #f38ba8;
+    }
+
+    /* Active bets */
+    .active-bets {
+        margin-top: 10px;
+    }
+
+    .bet-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: #313244;
+        border-radius: 4px;
+        margin-bottom: 6px;
+        font-size: 12px;
+    }
+
+    .bet-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+    }
+
+    .bet-marker.bet1 { background: #89b4fa; }
+    .bet-marker.bet2 { background: #94e2d5; }
+    .bet-marker.bet3 { background: #f9e2af; }
+    .bet-marker.bet4 { background: #cba6f7; }
+
+    .bet-info {
+        flex: 1;
+        color: #cdd6f4;
+    }
+
+    .bet-status {
+        color: #a6adc8;
+        font-size: 11px;
+    }
+
+    .bet-status.won {
+        color: #a6e3a1;
+    }
+
+    .bet-status.lost {
+        color: #f38ba8;
+    }
+
+    .bet-status.warn {
+        color: #f9e2af;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .stat-box {
+        background: #313244;
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .stat-box .stat-label {
+        color: #a6adc8;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .stat-box .stat-value {
+        color: #cdd6f4;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+        height: 8px;
+        background: #313244;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: #89b4fa;
+        transition: width 0.2s;
+    }
+
+    .progress-text {
+        color: #a6adc8;
+        font-size: 11px;
+        margin-top: 4px;
+        text-align: center;
+    }
+
+    /* Equity curve */
+    .equity-chart-container {
+        height: 120px;
+    }
+
+    /* Strategy selector */
+    .strategy-select {
+        width: 180px;
+    }
+
+    /* Status indicator */
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-indicator.paused {
+        background: rgba(249, 226, 175, 0.2);
+        color: #f9e2af;
+    }
+
+    .status-indicator.running {
+        background: rgba(166, 227, 161, 0.2);
+        color: #a6e3a1;
+    }
+
+    .status-indicator.finished {
+        background: rgba(137, 180, 250, 0.2);
+        color: #89b4fa;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .status-indicator.running .status-dot {
+        animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* No session state */
+    .no-session {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #a6adc8;
+        text-align: center;
+    }
+
+    .no-session h2 {
+        color: #cdd6f4;
+        margin-bottom: 16px;
+    }
+
+    .no-session p {
+        margin-bottom: 20px;
+        max-width: 400px;
+    }
+
+    /* Mode selector */
+    .mode-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mode-control select {
+        padding: 6px 10px;
+        background: #313244;
+        border: 1px solid #45475a;
+        border-radius: 4px;
+        color: #cdd6f4;
+        font-size: 13px;
+    }
+
+    .mode-control select option[value="live"] {
+        color: #f38ba8;
+        font-weight: 600;
+    }
+
+    /* Live indicator */
+    .live-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(243, 139, 168, 0.2);
+        color: #f38ba8;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .live-indicator.hidden {
+        display: none;
+    }
+
+    .live-indicator .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #f38ba8;
+        animation: pulse 1s infinite;
+    }
+
+    .live-indicator.connecting {
+        background: rgba(249, 226, 175, 0.2);
+        color: #f9e2af;
+    }
+
+    .live-indicator.connecting .live-dot {
+        background: #f9e2af;
+    }
+
+    .live-indicator.connected {
+        background: rgba(166, 227, 161, 0.2);
+        color: #a6e3a1;
+    }
+
+    .live-indicator.connected .live-dot {
+        background: #a6e3a1;
+    }
+
+    .live-indicator.disconnected,
+    .live-indicator.error {
+        background: rgba(243, 139, 168, 0.2);
+        color: #f38ba8;
+    }
+
+    .live-indicator.disconnected .live-dot,
+    .live-indicator.error .live-dot {
+        background: #f38ba8;
+        animation: none;
+    }
+
+    /* Speed control wrapper for hiding in live mode */
+    .speed-control-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    .speed-control-wrapper.hidden {
+        display: none;
+    }
+
+    /* Recording toggle */
+    .rec-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #313244;
+    }
+
+    .rec-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .rec-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #6c7086;
+    }
+
+    .rec-indicator.recording {
+        background: #f38ba8;
+        box-shadow: 0 0 8px #f38ba8;
+        animation: rec-pulse 1s infinite;
+    }
+
+    @keyframes rec-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .rec-text {
+        font-size: 11px;
+        color: #a6adc8;
+        text-transform: uppercase;
+    }
+
+    .rec-text.recording {
+        color: #f38ba8;
+        font-weight: 600;
+    }
+
+    .rec-btn {
+        padding: 4px 12px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .rec-btn.off {
+        background: transparent;
+        border-color: #f38ba8;
+        color: #f38ba8;
+    }
+
+    .rec-btn.off:hover {
+        background: #f38ba8;
+        color: #1e1e2e;
+    }
+
+    .rec-btn.recording {
+        background: #f38ba8;
+        border-color: #f38ba8;
+        color: #1e1e2e;
+    }
+
+    .rec-btn.recording:hover {
+        background: #eba0ac;
+        border-color: #eba0ac;
+    }
+
+    /* Browser Connection (compact) */
+    .browser-connection {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .conn-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .conn-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #f38ba8;
+    }
+
+    .conn-indicator.connected {
+        background: #a6e3a1;
+        box-shadow: 0 0 6px #a6e3a1;
+    }
+
+    .conn-text {
+        font-size: 11px;
+        color: #a6adc8;
+        text-transform: uppercase;
+    }
+
+    .conn-text.connected {
+        color: #a6e3a1;
+    }
+
+    .conn-btn {
+        padding: 4px 10px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        border: 1px solid;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .conn-btn.disconnected {
+        background: transparent;
+        border-color: #a6e3a1;
+        color: #a6e3a1;
+    }
+
+    .conn-btn.disconnected:hover {
+        background: #a6e3a1;
+        color: #1e1e2e;
+    }
+
+    .conn-btn.connected {
+        background: transparent;
+        border-color: #f38ba8;
+        color: #f38ba8;
+    }
+
+    .conn-btn.connected:hover {
+        background: #f38ba8;
+        color: #1e1e2e;
+    }
+
+    .conn-btn.connecting {
+        border-color: #f9e2af;
+        color: #f9e2af;
+        cursor: wait;
+    }
+
+    .player-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        padding-top: 6px;
+        border-top: 1px solid #313244;
+    }
+
+    .player-name {
+        color: #89b4fa;
+    }
+
+    .player-bal {
+        color: #a6e3a1;
+        font-weight: 600;
+    }
+
+    /* Game State Row (compact) */
+    .game-state-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .gs-item {
+        text-align: center;
+    }
+
+    .gs-val {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #cdd6f4;
+    }
+
+    .gs-lbl {
+        font-size: 9px;
+        color: #6c7086;
+        text-transform: uppercase;
+    }
+
+    .gs-val.phase-presale { color: #f9e2af; }
+    .gs-val.phase-active { color: #a6e3a1; }
+    .gs-val.phase-rugged { color: #f38ba8; }
+    .gs-val.phase-cooldown { color: #89b4fa; }
+
+    /* Trade Buttons (compact) */
+    .trade-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .trade-btn-sm {
+        padding: 6px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .trade-btn-sm.buy {
+        background: transparent;
+        border-color: #a6e3a1;
+        color: #a6e3a1;
+    }
+
+    .trade-btn-sm.buy:hover {
+        background: #a6e3a1;
+        color: #1e1e2e;
+    }
+
+    .trade-btn-sm.sell {
+        background: transparent;
+        border-color: #f38ba8;
+        color: #f38ba8;
+    }
+
+    .trade-btn-sm.sell:hover {
+        background: #f38ba8;
+        color: #1e1e2e;
+    }
+
+    .trade-btn-sm.sidebet {
+        background: transparent;
+        border-color: #f9e2af;
+        color: #f9e2af;
+    }
+
+    .trade-btn-sm.sidebet:hover {
+        background: #f9e2af;
+        color: #1e1e2e;
+    }
+
+    /* Bet Controls (compact) */
+    .bet-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .bet-display {
+        font-size: 14px;
+        font-weight: 600;
+        color: #a6e3a1;
+        min-width: 50px;
+    }
+
+    .bet-btns {
+        display: flex;
+        gap: 3px;
+        flex: 1;
+    }
+
+    .bet-btn-sm {
+        padding: 3px 6px;
+        font-size: 10px;
+        font-weight: 600;
+        border: 1px solid #45475a;
+        border-radius: 2px;
+        background: #313244;
+        color: #a6adc8;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .bet-btn-sm:hover {
+        background: #45475a;
+        color: #cdd6f4;
+    }
+
+    /* Percentage Row */
+    .pct-row {
+        display: flex;
+        gap: 4px;
+    }
+
+    .pct-btn-sm {
+        flex: 1;
+        padding: 3px 6px;
+        font-size: 10px;
+        font-weight: 600;
+        border: 1px solid #45475a;
+        border-radius: 2px;
+        background: #313244;
+        color: #a6adc8;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .pct-btn-sm:hover {
+        border-color: #f38ba8;
+        color: #f38ba8;
+    }
+
+    .pct-btn-sm.active {
+        background: #f38ba8;
+        border-color: #f38ba8;
+        color: #1e1e2e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backtest-container">
+    <div class="backtest-main">
+        <!-- Control Bar -->
+        <div class="backtest-card">
+            <div class="control-bar">
+                <div class="control-group">
+                    <label>Profile:</label>
+                    <select id="profile-select" class="strategy-select">
+                        <option value="">-- Select Profile --</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Strategy:</label>
+                    <select id="strategy-select" class="strategy-select">
+                        <option value="">-- Select Strategy --</option>
+                    </select>
+                </div>
+
+                <button class="playback-btn" id="btn-refresh" title="Refresh lists">↻</button>
+                <button class="playback-btn" id="btn-load" disabled>Load</button>
+                <button class="playback-btn" id="btn-save">Save Current</button>
+
+                <div style="flex: 1;"></div>
+
+                <button class="playback-btn primary" id="btn-start" disabled>Start</button>
+                <button class="playback-btn" id="btn-pause" disabled>Pause</button>
+                <button class="playback-btn" id="btn-step" disabled>Step</button>
+                <button class="playback-btn" id="btn-next" disabled>Next Game</button>
+
+                <div class="mode-control">
+                    <label>Mode:</label>
+                    <select id="mode-select">
+                        <option value="backtest">Backtest</option>
+                        <option value="live">LIVE FEED</option>
+                    </select>
+                </div>
+
+                <div class="speed-control" id="speed-control-wrapper">
+                    <label>Speed:</label>
+                    <input type="range" id="speed-slider" min="1" max="5" value="2" step="1">
+                    <span class="speed-value" id="speed-value">2x</span>
+                </div>
+
+                <div class="live-indicator hidden" id="live-indicator">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                </div>
+
+                <div class="status-indicator paused" id="status-indicator">
+                    <div class="status-dot"></div>
+                    <span id="status-text">Ready</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Chart -->
+        <div class="backtest-card" style="flex: 1;">
+            <h3>Game Playback</h3>
+            <div class="chart-container" id="chart-container">
+                <div class="digital-ticker" id="digital-ticker">
+                    <div class="ticker-row">
+                        <div>
+                            <div class="ticker-label">Tick</div>
+                            <div class="ticker-value" id="ticker-tick">0</div>
+                        </div>
+                        <div>
+                            <div class="ticker-label">Price</div>
+                            <div class="ticker-value" id="ticker-price">1.00</div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="price-chart"></canvas>
+                <div class="no-session" id="no-session-overlay">
+                    <h2>Backtest Viewer</h2>
+                    <p>Select a strategy and click Start to begin visual backtesting on the validation dataset.</p>
+                    <button class="playback-btn primary" id="btn-quick-start">Quick Start (Default Strategy)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equity Curve -->
+        <div class="backtest-card">
+            <h3>Equity Curve</h3>
+            <div class="equity-chart-container">
+                <canvas id="equity-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="backtest-sidebar">
+        <!-- Browser Connection -->
+        <div class="backtest-card">
+            <h3>Browser Control</h3>
+            <!-- Recording Toggle -->
+            <div class="rec-row">
+                <div class="rec-status">
+                    <span class="rec-indicator" id="rec-indicator"></span>
+                    <span class="rec-text" id="rec-text">OFF</span>
+                </div>
+                <button id="rec-btn" class="rec-btn off" onclick="toggleRecording()">
+                    START REC
+                </button>
+            </div>
+            <div class="browser-connection">
+                <div class="conn-status">
+                    <span class="conn-indicator" id="connection-indicator"></span>
+                    <span class="conn-text" id="connection-text">Disconnected</span>
+                </div>
+                <button id="connect-btn" class="conn-btn disconnected" onclick="toggleConnection()">
+                    CONNECT
+                </button>
+            </div>
+            <div class="player-row" id="player-row" style="display: none;">
+                <span class="player-name" id="player-username">--</span>
+                <span class="player-bal" id="player-balance">0.0000 SOL</span>
+            </div>
+        </div>
+
+        <!-- Trading Controls (shown when connected) -->
+        <div class="backtest-card" id="trading-section" style="display: none;">
+            <h3>Trading</h3>
+            <div class="game-state-row">
+                <div class="gs-item"><span class="gs-val" id="game-tick">0</span><span class="gs-lbl">TICK</span></div>
+                <div class="gs-item"><span class="gs-val" id="game-price">1.00x</span><span class="gs-lbl">PRICE</span></div>
+                <div class="gs-item"><span class="gs-val phase-unknown" id="game-phase">--</span><span class="gs-lbl">PHASE</span></div>
+            </div>
+            <div class="trade-buttons">
+                <button class="trade-btn-sm buy" onclick="clickBuy()">BUY</button>
+                <button class="trade-btn-sm sidebet" onclick="clickSidebet()">SIDE</button>
+                <button class="trade-btn-sm sell" onclick="clickSell()">SELL</button>
+            </div>
+            <div class="bet-row">
+                <span class="bet-display" id="current-bet">0.010</span>
+                <div class="bet-btns">
+                    <button class="bet-btn-sm" onclick="clickIncrement(0.01)">+.01</button>
+                    <button class="bet-btn-sm" onclick="clickIncrement(0.1)">+.1</button>
+                    <button class="bet-btn-sm" onclick="clickHalf()">1/2</button>
+                    <button class="bet-btn-sm" onclick="clickDouble()">X2</button>
+                    <button class="bet-btn-sm" onclick="clickClear()">X</button>
+                </div>
+            </div>
+            <div class="pct-row">
+                <button class="pct-btn-sm" onclick="clickPercentage(25)">25%</button>
+                <button class="pct-btn-sm" onclick="clickPercentage(50)">50%</button>
+                <button class="pct-btn-sm active" onclick="clickPercentage(100)">100%</button>
+            </div>
+        </div>
+
+        <!-- Wallet Status -->
+        <div class="backtest-card">
+            <h3>Wallet</h3>
+            <div class="wallet-panel">
+                <div class="wallet-stat">
+                    <div class="label">Balance</div>
+                    <div class="value" id="wallet-balance">0.1000</div>
+                </div>
+                <div class="wallet-stat">
+                    <div class="label">P&L</div>
+                    <div class="value" id="wallet-pnl">+0.00%</div>
+                </div>
+            </div>
+            <div class="active-bets" id="active-bets">
+                <!-- Active bets will be rendered here -->
+            </div>
+        </div>
+
+        <!-- Cumulative Stats -->
+        <div class="backtest-card">
+            <h3>Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Wins</div>
+                    <div class="stat-value" id="stat-wins">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Losses</div>
+                    <div class="stat-value" id="stat-losses">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value" id="stat-winrate">0%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Max DD</div>
+                    <div class="stat-value" id="stat-maxdd">0%</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0 / 0 games</div>
+        </div>
+
+        <!-- Game Info -->
+        <div class="backtest-card">
+            <h3>Current Game</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Game ID</div>
+                    <div class="stat-value" id="game-id" style="font-size: 11px;">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Duration</div>
+                    <div class="stat-value" id="game-duration">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Info -->
+        <div class="backtest-card" style="flex: 1;">
+            <h3>Strategy Parameters</h3>
+            <div id="strategy-params" style="font-size: 12px; color: #a6adc8;">
+                <p>No strategy loaded</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/backtest.js') }}"></script>
+{% endblock %}
