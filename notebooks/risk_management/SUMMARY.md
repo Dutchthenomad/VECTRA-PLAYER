@@ -113,7 +113,7 @@ Sharpe = (Mean Return - Risk-Free Rate) / Std Dev of Returns
 - > 2: Excellent
 - > 3: Exceptional (rare in crypto)
 
-**Example**: 
+**Example**:
 - Returns: [+4%, -1%, +4%, -1%, -1%, +4%]
 - Mean: +1.5%
 - Std Dev: 2.26%
@@ -373,40 +373,40 @@ class SidebetRLEnv(gym.Env):
     def __init__(self):
         self.risk_mgr = RiskManager(1.0, RiskConfig(kelly_fraction=0.25))
         self.bayesian = BayesianSurvivalModel(games_df)
-    
+
     def step(self, action):
         # Predict win probability
         p_win = self.bayesian.predict(tick, features)
-        
+
         # Check if bet allowed
         should_bet, reason = self.risk_mgr.should_place_bet(p_win)
-        
+
         if action == 1 and should_bet:
             # Calculate bet size
             bet = self.risk_mgr.calculate_position_size(p_win)
-            
+
             # Execute trade (game logic here)
             outcome = place_sidebet(bet)
-            
+
             # Record
             self.risk_mgr.record_trade(bet, outcome, p_win)
-            
+
             # Reward (risk-adjusted)
             if outcome:
                 reward = bet × 4
             else:
                 reward = -bet
-            
+
             # Penalty for high drawdown
             if self.risk_mgr.state.current_drawdown_pct > 20:
                 reward -= 0.1
-        
+
         else:
             reward = 0.0
-        
+
         obs = self.get_obs()
         done = self.risk_mgr.state.trading_state == PAUSED
-        
+
         return obs, reward, done, {}
 ```
 

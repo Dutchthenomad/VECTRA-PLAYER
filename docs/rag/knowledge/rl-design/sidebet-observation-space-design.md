@@ -202,33 +202,33 @@ from typing import Dict, List
 
 class SidebetObservationBuilder:
     """Build 28-dimensional observation vector from game state."""
-    
+
     def __init__(self):
         self.price_history: List[float] = []
         self.trade_timestamps: List[int] = []
-        
+
     def reset(self):
         """Reset for new game."""
         self.price_history = []
         self.trade_timestamps = []
-        
-    def build(self, 
+
+    def build(self,
               game_state: Dict,
               player_state: Dict,
               sidebet_state: Dict) -> np.ndarray:
         """
         Build observation vector.
-        
+
         Args:
             game_state: From gameStateUpdate event
             player_state: From playerUpdate event (or None)
             sidebet_state: From currentSidebet event (or None)
-            
+
         Returns:
             28-dimensional float32 array
         """
         obs = np.zeros(28, dtype=np.float32)
-        
+
         # === GAME STATE (0-5) ===
         obs[0] = float(game_state['tickCount'])
         obs[1] = float(game_state['price'])
@@ -236,67 +236,67 @@ class SidebetObservationBuilder:
         obs[3] = float(game_state['cooldownTimer'])
         obs[4] = float(game_state['allowPreRoundBuys'])
         obs[5] = float(game_state['connectedPlayers'])
-        
+
         # Update price history
         self.price_history.append(obs[1])
-        
+
         # === PRICE FEATURES (6-12) ===
         obs[6] = obs[0]  # age = tick
-        
+
         if len(self.price_history) > 0:
             peak = max(self.price_history)
             peak_idx = self.price_history.index(peak)
             obs[7] = (peak - obs[1]) / peak if peak > 0 else 0  # distance_from_peak
             obs[8] = float(obs[0] - peak_idx)  # ticks_since_peak
-        
+
         obs[9] = self._calc_volatility(5)   # volatility_5
         obs[10] = self._calc_volatility(10)  # volatility_10
         obs[11] = self._calc_momentum(3)     # momentum_3
         obs[12] = self._calc_momentum(5)     # momentum_5
-        
+
         # === POSITION CONTEXT (13-15) ===
         if player_state:
             obs[13] = float(player_state.get('positionQty', 0))
             obs[14] = float(player_state.get('avgCost', 0))
             if obs[14] > 0:
                 obs[15] = (obs[1] / obs[14] - 1) * 100  # unrealized_pnl_pct
-        
+
         # === MARKET CONTEXT (16-19) ===
         leaderboard = game_state.get('leaderboard', [])
         obs[16] = float(sum(1 for p in leaderboard if p.get('hasActiveTrades')))
         obs[17] = float(sum(p.get('totalInvested', 0) for p in leaderboard))
         obs[18] = float(self._count_recent_trades(obs[0]))
-        
+
         rugpool = game_state.get('rugpool', {})
         threshold = rugpool.get('threshold', 10)
         obs[19] = rugpool.get('rugpoolAmount', 0) / threshold if threshold > 0 else 0
-        
+
         # === SESSION CONTEXT (20-24) ===
         obs[20] = float(game_state.get('averageMultiplier', 0))
         obs[21] = float(game_state.get('count2x', 0))
         obs[22] = float(game_state.get('count10x', 0))
         obs[23] = float(game_state.get('count50x', 0))
         obs[24] = float(game_state.get('highestToday', 0))
-        
+
         # === SIDEBET STATE (25-27) ===
         if sidebet_state:
             obs[25] = 1.0  # active
             obs[26] = float(sidebet_state.get('startTick', 0))
             obs[27] = float(sidebet_state.get('endTick', 0))
-        
+
         return obs
-    
+
     def _calc_volatility(self, window: int) -> float:
         if len(self.price_history) < window:
             return 0.0
         returns = np.diff(self.price_history[-window:])
         return float(np.std(returns))
-    
+
     def _calc_momentum(self, window: int) -> float:
         if len(self.price_history) < window:
             return 0.0
         return (self.price_history[-1] - self.price_history[-window]) / window
-    
+
     def _count_recent_trades(self, current_tick: int, window: int = 10) -> int:
         """Count trades in last `window` ticks."""
         cutoff = current_tick - window
@@ -318,40 +318,40 @@ def calculate_reward(
 ) -> float:
     """
     Calculate step reward for sidebet timing.
-    
+
     Reward components:
     1. Win: +payout (5x bet = +0.004 SOL for 0.001 bet)
     2. Loss: -bet amount (-0.001 SOL)
     3. Timing penalty: Small negative for holding too long
     4. Opportunity cost: Penalty for missing optimal windows
     """
-    
+
     BET_AMOUNT = 0.001  # Standard sidebet size
     PAYOUT_MULTIPLIER = 5
-    
+
     reward = 0.0
-    
+
     if action == 1:  # PLACE_5X
         if game_outcome == "won":
             # Sidebet won (rug in 40 ticks)
             profit = BET_AMOUNT * (PAYOUT_MULTIPLIER - 1)
             reward = profit * 100  # Scale for learning (0.4)
-            
+
             # Bonus for optimal timing (tick 200-500 has higher win rate)
             tick = int(state_before[0])
             if 200 <= tick <= 500:
                 reward += 0.1
-                
+
         elif game_outcome == "lost":
             # Sidebet lost (no rug in 40 ticks)
             reward = -BET_AMOUNT * 100  # (-0.1)
-            
+
     else:  # HOLD
         # Small time penalty to encourage action
         tick = int(state_before[0])
         if tick > 138:  # Past median rug point
             reward = -0.01 * (tick - 138) / 100  # Escalating penalty
-            
+
     return reward
 ```
 
@@ -361,7 +361,7 @@ def calculate_reward(
 def shaped_reward(base_reward: float, features: np.ndarray) -> float:
     """
     Apply potential-based reward shaping to guide exploration.
-    
+
     Potential function: Φ(s) based on Bayesian rug probability.
     """
     # Extract Bayesian features
@@ -369,10 +369,10 @@ def shaped_reward(base_reward: float, features: np.ndarray) -> float:
     ticks_since_peak = features[8]
     distance_from_peak = features[7]
     volatility_10 = features[10]
-    
+
     # Simplified Bayesian potential (higher = more likely to rug soon)
     potential = 0.0
-    
+
     if ticks_since_peak > 20:
         potential += 0.3
     if distance_from_peak > 0.3:
@@ -381,11 +381,11 @@ def shaped_reward(base_reward: float, features: np.ndarray) -> float:
         potential += 0.2
     if age > 138:  # Past median
         potential += 0.3
-        
+
     # Potential-based shaping: R' = R + γΦ(s') - Φ(s)
     # For simplicity, use potential directly as bonus
     shaped = base_reward + potential * 0.1
-    
+
     return shaped
 ```
 
@@ -404,13 +404,13 @@ class SidebetTimingEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(28,), dtype=np.float32
         )
         self.action_space = spaces.Discrete(2)
-        
+
         self.max_steps_per_episode = 2000  # Max ticks per game
-        
+
     def reset(self, seed=None, options=None):
         """
         Reset at game start (PRESALE phase).
-        
+
         Returns:
             observation: Initial state (all zeros except session stats)
             info: Metadata
@@ -418,21 +418,21 @@ class SidebetTimingEnv(gym.Env):
         super().reset(seed=seed)
         self.step_count = 0
         self.obs_builder.reset()
-        
+
         # Wait for game to start (active=True)
         obs = self._wait_for_game_start()
-        
+
         info = {
             "game_id": self.current_game_id,
             "phase": "PRESALE",
         }
-        
+
         return obs, info
-    
+
     def step(self, action: int):
         """
         Execute one step (one tick).
-        
+
         Returns:
             observation: Next state
             reward: Step reward
@@ -441,31 +441,31 @@ class SidebetTimingEnv(gym.Env):
             info: Metadata
         """
         self.step_count += 1
-        
+
         # Execute action (if PLACE_5X, send requestSidebet)
         if action == 1:
             self._place_sidebet()
-        
+
         # Wait for next tick
         obs_next = self._wait_for_next_tick()
-        
+
         # Check termination
         terminated = self._is_rugged()
         truncated = self.step_count >= self.max_steps_per_episode
-        
+
         # Calculate reward
         game_outcome = self._determine_outcome()
         reward = calculate_reward(action, self.obs_prev, obs_next, game_outcome)
-        
+
         info = {
             "tick": int(obs_next[0]),
             "price": float(obs_next[1]),
             "sidebet_active": bool(obs_next[25]),
             "outcome": game_outcome,
         }
-        
+
         self.obs_prev = obs_next
-        
+
         return obs_next, reward, terminated, truncated, info
 ```
 
@@ -504,16 +504,16 @@ From analysis of 568 games:
 ```python
 class PriceHistoryBuffer:
     """Rolling buffer for price history."""
-    
+
     def __init__(self, max_len: int = 100):
         self.max_len = max_len
         self.prices = []
-        
+
     def append(self, price: float):
         self.prices.append(price)
         if len(self.prices) > self.max_len:
             self.prices.pop(0)
-            
+
     def get_window(self, window: int) -> List[float]:
         """Get last N prices."""
         return self.prices[-window:] if len(self.prices) >= window else self.prices
@@ -540,21 +540,21 @@ class PriceHistoryBuffer:
 ```python
 class RunningNormalizer:
     """Online normalization with running mean/std."""
-    
+
     def __init__(self, shape: tuple):
         self.mean = np.zeros(shape)
         self.var = np.ones(shape)
         self.count = 0
-        
+
     def update(self, x: np.ndarray):
         """Update running statistics."""
         batch_mean = np.mean(x, axis=0)
         batch_var = np.var(x, axis=0)
         batch_count = x.shape[0]
-        
+
         delta = batch_mean - self.mean
         total_count = self.count + batch_count
-        
+
         self.mean = self.mean + delta * batch_count / total_count
         self.var = (
             self.var * self.count +
@@ -562,7 +562,7 @@ class RunningNormalizer:
             delta ** 2 * self.count * batch_count / total_count
         ) / total_count
         self.count = total_count
-        
+
     def normalize(self, x: np.ndarray) -> np.ndarray:
         """Normalize observation."""
         return (x - self.mean) / (np.sqrt(self.var) + 1e-8)
@@ -657,12 +657,12 @@ def evaluate_bayesian_alignment(
 ):
     """
     Measure how well RL agent aligns with Bayesian predictions.
-    
+
     Args:
         rl_actions: 1 if agent placed bet, 0 otherwise
         bayesian_probs: P(rug in 40 ticks) from Bayesian model
         threshold: Breakeven probability (20% for 5x)
-    
+
     Returns:
         Alignment score (0-1)
     """
@@ -690,23 +690,23 @@ from collections import deque
 
 class SidebetReplayBuffer:
     """Store (s, a, r, s', done) tuples for off-policy learning."""
-    
+
     def __init__(self, capacity: int = 100_000):
         self.buffer = deque(maxlen=capacity)
-        
+
     def push(self, state, action, reward, next_state, done):
         self.buffer.append((state, action, reward, next_state, done))
-        
+
     def sample(self, batch_size: int):
         indices = np.random.choice(len(self.buffer), batch_size)
         batch = [self.buffer[i] for i in indices]
-        
+
         states = np.array([b[0] for b in batch])
         actions = np.array([b[1] for b in batch])
         rewards = np.array([b[2] for b in batch])
         next_states = np.array([b[3] for b in batch])
         dones = np.array([b[4] for b in batch])
-        
+
         return states, actions, rewards, next_states, dones
 ```
 

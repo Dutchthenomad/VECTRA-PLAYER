@@ -9,7 +9,7 @@ Based on our analysis of the three Rugs.fun verification versions and ML_CORE_RE
 - Server seed + game ID deterministically generates outcomes
 - Publicly verifiable algorithm with version differences (v1, v2, v3)
 
-**Business Logic Layer** 
+**Business Logic Layer**
 - Meta-algorithm for treasury protection
 - Player classification & retention systems
 - Cross-game pattern management (instarug detection)
@@ -56,7 +56,7 @@ class RugsAnalyzer:
         """Initialize with path to dataset of game outcomes"""
         self.data = pd.read_json(data_path, lines=True)
         self.results = {}
-        
+
     def preprocess_data(self):
         """Extract key metrics for analysis"""
         # Core game metrics
@@ -64,15 +64,15 @@ class RugsAnalyzer:
         self.final_ticks = self.data['finalTick'].values
         self.game_durations = self.data['gameDuration'].values
         self.server_seeds = self.data['serverSeed'].values
-        
+
         # Create derived features
         self.is_instarug = self.final_ticks < 10
         self.timestamps = pd.to_datetime(self.data['timestamp'])
-        
+
         # Create lag features for cross-game analysis
         self.data['prev_peak'] = self.data['peakMultiplier'].shift(1)
         self.data['prev_is_instarug'] = (self.data['finalTick'].shift(1) < 10)
-        
+
     def chi_squared_test(self, metric, bins=100):
         """Test for uniform distribution of a metric"""
         values = getattr(self, metric)
@@ -80,104 +80,104 @@ class RugsAnalyzer:
         expected = len(values) / bins
         chi2_stat, p_value = chisquare(observed)
         return {'statistic': chi2_stat, 'p_value': p_value, 'passed': p_value > 0.05}
-    
+
     def runs_test(self, metric, threshold=None):
         """Test for sequential dependencies"""
         values = getattr(self, metric)
         if threshold is None:
             threshold = np.median(values)
-        
+
         binary_seq = (values >= threshold).astype(int)
         runs = 1
         n1 = np.sum(binary_seq)
         n2 = len(binary_seq) - n1
-        
+
         for i in range(1, len(binary_seq)):
             if binary_seq[i] != binary_seq[i-1]:
                 runs += 1
-        
+
         expected_runs = (2 * n1 * n2) / (n1 + n2) + 1
         var_runs = (2 * n1 * n2 * (2 * n1 * n2 - n1 - n2)) / ((n1 + n2)**2 * (n1 + n2 - 1))
         z_score = (runs - expected_runs) / math.sqrt(var_runs)
         p_value = 2 * (1 - norm.cdf(abs(z_score)))
-        
+
         return {'z_score': z_score, 'p_value': p_value, 'passed': p_value > 0.05}
-    
+
     def autocorrelation_analysis(self, metric, max_lag=100):
         """Detect periodic patterns in game outcomes"""
         values = getattr(self, metric)
         autocorr = acf(values, nlags=max_lag, fft=True)
-        
+
         # Find significant lags
         n = len(values)
         confidence_interval = 1.96 / np.sqrt(n)  # 95% CI
-        
+
         significant_lags = []
         for i, corr in enumerate(autocorr[1:], 1):
             if abs(corr) > confidence_interval:
                 significant_lags.append((i, corr))
-        
+
         return significant_lags
-    
+
     def spectral_analysis(self, metric):
         """FFT analysis to detect hidden periodicities"""
         values = getattr(self, metric)
         # Pad to power of 2 for efficient FFT
         padded_length = 2 ** int(np.ceil(np.log2(len(values))))
         padded_values = np.pad(values, (0, padded_length - len(values)))
-        
+
         # Compute FFT
         fft_result = fft(padded_values)
         power_spectrum = np.abs(fft_result) ** 2
-        
+
         # Find peaks in power spectrum
         mean_power = np.mean(power_spectrum[1:])  # Exclude DC component
         std_power = np.std(power_spectrum[1:])
         threshold = mean_power + 3 * std_power
-        
+
         peaks = []
         for i in range(1, len(power_spectrum) // 2):  # Only look at first half (Nyquist)
             if power_spectrum[i] > threshold:
                 frequency = i / padded_length
                 period = 1 / frequency if frequency > 0 else float('inf')
                 peaks.append((i, period, power_spectrum[i]))
-        
+
         return peaks
-    
+
     def cross_game_correlation(self):
         """Analyze correlation between consecutive games"""
         # Test if high multipliers lead to instarugs
         high_mult_threshold = np.percentile(self.peak_multipliers, 90)  # Top 10%
-        
+
         # Create a dataframe of high multiplier games and their next games
         high_mult_games = self.data[self.data['peakMultiplier'] > high_mult_threshold].copy()
         high_mult_games['next_is_instarug'] = high_mult_games['peakMultiplier'].shift(-1) < 1.1
-        
+
         # Calculate conditional probability
         p_instarug_after_high = high_mult_games['next_is_instarug'].mean()
         p_instarug_overall = self.is_instarug.mean()
-        
+
         # Statistical significance test
         from scipy.stats import fisher_exact
-        
+
         # Contingency table
         # [after high mult & instarug, after high mult & not instarug]
         # [not after high mult & instarug, not after high mult & not instarug]
-        
+
         after_high_count = len(high_mult_games)
         after_high_instarug = high_mult_games['next_is_instarug'].sum()
         after_high_not_instarug = after_high_count - after_high_instarug
-        
+
         total_games = len(self.data)
         total_instarug = self.is_instarug.sum()
         not_after_high_instarug = total_instarug - after_high_instarug
         not_after_high_not_instarug = (total_games - after_high_count) - not_after_high_instarug
-        
+
         table = [[after_high_instarug, after_high_not_instarug],
                  [not_after_high_instarug, not_after_high_not_instarug]]
-        
+
         odds_ratio, p_value = fisher_exact(table)
-        
+
         return {
             'p_instarug_after_high': p_instarug_after_high,
             'p_instarug_overall': p_instarug_overall,
@@ -185,7 +185,7 @@ class RugsAnalyzer:
             'p_value': p_value,
             'significant': p_value < 0.05
         }
-    
+
     def time_correlation_analysis(self):
         """Test for time-based patterns in seed generation"""
         # Extract time components
@@ -193,64 +193,64 @@ class RugsAnalyzer:
         day_of_week = self.timestamps.dt.dayofweek
         minute_of_hour = self.timestamps.dt.minute
         second_of_minute = self.timestamps.dt.second
-        
+
         # Convert timestamps to seconds since epoch
         time_values = self.timestamps.astype(int) // 10**9
-        
+
         # Check various time correlations with game outcomes
         correlations = {}
-        
+
         # Direct correlation
         correlations['time_vs_peak'] = pearsonr(time_values, self.peak_multipliers)
         correlations['time_vs_duration'] = pearsonr(time_values, self.game_durations)
-        
+
         # Modulo correlations (cyclical patterns)
         correlations['minute_vs_peak'] = pearsonr(minute_of_hour, self.peak_multipliers)
         correlations['second_vs_peak'] = pearsonr(second_of_minute, self.peak_multipliers)
         correlations['hour_vs_peak'] = pearsonr(hour_of_day, self.peak_multipliers)
         correlations['day_vs_peak'] = pearsonr(day_of_week, self.peak_multipliers)
-        
+
         # Time modulo correlations
         mod_1000 = time_values % 1000
         mod_60 = time_values % 60
         mod_3600 = time_values % 3600
         mod_86400 = time_values % 86400  # Daily pattern
-        
+
         correlations['mod_1000_vs_peak'] = pearsonr(mod_1000, self.peak_multipliers)
         correlations['mod_60_vs_peak'] = pearsonr(mod_60, self.peak_multipliers)
         correlations['mod_3600_vs_peak'] = pearsonr(mod_3600, self.peak_multipliers)
         correlations['mod_86400_vs_peak'] = pearsonr(mod_86400, self.peak_multipliers)
-        
+
         # Filter for significant correlations
         significant_correlations = {k: v for k, v in correlations.items() if v[1] < 0.05}
-        
+
         return significant_correlations
-    
+
     def analyze_player_profiling(self, player_data):
         """Analyze if outcomes are influenced by player behavior"""
         # Requires player-specific data like bet size, history, etc.
         # For now, stub implementation
         pass
-    
+
     def run_full_analysis(self):
         """Run all tests and compile results"""
         self.preprocess_data()
-        
+
         # Basic statistical tests
         self.results['chi_squared_peak'] = self.chi_squared_test('peak_multipliers')
         self.results['chi_squared_duration'] = self.chi_squared_test('game_durations')
         self.results['runs_test_peak'] = self.runs_test('peak_multipliers')
-        
+
         # Advanced pattern detection
         self.results['autocorr_peak'] = self.autocorrelation_analysis('peak_multipliers')
         self.results['spectral_peak'] = self.spectral_analysis('peak_multipliers')
-        
+
         # Cross-game pattern detection
         self.results['cross_game'] = self.cross_game_correlation()
-        
+
         # Time-based pattern detection
         self.results['time_correlation'] = self.time_correlation_analysis()
-        
+
         return self.results
 ```
 
@@ -274,7 +274,7 @@ class RugsMonitor:
         self.games = []
         self.current_game = None
         self.connection_active = False
-    
+
     async def connect(self):
         """Establish WebSocket connection to Rugs.fun"""
         try:
@@ -285,19 +285,19 @@ class RugsMonitor:
         except Exception as e:
             print(f"Connection error: {e}")
             return False
-    
+
     async def listen(self):
         """Listen for game events"""
         if not self.connection_active:
             success = await self.connect()
             if not success:
                 return
-        
+
         try:
             while True:
                 message = await self.connection.recv()
                 data = json.loads(message)
-                
+
                 # Process different event types
                 if 'type' in data:
                     if data['type'] == 'gameStateUpdate':
@@ -306,21 +306,21 @@ class RugsMonitor:
                         await self.handle_game_history(data)
                     elif data['type'] == 'newTrade':
                         await self.handle_new_trade(data)
-        
+
         except websockets.exceptions.ConnectionClosed:
             print("Connection closed, attempting to reconnect...")
             self.connection_active = False
             await asyncio.sleep(5)
             await self.listen()
-        
+
         except Exception as e:
             print(f"Error in WebSocket listener: {e}")
             self.connection_active = False
-    
+
     async def handle_game_state_update(self, data):
         """Process game state updates"""
         state = data.get('state', {})
-        
+
         # New game started
         if state.get('status') == 'playing' and not self.current_game:
             self.current_game = {
@@ -333,7 +333,7 @@ class RugsMonitor:
                 'rugpool': state.get('rugpool', {})
             }
             print(f"New game started: {self.current_game['gameId']}")
-        
+
         # Game tick update
         if self.current_game and state.get('status') == 'playing':
             tick = {
@@ -342,7 +342,7 @@ class RugsMonitor:
                 'timestamp': datetime.now().isoformat()
             }
             self.current_game['ticks'].append(tick)
-        
+
         # Game ended
         if self.current_game and state.get('status') == 'rugged':
             self.current_game['endTime'] = datetime.now()
@@ -350,30 +350,30 @@ class RugsMonitor:
             self.current_game['peakMultiplier'] = state.get('peakMultiplier')
             self.current_game['gameDuration'] = (self.current_game['endTime'] - self.current_game['startTime']).total_seconds()
             self.current_game['serverSeed'] = state.get('serverSeed')
-            
+
             # Store the completed game
             self.games.append(self.current_game)
-            
+
             # Save to file
             with open(self.output_path, 'a') as f:
                 f.write(json.dumps(self.current_game) + '\n')
-            
+
             print(f"Game ended: {self.current_game['gameId']}, Peak: {self.current_game['peakMultiplier']}")
-            
+
             # Reset current game
             self.current_game = None
-            
+
             # Run analysis every 100 games
             if len(self.games) % 100 == 0:
                 await self.run_analysis()
-    
+
     async def handle_game_history(self, data):
         """Process game history updates"""
         history = data.get('history', [])
-        
+
         # Process historical games if needed
         pass
-    
+
     async def handle_new_trade(self, data):
         """Process new trade events"""
         if self.current_game:
@@ -385,36 +385,36 @@ class RugsMonitor:
                 'timestamp': datetime.now().isoformat()
             }
             self.current_game['trades'].append(trade)
-    
+
     async def run_analysis(self):
         """Run analysis on collected games"""
         if len(self.games) < 100:
             print("Not enough games for analysis")
             return
-        
+
         # Create temporary file with latest data
         temp_file = 'temp_analysis_data.jsonl'
         with open(temp_file, 'w') as f:
             for game in self.games:
                 f.write(json.dumps(game) + '\n')
-        
+
         # Initialize analyzer
         analyzer = RugsAnalyzer(temp_file)
         results = analyzer.run_full_analysis()
-        
+
         # Check for significant patterns
         if results['cross_game']['significant']:
             print("ALERT: Significant cross-game pattern detected!")
             print(f"Instarug probability after high multiplier: {results['cross_game']['p_instarug_after_high']:.2f}")
             print(f"Overall instarug probability: {results['cross_game']['p_instarug_overall']:.2f}")
             print(f"Odds ratio: {results['cross_game']['odds_ratio']:.2f}, p-value: {results['cross_game']['p_value']:.4f}")
-        
+
         # Check for time correlations
         if results['time_correlation']:
             print("ALERT: Time-based patterns detected!")
             for key, (corr, p_val) in results['time_correlation'].items():
                 print(f"{key}: correlation={corr:.4f}, p-value={p_val:.4f}")
-        
+
         # Save full analysis results
         with open('analysis_results.json', 'w') as f:
             # Convert numpy values to Python native types for JSON serialization
@@ -429,12 +429,12 @@ class RugsMonitor:
                 elif isinstance(obj, tuple) and len(obj) == 2 and isinstance(obj[0], np.floating):
                     return (float(obj[0]), float(obj[1]))
                 return obj
-            
+
             serializable_results = json.loads(
                 json.dumps(results, default=convert_to_serializable)
             )
             json.dump(serializable_results, f, indent=2)
-        
+
         # Clean up
         os.remove(temp_file)
 
@@ -458,7 +458,7 @@ class PredictiveMonitor(RugsMonitor):
         self.model = self.load_model(model_path)
         self.feature_extractor = RugsFeatureExtractor()
         self.predictions = []
-    
+
     def load_model(self, model_path):
         """Load the pre-trained transformer model"""
         model = RugsTransformer(
@@ -470,34 +470,34 @@ class PredictiveMonitor(RugsMonitor):
         model.load_state_dict(torch.load(model_path))
         model.eval()
         return model
-    
+
     async def predict_outcome(self):
         """Generate prediction for current game"""
         if not self.current_game or len(self.current_game['ticks']) < 10:
             return None
-        
+
         # Extract features from current game
         features = self.feature_extractor.extract_features(self.current_game)
-        
+
         # Convert to tensor
         features_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
-        
+
         # Generate prediction
         with torch.no_grad():
             prediction = self.model(features_tensor).item()
-        
+
         return prediction
-    
+
     async def handle_game_state_update(self, data):
         """Override to include prediction"""
         await super().handle_game_state_update(data)
-        
+
         # Generate prediction every 10 ticks
         if self.current_game and len(self.current_game['ticks']) % 10 == 0:
             prediction = await self.predict_outcome()
             if prediction:
                 print(f"Prediction for game {self.current_game['gameId']}: Peak multiplier = {prediction:.2f}x")
-                
+
                 # Store prediction
                 self.predictions.append({
                     'gameId': self.current_game['gameId'],
@@ -522,44 +522,44 @@ class SeedAnalyzer:
         """Initialize with list of server seeds and timestamps"""
         self.seeds = seed_data['serverSeed']
         self.timestamps = seed_data['timestamp']
-        
+
     def analyze_seed_entropy(self):
         """Analyze entropy distribution in server seeds"""
         entropy_scores = []
-        
+
         for seed in self.seeds:
             # Convert to binary
             binary = bin(int(seed, 16))[2:].zfill(len(seed) * 4)
-            
+
             # Count 1s and 0s
             ones = binary.count('1')
             zeros = binary.count('0')
-            
+
             # Calculate entropy
             total_bits = ones + zeros
             p_one = ones / total_bits
             p_zero = zeros / total_bits
-            
+
             import math
             entropy = 0
             if p_one > 0:
                 entropy -= p_one * math.log2(p_one)
             if p_zero > 0:
                 entropy -= p_zero * math.log2(p_zero)
-            
+
             entropy_scores.append(entropy)
-        
+
         return {
             'mean_entropy': sum(entropy_scores) / len(entropy_scores),
             'min_entropy': min(entropy_scores),
             'max_entropy': max(entropy_scores)
         }
-    
+
     def test_time_based_generation(self):
         """Test if seeds are generated based on timestamp"""
         # Convert timestamps to various formats
         formats = []
-        
+
         for ts in self.timestamps:
             dt = datetime.datetime.fromisoformat(ts)
             formats.append({
@@ -569,10 +569,10 @@ class SeedAnalyzer:
                 'time_str': dt.strftime('%H%M%S'),
                 'datetime_str': dt.strftime('%Y%m%d%H%M%S')
             })
-        
+
         # Test if any of these formats match seed patterns
         matches = []
-        
+
         for i, (seed, fmt) in enumerate(zip(self.seeds, formats)):
             for key, value in fmt.items():
                 # Generate various hash possibilities
@@ -581,7 +581,7 @@ class SeedAnalyzer:
                     f'sha1_{key}': hashlib.sha1(str(value).encode()).hexdigest(),
                     f'sha256_{key}': hashlib.sha256(str(value).encode()).hexdigest()
                 }
-                
+
                 # Check for matches or partial matches
                 for hash_key, hash_value in hashes.items():
                     if seed == hash_value:
@@ -599,25 +599,25 @@ class SeedAnalyzer:
                             'match_length': 16,
                             'full_match': False
                         })
-        
+
         return matches
-    
+
     def brute_force_seed_algorithm(self, sample_size=5):
         """Attempt to brute force the seed generation algorithm"""
         # This is a simplified version for demonstration
         # In practice, would test many more combinations
-        
+
         # Take a sample of seeds to test
         sample_seeds = self.seeds[:sample_size]
         sample_times = self.timestamps[:sample_size]
-        
+
         common_secrets = ["rugs.fun", "rugsfun", "rugpull", "rug", "game", "crypto"]
-        
+
         results = []
-        
+
         for seed, ts in zip(sample_seeds, sample_times):
             dt = datetime.datetime.fromisoformat(ts)
-            
+
             # Generate various time formats
             time_formats = [
                 str(int(dt.timestamp())),
@@ -626,7 +626,7 @@ class SeedAnalyzer:
                 dt.strftime('%H%M%S'),
                 dt.strftime('%Y%m%d%H%M%S')
             ]
-            
+
             # Try combinations with common secrets
             for time_fmt, secret in itertools.product(time_formats, common_secrets):
                 test_inputs = [
@@ -635,12 +635,12 @@ class SeedAnalyzer:
                     time_fmt,
                     secret
                 ]
-                
+
                 for test_input in test_inputs:
                     hash_md5 = hashlib.md5(test_input.encode()).hexdigest()
                     hash_sha1 = hashlib.sha1(test_input.encode()).hexdigest()
                     hash_sha256 = hashlib.sha256(test_input.encode()).hexdigest()
-                    
+
                     if seed == hash_md5 or seed == hash_sha1 or seed == hash_sha256:
                         results.append({
                             'seed': seed,
@@ -652,11 +652,11 @@ class SeedAnalyzer:
                         results.append({
                             'seed': seed,
                             'input': test_input,
-                            'hash_type': 'md5' if seed.startswith(hash_md5[:16]) else 
+                            'hash_type': 'md5' if seed.startswith(hash_md5[:16]) else
                                         ('sha1' if seed.startswith(hash_sha1[:16]) else 'sha256'),
                             'match': 'partial'
                         })
-        
+
         return results
 ```
 
@@ -673,20 +673,20 @@ class PatternDetector:
         """Initialize pattern detector"""
         self.model = None
         self.scaler = StandardScaler()
-    
+
     def prepare_data(self, data, sequence_length=50):
         """Prepare data for LSTM model"""
         # Extract target variable
         y = data['peakMultiplier'].values
-        
+
         # Create sequences
         X = []
         y_seq = []
-        
+
         for i in range(len(data) - sequence_length):
             # Extract features for sequence
             seq_features = []
-            
+
             for j in range(sequence_length):
                 idx = i + j
                 features = [
@@ -696,30 +696,30 @@ class PatternDetector:
                     # Add more features as needed
                 ]
                 seq_features.append(features)
-            
+
             X.append(seq_features)
             y_seq.append(y[i + sequence_length])
-        
+
         X = np.array(X)
         y_seq = np.array(y_seq)
-        
+
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(X, y_seq, test_size=0.2, random_state=42)
-        
+
         # Reshape for LSTM [samples, time steps, features]
         n_samples, n_timesteps, n_features = X_train.shape
-        
+
         # Scale data
         X_train_reshaped = X_train.reshape(n_samples * n_timesteps, n_features)
         X_train_scaled = self.scaler.fit_transform(X_train_reshaped)
         X_train = X_train_scaled.reshape(n_samples, n_timesteps, n_features)
-        
+
         X_test_reshaped = X_test.reshape(X_test.shape[0] * n_timesteps, n_features)
         X_test_scaled = self.scaler.transform(X_test_reshaped)
         X_test = X_test_scaled.reshape(X_test.shape[0], n_timesteps, n_features)
-        
+
         return X_train, X_test, y_train, y_test
-    
+
     def build_model(self, input_shape):
         """Build LSTM model for sequence prediction"""
         model = tf.keras.Sequential([
@@ -729,15 +729,15 @@ class PatternDetector:
             tf.keras.layers.Dense(25),
             tf.keras.layers.Dense(1)
         ])
-        
+
         model.compile(optimizer='adam', loss='mse', metrics=['mae'])
         return model
-    
+
     def train(self, X_train, y_train, epochs=50, batch_size=32):
         """Train the model"""
         if not self.model:
             self.model = self.build_model((X_train.shape[1], X_train.shape[2]))
-        
+
         history = self.model.fit(
             X_train, y_train,
             epochs=epochs,
@@ -745,37 +745,37 @@ class PatternDetector:
             validation_split=0.1,
             verbose=1
         )
-        
+
         return history
-    
+
     def evaluate(self, X_test, y_test):
         """Evaluate the model"""
         return self.model.evaluate(X_test, y_test)
-    
+
     def predict(self, sequence):
         """Predict next outcome based on sequence"""
         # Scale sequence
         sequence_reshaped = sequence.reshape(sequence.shape[0] * sequence.shape[1], sequence.shape[2])
         sequence_scaled = self.scaler.transform(sequence_reshaped)
         sequence = sequence_scaled.reshape(1, sequence.shape[1], sequence.shape[2])
-        
+
         return self.model.predict(sequence)[0][0]
-    
+
     def analyze_error_patterns(self, X_test, y_test):
         """Analyze patterns in prediction errors"""
         predictions = self.model.predict(X_test)
         errors = y_test - predictions.flatten()
-        
+
         # Check for patterns in errors
         from scipy.stats import normaltest
-        
+
         # Test if errors are normally distributed
         k2, p = normaltest(errors)
-        
+
         # Look for autocorrelation in errors
         from statsmodels.tsa.stattools import acf
         error_autocorr = acf(errors, nlags=20)
-        
+
         return {
             'mean_error': np.mean(errors),
             'std_error': np.std(errors),

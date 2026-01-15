@@ -179,26 +179,26 @@ def should_place_sidebet(current_tick, prices, bankroll):
     # Early exit
     if current_tick < 200:
         return False, 0.0
-    
+
     # Extract features
     features = extract_features(prices, current_tick)
-    
+
     # Predict probability
     p_win = model.predict_rug_probability(
-        current_tick, 
-        window=40, 
+        current_tick,
+        window=40,
         features=features
     )
-    
+
     # Check EV
     ev = expected_value(p_win, payout_multiplier=5)
     if ev <= 0:
         return False, 0.0
-    
+
     # Kelly sizing (1/4 for safety)
     kelly_frac = kelly_criterion(p_win, 5) / 4
     bet_size = min(bankroll * kelly_frac, 0.01)  # Cap at 0.01 SOL
-    
+
     return True, bet_size
 ```
 
@@ -275,7 +275,7 @@ From canonical spec (`/home/devops/Desktop/claude-flow/knowledge/rugs-events/WEB
 }
 ```
 
-**Data flow**: 
+**Data flow**:
 1. Capture `gameHistory[]` from `gameStateUpdate` events
 2. Extract `prices[]` array for feature engineering
 3. Parse `globalSidebets[]` for outcome validation
@@ -365,8 +365,8 @@ From canonical spec (`/home/devops/Desktop/claude-flow/knowledge/rugs-events/WEB
 **Data Source**:
 `~/rugs_data/events_parquet/doc_type=complete_game/**/*.parquet`
 
-**Agent**: rugs-expert (Claude Code Agent)  
-**Version**: 1.0.0  
+**Agent**: rugs-expert (Claude Code Agent)
+**Version**: 1.0.0
 **Date**: January 7, 2026
 
 ---

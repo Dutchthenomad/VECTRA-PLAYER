@@ -229,7 +229,7 @@ class SidebetRLEnv:
         )
         self.risk_mgr = RiskManager(initial_bankroll=1.0, config=config)
         self.bayesian_model = BayesianSurvivalModel(games_df)
-    
+
     def step(self, action):
         """
         action: 0 = HOLD, 1 = PLACE_BET
@@ -238,44 +238,44 @@ class SidebetRLEnv:
         p_win = self.bayesian_model.predict_rug_probability(
             current_tick, window=40, features=features
         )
-        
+
         # Check if bet allowed
         should_bet, reason = self.risk_mgr.should_place_bet(p_win)
-        
+
         if action == 1 and should_bet:
             # Place bet
             bet_size = self.risk_mgr.calculate_position_size(p_win)
-            
+
             # Execute in game (your trading logic here)
             outcome = place_sidebet_and_wait(bet_size)
-            
+
             # Record trade
             self.risk_mgr.record_trade(bet_size, outcome, p_win)
-            
+
             # Calculate reward
             if outcome:
                 reward = bet_size * 4  # Won
             else:
                 reward = -bet_size  # Lost
-            
+
             # Add risk penalty
             if self.risk_mgr.state.current_drawdown_pct > 20:
                 reward -= 0.05  # Penalize high drawdown
-        
+
         elif action == 1 and not should_bet:
             # Agent tried to bet but RiskManager said no
             reward = -0.01  # Small penalty
-        
+
         else:
             # HOLD action
             reward = 0.0
-        
+
         # Build observation
         obs = self._get_observation()
         done = self.risk_mgr.state.trading_state == TradingState.PAUSED
-        
+
         return obs, reward, done, {}
-    
+
     def _get_observation(self):
         return np.array([
             game_age / 1000,  # Normalize

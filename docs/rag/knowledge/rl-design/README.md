@@ -206,7 +206,7 @@ import duckdb
 # Query complete games
 conn = duckdb.connect()
 df = conn.execute("""
-    SELECT * 
+    SELECT *
     FROM read_parquet('~/rugs_data/events_parquet/doc_type=complete_game/**/*.parquet')
     LIMIT 10
 """).df()

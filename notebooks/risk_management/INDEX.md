@@ -297,17 +297,17 @@ risk_mgr = RiskManager(initial_bankroll=1.0, config=config)
 for game in games:
     # Get prediction
     p_win = bayesian_model.predict(tick, features)
-    
+
     # Check if should bet
     should_bet, reason = risk_mgr.should_place_bet(p_win)
-    
+
     if should_bet:
         # Calculate bet size
         bet = risk_mgr.calculate_position_size(p_win)
-        
+
         # Place bet (your code)
         outcome = place_sidebet(bet)
-        
+
         # Record trade
         risk_mgr.record_trade(bet, outcome, p_win)
 ```

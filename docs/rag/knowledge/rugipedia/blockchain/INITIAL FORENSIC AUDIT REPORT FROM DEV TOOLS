@@ -55,7 +55,7 @@ Tech Stack:
 - React (UI framework)
 - Material-UI (mui-vendor)
 - PixiJS (graphics engine - pixi-vendor)
-- State Management (state-vendor) 
+- State Management (state-vendor)
 - Solana Web3.js (solana-vendor)
 - WalletConnect (integration detected)
 - Privy Auth (auth-vendor)
@@ -85,7 +85,7 @@ Telemetry Infrastructure (OpenTelemetry Implementation)
 The platform has extensive monitoring:
 Endpoints Detected:
 - https://telemetry.rugs.fun/v1/traces
-- https://telemetry.rugs.fun/v1/metrics  
+- https://telemetry.rugs.fun/v1/metrics
 - https://telemetry.rugs.fun/v1/logs
 Telemetry Captures:
 
@@ -288,7 +288,7 @@ Overall Assessment
 APPENDIX: Technical Artifacts
 Privy localStorage Keys
 privy:token
-privy:id_token  
+privy:id_token
 privy:refresh_token
 privy:pat
 privy:connections

@@ -240,14 +240,14 @@ should_bet, reason = risk_mgr.should_place_bet(p_win)
 if should_bet:
     # Calculate position size
     bet_size = risk_mgr.calculate_position_size(p_win)
-    
+
     # Place bet (in your trading logic)
     # ...
-    
+
     # Record outcome
     outcome = (rug occurred within 40 ticks)
     risk_mgr.record_trade(bet_size, outcome, p_win)
-    
+
     # Check state
     print(f"Trading State: {risk_mgr.state.trading_state}")
     print(f"Current DD: {risk_mgr.state.current_drawdown_pct:.1f}%")
@@ -279,18 +279,18 @@ obs = np.array([
     distance_from_peak,        # % below peak price
     volatility_10,             # 10-tick volatility
     ticks_since_peak,          # Time since peak
-    
+
     # Bayesian prediction
     p_win_40_ticks,            # From survival model
     expected_value,            # EV of bet
-    
+
     # Risk state
     current_bankroll,
     current_drawdown_pct,
     consecutive_wins,
     consecutive_losses,
     trading_state_encoded,     # 0=ACTIVE, 1=REDUCED, 2=RECOVERY
-    
+
     # Position sizing
     recommended_bet_size,      # From Kelly
 ])
@@ -317,7 +317,7 @@ def calculate_reward(outcome, bet_size, bankroll, state):
         if p_win > 0.22:
             return -0.01
         return 0.0
-    
+
     elif action == PLACE_BET:
         if outcome:
             # Win: Positive reward
@@ -327,24 +327,24 @@ def calculate_reward(outcome, bet_size, bankroll, state):
             # Loss: Negative reward
             pnl = -bet_size
             base_reward = pnl / bankroll
-        
+
         # Risk adjustment penalties
         penalty = 0.0
-        
+
         # Penalize drawdowns
         if drawdown_pct > 20:
             penalty += 0.1 * (drawdown_pct - 20)
-        
+
         # Penalize consecutive losses
         if consecutive_losses > 5:
             penalty += 0.05 * (consecutive_losses - 5)
-        
+
         # Bonus for good Sharpe ratio
         if sharpe_ratio > 1.5:
             bonus = 0.05
         else:
             bonus = 0.0
-        
+
         return base_reward - penalty + bonus
 ```
 

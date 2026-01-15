@@ -186,7 +186,7 @@ CI = μ ± 1.96 × (σ/√n)
 ### 1. Real-Time Probability Updates
 **Update survival probability as game progresses**
 
-**Current Survival Rate**: 
+**Current Survival Rate**:
 ```excel
 =COUNTIF(B:B,">="&CURRENT_TICK)/COUNT(B:B)
 ```

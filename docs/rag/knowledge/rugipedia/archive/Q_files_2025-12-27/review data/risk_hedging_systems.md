@@ -6,7 +6,7 @@ This document presents advanced risk hedging strategies that combine main game p
 ## Hedging Theory Foundation
 **Core Principle**: Main game positions and side bets have inverse correlation patterns that can be exploited for risk reduction.
 - **Main Game Risk**: Price volatility and timing risk
-- **Side Bet Risk**: Probability estimation and gap risk  
+- **Side Bet Risk**: Probability estimation and gap risk
 - **Combined Opportunity**: Offsetting risk profiles create hedging potential
 
 ---
@@ -26,10 +26,10 @@ class RiskCorrelationAnalyzer {
       hold_time_vs_gap_risk: 0.45,                   // Longer holds = more gap exposure
       game_phase_vs_hedge_effectiveness: 0.90        // Later phases = better hedging
     };
-    
+
     this.riskFactors = this.defineRiskFactors();
   }
-  
+
   defineRiskFactors() {
     return {
       main_game: {
@@ -50,7 +50,7 @@ class RiskCorrelationAnalyzer {
           hedge_effectiveness: 0.30
         }
       },
-      
+
       side_bet: {
         probability_risk: {
           type: 'estimation_error',
@@ -70,37 +70,37 @@ class RiskCorrelationAnalyzer {
       }
     };
   }
-  
+
   calculateOptimalHedgeRatio(mainPosition, currentTick, volatility) {
     // Base hedge ratio calculation
     const rugProbability = getBaseProbability(currentTick);
     const volatilityAdjustment = Math.min(volatility / 0.1, 2.0); // Cap at 2x
-    
+
     // Position-based scaling
     const positionRisk = this.calculatePositionRisk(mainPosition);
-    
+
     // Time-based adjustment
     const timeDecay = this.calculateTimeDecay(currentTick);
-    
+
     const baseHedgeRatio = rugProbability * 0.3; // 30% of rug probability
     const adjustedRatio = baseHedgeRatio * volatilityAdjustment * positionRisk * timeDecay;
-    
+
     return Math.min(0.95, Math.max(0.05, adjustedRatio)); // Constrain to 5-95%
   }
-  
+
   calculatePositionRisk(mainPosition) {
     const { size, entryPrice, currentPrice, timeHeld } = mainPosition;
-    
+
     // Unrealized P&L risk
     const unrealizedPnL = (currentPrice - entryPrice) / entryPrice;
     const pnlRisk = Math.abs(unrealizedPnL) > 0.20 ? 1.5 : 1.0;
-    
+
     // Size risk
     const sizeRisk = Math.min(2.0, Math.sqrt(size / 0.1)); // Scale with position size
-    
+
     // Time decay risk
     const timeRisk = Math.min(1.5, 1 + (timeHeld / 30000)); // Increase with hold time
-    
+
     return pnlRisk * sizeRisk * timeRisk;
   }
 }
@@ -116,7 +116,7 @@ class DynamicHedgeAllocator {
     this.hedgeStrategies = this.defineHedgeStrategies();
     this.correlationAnalyzer = new RiskCorrelationAnalyzer();
   }
-  
+
   defineAllocationLimits() {
     return {
       main_game_max: 0.70,        // Maximum 70% in main game
@@ -126,7 +126,7 @@ class DynamicHedgeAllocator {
       emergency_buffer: 0.05      // 5% emergency buffer
     };
   }
-  
+
   defineHedgeStrategies() {
     return {
       conservative_hedge: {
@@ -135,21 +135,21 @@ class DynamicHedgeAllocator {
         hedge_ratio: 0.50,
         rebalance_threshold: 0.10
       },
-      
+
       balanced_hedge: {
         main_allocation: 0.50,
         side_allocation: 0.25,
         hedge_ratio: 0.40,
         rebalance_threshold: 0.15
       },
-      
+
       aggressive_hedge: {
         main_allocation: 0.60,
         side_allocation: 0.30,
         hedge_ratio: 0.30,
         rebalance_threshold: 0.20
       },
-      
+
       opportunistic_hedge: {
         main_allocation: 0.70,
         side_allocation: 0.20,
@@ -158,18 +158,18 @@ class DynamicHedgeAllocator {
       }
     };
   }
-  
+
   calculateOptimalAllocation(marketConditions, currentPositions) {
     const { volatility, rugProbability, reliability, playerActivity } = marketConditions;
-    
+
     // Select base strategy based on market conditions
     const baseStrategy = this.selectBaseStrategy(marketConditions);
-    
+
     // Calculate dynamic adjustments
     const volatilityAdjustment = this.calculateVolatilityAdjustment(volatility);
     const probabilityAdjustment = this.calculateProbabilityAdjustment(rugProbability);
     const reliabilityAdjustment = this.calculateReliabilityAdjustment(reliability);
-    
+
     // Apply adjustments to base strategy
     const adjustedAllocation = {
       mainGame: baseStrategy.main_allocation * volatilityAdjustment,
@@ -177,34 +177,34 @@ class DynamicHedgeAllocator {
       hedgeRatio: baseStrategy.hedge_ratio,
       reserve: this.allocationLimits.hedge_reserve
     };
-    
+
     // Normalize to ensure limits are respected
     return this.normalizeAllocation(adjustedAllocation);
   }
-  
+
   selectBaseStrategy(conditions) {
     const { volatility, rugProbability, reliability } = conditions;
-    
+
     // High volatility + high probability = conservative
     if (volatility > 0.15 && rugProbability > 0.75) {
       return this.hedgeStrategies.conservative_hedge;
     }
-    
+
     // Low reliability = conservative
     if (reliability < 0.6) {
       return this.hedgeStrategies.conservative_hedge;
     }
-    
+
     // High probability with good reliability = aggressive
     if (rugProbability > 0.80 && reliability > 0.8) {
       return this.hedgeStrategies.aggressive_hedge;
     }
-    
+
     // Moderate probability = opportunistic
     if (rugProbability > 0.60 && rugProbability < 0.80) {
       return this.hedgeStrategies.opportunistic_hedge;
     }
-    
+
     // Default to balanced
     return this.hedgeStrategies.balanced_hedge;
   }
@@ -226,21 +226,21 @@ class PerfectHedgeStrategy {
     this.riskProfile = "Ultra Low";
     this.complexityLevel = "Advanced";
   }
-  
+
   calculatePerfectHedge(mainPosition, currentTick, rugProbability) {
     const { size, entryPrice, currentPrice } = mainPosition;
-    
+
     // Calculate potential main game loss if rug occurs
     const currentValue = size * currentPrice;
     const potentialLoss = currentValue; // Total loss if rugged
-    
+
     // Calculate required side bet to offset loss
     const sideBetPayout = 4; // 400% return (5:1 ratio - 1)
     const requiredSideBetSize = potentialLoss / sideBetPayout;
-    
+
     // Adjust for probability (expected value neutrality)
     const probabilityAdjustedSize = requiredSideBetSize / rugProbability;
-    
+
     return {
       strategy: "perfect_hedge",
       mainPosition: {
@@ -258,26 +258,26 @@ class PerfectHedgeStrategy {
       recommendation: this.generateRecommendation(probabilityAdjustedSize, currentValue)
     };
   }
-  
+
   calculateHedgeEffectiveness(sideBetSize, potentialLoss) {
     const maxPayout = sideBetSize * 4; // Net profit from side bet
     return Math.min(1.0, maxPayout / potentialLoss);
   }
-  
+
   calculateHedgeExpectedValue(sideBetSize, rugProbability) {
     const winScenario = sideBetSize * 4; // Net profit if side bet wins
     const loseScenario = -sideBetSize;   // Loss if side bet loses
-    
+
     return (rugProbability * winScenario) + ((1 - rugProbability) * loseScenario);
   }
-  
+
   calculateNetExposure(potentialLoss, sideBetSize, rugProbability) {
     // Scenario 1: Game rugs (main position lost, side bet wins)
     const rugScenario = -potentialLoss + (sideBetSize * 4);
-    
+
     // Scenario 2: Game continues (main position continues, side bet lost)
     const continueScenario = -sideBetSize; // Only lose the side bet
-    
+
     return {
       rugScenario: rugScenario,
       continueScenario: continueScenario,
@@ -298,14 +298,14 @@ class PartialHedgeStrategy {
     this.description = "Reduces risk while maintaining upside potential";
     this.hedgeRatios = [0.25, 0.50, 0.75]; // 25%, 50%, 75% hedge levels
   }
-  
+
   calculatePartialHedge(mainPosition, currentTick, rugProbability, hedgeRatio = 0.50) {
     const perfectHedge = new PerfectHedgeStrategy();
     const fullHedge = perfectHedge.calculatePerfectHedge(mainPosition, currentTick, rugProbability);
-    
+
     // Scale the full hedge by the desired ratio
     const partialSideBetSize = fullHedge.sideBet.size * hedgeRatio;
-    
+
     return {
       strategy: "partial_hedge",
       hedgeRatio: hedgeRatio,
@@ -320,19 +320,19 @@ class PartialHedgeStrategy {
       recommendation: this.generatePartialRecommendation(hedgeRatio, rugProbability)
     };
   }
-  
+
   calculatePartialScenarios(mainPosition, sideBetSize, rugProbability) {
     const { size, currentPrice } = mainPosition;
     const currentValue = size * currentPrice;
-    
+
     // Scenario 1: Game rugs
     const rugLoss = -currentValue;
     const sideBetWin = sideBetSize * 4;
     const rugNetResult = rugLoss + sideBetWin;
-    
+
     // Scenario 2: Game continues (various outcomes)
     const sideBetLoss = -sideBetSize;
-    
+
     // Sub-scenarios for game continuation
     const continuationScenarios = {
       smallGain: { priceChange: 0.10, probability: 0.30 },
@@ -341,7 +341,7 @@ class PartialHedgeStrategy {
       smallLoss: { priceChange: -0.10, probability: 0.25 },
       moderateLoss: { priceChange: -0.25, probability: 0.15 }
     };
-    
+
     const continuationResults = {};
     for (const [scenario, data] of Object.entries(continuationScenarios)) {
       const newValue = currentValue * (1 + data.priceChange);
@@ -353,7 +353,7 @@ class PartialHedgeStrategy {
         probability: data.probability * (1 - rugProbability)
       };
     }
-    
+
     return {
       rug: {
         netResult: rugNetResult,
@@ -379,22 +379,22 @@ class DynamicRebalancingStrategy {
       emergency: 0.30  // 30% deviation triggers emergency rebalance
     };
   }
-  
+
   monitorAndRebalance(currentPositions, marketConditions, targetAllocation) {
     const currentAllocation = this.calculateCurrentAllocation(currentPositions);
     const deviations = this.calculateDeviations(currentAllocation, targetAllocation);
     const rebalanceLevel = this.determineRebalanceLevel(deviations);
-    
+
     if (rebalanceLevel === 'none') {
       return { action: 'hold', reason: 'within_tolerance' };
     }
-    
+
     const rebalanceActions = this.calculateRebalanceActions(
       currentPositions,
       targetAllocation,
       rebalanceLevel
     );
-    
+
     return {
       action: 'rebalance',
       level: rebalanceLevel,
@@ -404,10 +404,10 @@ class DynamicRebalancingStrategy {
       urgency: this.calculateUrgency(deviations, marketConditions)
     };
   }
-  
+
   calculateCurrentAllocation(positions) {
     const totalValue = positions.mainGame.value + positions.sideBets.totalValue;
-    
+
     return {
       mainGame: positions.mainGame.value / totalValue,
       sideBets: positions.sideBets.totalValue / totalValue,
@@ -415,10 +415,10 @@ class DynamicRebalancingStrategy {
       totalValue: totalValue
     };
   }
-  
+
   determineRebalanceLevel(deviations) {
     const maxDeviation = Math.max(...Object.values(deviations).map(Math.abs));
-    
+
     if (maxDeviation >= this.rebalanceThresholds.emergency) {
       return 'emergency';
     } else if (maxDeviation >= this.rebalanceThresholds.major) {
@@ -426,22 +426,22 @@ class DynamicRebalancingStrategy {
     } else if (maxDeviation >= this.rebalanceThresholds.minor) {
       return 'minor';
     }
-    
+
     return 'none';
   }
-  
+
   calculateRebalanceActions(currentPositions, targetAllocation, level) {
     const actions = [];
-    
+
     // Calculate required adjustments
     const totalValue = currentPositions.mainGame.value + currentPositions.sideBets.totalValue;
-    
+
     const targetMainValue = totalValue * targetAllocation.mainGame;
     const targetSideValue = totalValue * targetAllocation.sideBets;
-    
+
     const mainAdjustment = targetMainValue - currentPositions.mainGame.value;
     const sideAdjustment = targetSideValue - currentPositions.sideBets.totalValue;
-    
+
     // Generate specific actions based on adjustments
     if (Math.abs(mainAdjustment) > 0.001) { // Minimum adjustment threshold
       actions.push({
@@ -450,7 +450,7 @@ class DynamicRebalancingStrategy {
         priority: level === 'emergency' ? 'immediate' : 'normal'
       });
     }
-    
+
     if (Math.abs(sideAdjustment) > 0.001) {
       actions.push({
         type: sideAdjustment > 0 ? 'increase_side_bets' : 'reduce_side_bets',
@@ -458,7 +458,7 @@ class DynamicRebalancingStrategy {
         priority: level === 'emergency' ? 'immediate' : 'normal'
       });
     }
-    
+
     return actions;
   }
 }
@@ -480,23 +480,23 @@ class VolatilityHedgeSystem {
       extreme: 0.40   // 40% volatility
     };
   }
-  
+
   calculateVolatilityHedge(mainPosition, currentVolatility, rugProbability) {
     const volatilityLevel = this.classifyVolatility(currentVolatility);
     const hedgeMultiplier = this.getVolatilityMultiplier(volatilityLevel);
-    
+
     // Base hedge calculation
     const baseHedge = new PartialHedgeStrategy();
     const standardHedge = baseHedge.calculatePartialHedge(
-      mainPosition, 
-      0, 
-      rugProbability, 
+      mainPosition,
+      0,
+      rugProbability,
       0.50
     );
-    
+
     // Adjust hedge size based on volatility
     const volatilityAdjustedSize = standardHedge.sideBet.size * hedgeMultiplier;
-    
+
     return {
       strategy: "volatility_hedge",
       volatilityLevel: volatilityLevel,
@@ -507,14 +507,14 @@ class VolatilityHedgeSystem {
       riskProfile: this.calculateVolatilityRisk(currentVolatility, volatilityAdjustedSize)
     };
   }
-  
+
   classifyVolatility(volatility) {
     if (volatility <= this.volatilityThresholds.low) return 'low';
     if (volatility <= this.volatilityThresholds.medium) return 'medium';
     if (volatility <= this.volatilityThresholds.high) return 'high';
     return 'extreme';
   }
-  
+
   getVolatilityMultiplier(level) {
     const multipliers = {
       low: 0.50,      // Reduce hedge in stable conditions
@@ -522,10 +522,10 @@ class VolatilityHedgeSystem {
       high: 1.50,     // Increase hedge in volatile conditions
       extreme: 2.50   // Maximum hedge in extreme volatility
     };
-    
+
     return multipliers[level];
   }
-  
+
   getVolatilityReasoning(level) {
     const reasoning = {
       low: "Low volatility suggests stable conditions. Reduced hedging allows for more upside capture.",
@@ -533,7 +533,7 @@ class VolatilityHedgeSystem {
       high: "High volatility increases rug risk. Enhanced hedging provides additional protection.",
       extreme: "Extreme volatility suggests unstable conditions. Maximum hedging prioritizes capital preservation."
     };
-    
+
     return reasoning[level];
   }
 }
@@ -553,15 +553,15 @@ class TimeDecayHedgeSystem {
       extreme: { range: [500, Infinity], hedgeMultiplier: 3.00 }
     };
   }
-  
+
   calculateTimeDecayHedge(mainPosition, currentTick, baseHedgeSize) {
     const phase = this.getTimePhase(currentTick);
     const timeMultiplier = phase.hedgeMultiplier;
     const decayAdjustedSize = baseHedgeSize * timeMultiplier;
-    
+
     // Calculate time-based urgency
     const urgency = this.calculateHedgeUrgency(currentTick);
-    
+
     return {
       strategy: "time_decay_hedge",
       currentTick: currentTick,
@@ -573,7 +573,7 @@ class TimeDecayHedgeSystem {
       recommendation: this.getTimeBasedRecommendation(phase, urgency)
     };
   }
-  
+
   getTimePhase(tick) {
     for (const [phaseName, phase] of Object.entries(this.timePhases)) {
       if (tick >= phase.range[0] && tick < phase.range[1]) {
@@ -582,15 +582,15 @@ class TimeDecayHedgeSystem {
     }
     return this.timePhases.extreme;
   }
-  
+
   calculateHedgeUrgency(tick) {
     // Urgency increases exponentially with tick count
     const baseUrgency = Math.min(tick / 500, 1.0); // Linear component
     const exponentialComponent = Math.pow(baseUrgency, 2); // Exponential acceleration
-    
+
     return Math.min(1.0, baseUrgency + exponentialComponent);
   }
-  
+
   getTimeBasedRecommendation(phase, urgency) {
     if (urgency > 0.9) {
       return "CRITICAL: Immediate hedge required - extremely high rug probability";
@@ -614,28 +614,28 @@ class MultiPositionHedgeManager {
     this.correlationThreshold = 0.7;
     this.riskBudget = 0.25; // 25% of bankroll at risk across all positions
   }
-  
+
   optimizeMultiPositionHedge(positions, marketConditions, totalBankroll) {
     // Calculate correlation matrix between positions
     const correlations = this.calculatePositionCorrelations(positions);
-    
+
     // Determine portfolio-level risk
     const portfolioRisk = this.calculatePortfolioRisk(positions, correlations);
-    
+
     // Calculate optimal hedge allocation
     const hedgeAllocation = this.calculateOptimalHedgeAllocation(
       positions,
       portfolioRisk,
       totalBankroll * this.riskBudget
     );
-    
+
     // Generate specific hedge recommendations
     const hedgeRecommendations = this.generateHedgeRecommendations(
       positions,
       hedgeAllocation,
       marketConditions
     );
-    
+
     return {
       portfolioSummary: {
         totalPositions: positions.length,
@@ -648,10 +648,10 @@ class MultiPositionHedgeManager {
       riskMetrics: this.calculateRiskMetrics(positions, hedgeAllocation)
     };
   }
-  
+
   calculatePositionCorrelations(positions) {
     const correlations = [];
-    
+
     for (let i = 0; i < positions.length; i++) {
       for (let j = i + 1; j < positions.length; j++) {
         const correlation = this.calculatePairwiseCorrelation(positions[i], positions[j]);
@@ -663,41 +663,41 @@ class MultiPositionHedgeManager {
         });
       }
     }
-    
+
     return correlations;
   }
-  
+
   calculatePairwiseCorrelation(pos1, pos2) {
     // Simplified correlation based on position characteristics
     let correlation = 0;
-    
+
     // Same game correlation
     if (pos1.gameId === pos2.gameId) {
       correlation += 0.8;
     }
-    
+
     // Time proximity correlation
     const timeDiff = Math.abs(pos1.entryTime - pos2.entryTime);
     const timeCorrelation = Math.max(0, 1 - (timeDiff / 300000)); // 5 minutes full decorrelation
     correlation += timeCorrelation * 0.3;
-    
+
     // Size correlation (similar sizes tend to correlate)
     const sizeDiff = Math.abs(pos1.size - pos2.size) / Math.max(pos1.size, pos2.size);
     const sizeCorrelation = Math.max(0, 1 - sizeDiff);
     correlation += sizeCorrelation * 0.2;
-    
+
     return Math.min(1.0, correlation);
   }
-  
+
   calculateOptimalHedgeAllocation(positions, portfolioRisk, riskBudget) {
     const totalExposure = positions.reduce((sum, p) => sum + p.value, 0);
-    
+
     // Risk-weighted hedge allocation
     const allocations = positions.map(position => {
       const positionWeight = position.value / totalExposure;
       const positionRisk = this.calculatePositionRisk(position);
       const riskAdjustedWeight = positionWeight * positionRisk;
-      
+
       return {
         positionId: position.id,
         weight: positionWeight,
@@ -706,15 +706,15 @@ class MultiPositionHedgeManager {
         hedgeRatio: (riskBudget * riskAdjustedWeight) / position.value
       };
     });
-    
+
     return allocations;
   }
-  
+
   generateHedgeRecommendations(positions, allocations, marketConditions) {
     return allocations.map(allocation => {
       const position = positions.find(p => p.id === allocation.positionId);
       const rugProbability = getBaseProbability(marketConditions.currentTick);
-      
+
       // Calculate specific hedge size
       const hedgeCalculator = new PartialHedgeStrategy();
       const hedgeData = hedgeCalculator.calculatePartialHedge(
@@ -723,7 +723,7 @@ class MultiPositionHedgeManager {
         rugProbability,
         allocation.hedgeRatio
       );
-      
+
       return {
         positionId: allocation.positionId,
         currentValue: position.value,
@@ -758,7 +758,7 @@ class HedgePerformanceTracker {
       netBenefit: 0
     };
   }
-  
+
   recordHedgeOutcome(hedgeData, actualOutcome) {
     const outcome = {
       timestamp: Date.now(),
@@ -771,13 +771,13 @@ class HedgePerformanceTracker {
       cost: hedgeData.sideBet.size,
       savings: this.calculateActualSavings(hedgeData, actualOutcome)
     };
-    
+
     this.hedgeHistory.push(outcome);
     this.updatePerformanceMetrics(outcome);
-    
+
     return outcome;
   }
-  
+
   calculateActualEffectiveness(hedgeData, outcome) {
     if (outcome.gameRugged) {
       // Hedge was effective - calculate how much loss was offset
@@ -789,7 +789,7 @@ class HedgePerformanceTracker {
       return 0;
     }
   }
-  
+
   calculateActualSavings(hedgeData, outcome) {
     if (outcome.gameRugged) {
       // Calculate actual savings from hedge
@@ -802,25 +802,25 @@ class HedgePerformanceTracker {
       return -hedgeData.sideBet.size;
     }
   }
-  
+
   getPerformanceAnalysis(lookbackPeriod = 30) {
     const recentHedges = this.hedgeHistory.filter(
       h => h.timestamp > Date.now() - (lookbackPeriod * 24 * 60 * 60 * 1000)
     );
-    
+
     if (recentHedges.length === 0) {
       return { status: 'insufficient_data' };
     }
-    
+
     const totalCost = recentHedges.reduce((sum, h) => sum + h.cost, 0);
     const totalSavings = recentHedges.reduce((sum, h) => sum + h.savings, 0);
     const netBenefit = totalSavings - totalCost;
-    
+
     const successfulHedges = recentHedges.filter(h => h.savings > 0).length;
     const successRate = successfulHedges / recentHedges.length;
-    
+
     const avgEffectiveness = recentHedges.reduce((sum, h) => sum + h.effectiveness, 0) / recentHedges.length;
-    
+
     return {
       status: 'available',
       period: `${lookbackPeriod} days`,
@@ -834,7 +834,7 @@ class HedgePerformanceTracker {
       recommendation: this.generatePerformanceRecommendation(successRate, netBenefit, avgEffectiveness)
     };
   }
-  
+
   generatePerformanceRecommendation(successRate, netBenefit, avgEffectiveness) {
     if (successRate > 0.8 && netBenefit > 0) {
       return "EXCELLENT: Hedge strategy is highly effective. Consider increasing hedge ratios.";
@@ -860,12 +860,12 @@ class AdaptiveHedgeOptimizer {
     this.optimizationHistory = [];
     this.currentOptimization = null;
   }
-  
+
   optimizeHedgeStrategy(currentStrategy, marketConditions, performanceData) {
     const analysis = this.analyzeCurrentPerformance(performanceData);
     const marketAdaptations = this.calculateMarketAdaptations(marketConditions);
     const optimizationSuggestions = this.generateOptimizationSuggestions(analysis, marketAdaptations);
-    
+
     return {
       currentStrategy: currentStrategy,
       performanceAnalysis: analysis,
@@ -875,7 +875,7 @@ class AdaptiveHedgeOptimizer {
       expectedImpact: this.estimateOptimizationImpact(optimizationSuggestions)
     };
   }
-  
+
   analyzeCurrentPerformance(data) {
     return {
       effectiveness: data.avgEffectiveness,
@@ -887,10 +887,10 @@ class AdaptiveHedgeOptimizer {
       weaknesses: this.identifyPerformanceWeaknesses(data)
     };
   }
-  
+
   generateOptimizationSuggestions(analysis, marketAdaptations) {
     const suggestions = [];
-    
+
     // Effectiveness optimizations
     if (analysis.effectiveness < 0.6) {
       suggestions.push({
@@ -901,7 +901,7 @@ class AdaptiveHedgeOptimizer {
         implementation: 'Multiply current hedge ratios by 1.3'
       });
     }
-    
+
     // Cost efficiency optimizations
     if (analysis.costEfficiency < 0) {
       suggestions.push({
@@ -912,7 +912,7 @@ class AdaptiveHedgeOptimizer {
         implementation: 'Only hedge when probability > 70%'
       });
     }
-    
+
     // Market adaptation optimizations
     if (marketAdaptations.volatilityChange > 0.2) {
       suggestions.push({
@@ -923,10 +923,10 @@ class AdaptiveHedgeOptimizer {
         implementation: `Multiply hedge sizes by ${1 + marketAdaptations.volatilityChange}`
       });
     }
-    
+
     return suggestions;
   }
-  
+
   prioritizeOptimizations(suggestions) {
     // Sort by priority and expected impact
     return suggestions
@@ -952,7 +952,7 @@ class IntegratedHedgingSystem {
   constructor(bankroll, riskTolerance = 'moderate') {
     this.bankroll = bankroll;
     this.riskTolerance = riskTolerance;
-    
+
     // Initialize all hedging components
     this.correlationAnalyzer = new RiskCorrelationAnalyzer();
     this.hedgeAllocator = new DynamicHedgeAllocator(bankroll);
@@ -964,11 +964,11 @@ class IntegratedHedgingSystem {
     this.multiPositionManager = new MultiPositionHedgeManager();
     this.performanceTracker = new HedgePerformanceTracker();
     this.optimizer = new AdaptiveHedgeOptimizer(this.performanceTracker);
-    
+
     this.currentPositions = [];
     this.activeHedges = [];
   }
-  
+
   executeComprehensiveHedge(mainPosition, marketConditions) {
     // 1. Analyze market conditions and correlations
     const optimalHedgeRatio = this.correlationAnalyzer.calculateOptimalHedgeRatio(
@@ -976,7 +976,7 @@ class IntegratedHedgingSystem {
       marketConditions.currentTick,
       marketConditions.volatility
     );
-    
+
     // 2. Calculate base hedge using partial hedge strategy
     const baseHedge = this.partialHedge.calculatePartialHedge(
       mainPosition,
@@ -984,24 +984,24 @@ class IntegratedHedgingSystem {
       marketConditions.rugProbability,
       optimalHedgeRatio
     );
-    
+
     // 3. Apply volatility adjustments
     const volatilityAdjustedHedge = this.volatilityHedge.calculateVolatilityHedge(
       mainPosition,
       marketConditions.volatility,
       marketConditions.rugProbability
     );
-    
+
     // 4. Apply time decay adjustments
     const timeAdjustedHedge = this.timeDecayHedge.calculateTimeDecayHedge(
       mainPosition,
       marketConditions.currentTick,
       volatilityAdjustedHedge.adjustedHedge
     );
-    
+
     // 5. Generate final hedge recommendation
     const finalHedgeSize = timeAdjustedHedge.adjustedSize;
-    
+
     return {
       mainPosition: mainPosition,
       hedgeAnalysis: {
@@ -1024,11 +1024,11 @@ class IntegratedHedgingSystem {
       }
     };
   }
-  
+
   trackHedgePerformance(hedgeData, actualOutcome) {
     return this.performanceTracker.recordHedgeOutcome(hedgeData, actualOutcome);
   }
-  
+
   getOptimizationRecommendations() {
     const performanceData = this.performanceTracker.getPerformanceAnalysis();
     return this.optimizer.optimizeHedgeStrategy(

@@ -8,7 +8,7 @@ This analysis suite provides probabilistic methods for optimizing sidebet placem
 
 **Data**: 568 deduplicated games with complete tick-by-tick price histories
 
-**Current Performance**: 
+**Current Performance**:
 - Overall win rate: 17.4% (below 20% breakeven for 5x payout)
 - Late-game bets (tick 200-500): 19.9% win rate (nearly break-even)
 
@@ -90,7 +90,7 @@ features = extract_features(prices, tick=250)
 ```python
 # Single condition
 p_rug = conditional_rug_probability(
-    training_df, 
+    training_df,
     {'age': (200, 300), 'volatility_10': (0.1, 0.2)}
 )
 
@@ -115,8 +115,8 @@ breakeven = breakeven_probability(payout_multiplier=5)  # 16.67% for 5x
 
 # Find optimal placement
 optimal_tick, max_ev = find_optimal_tick(
-    survival_model, 
-    prices, 
+    survival_model,
+    prices,
     payout_multiplier=5
 )
 ```
@@ -326,6 +326,6 @@ pip install duckdb pandas numpy scipy matplotlib seaborn
 
 ---
 
-**Last Updated**: January 7, 2026  
-**Author**: rugs-expert (Claude Code Agent)  
+**Last Updated**: January 7, 2026
+**Author**: rugs-expert (Claude Code Agent)
 **Version**: 1.0.0

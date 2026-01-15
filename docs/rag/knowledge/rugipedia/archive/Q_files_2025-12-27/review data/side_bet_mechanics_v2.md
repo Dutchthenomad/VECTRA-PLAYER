@@ -62,7 +62,7 @@ Based on analysis of 100 randomly sampled games containing 22,507 tick intervals
 ```javascript
 {
   betAmount: 0.001,              // SOL amount wagered
-  coinAddress: "So11...112",     // SOL identifier  
+  coinAddress: "So11...112",     // SOL identifier
   endTick: 108,                  // startTick + 40
   playerId: "did:privy:...",     // Unique player ID
   startTick: 68,                 // Tick when bet placed (-1 for presale)
@@ -130,56 +130,56 @@ class AdaptiveTimingEngineV2 {
       p95: 269
     };
   }
-  
+
   recordTick(timestamp, tickNumber) {
     const interval = timestamp - this.lastTimestamp;
     this.tickHistory.push({ tick: tickNumber, interval, timestamp });
-    
+
     // Maintain rolling window of last 100 intervals
     if (this.tickHistory.length > 100) {
       this.tickHistory.shift();
     }
-    
+
     this.updateAdaptiveProbabilities();
   }
-  
+
   getCurrentTickRate() {
     const recent = this.tickHistory.slice(-20); // Last 20 ticks
     if (recent.length < 10) {
       // Fall back to empirical baseline if insufficient data
       return this.empiricalBaseline.mean;
     }
-    
+
     const avg = recent.reduce((sum, t) => sum + t.interval, 0) / recent.length;
-    
+
     // Blend with empirical baseline for stability
     const blendWeight = Math.min(recent.length / 20, 1);
     return (avg * blendWeight) + (this.empiricalBaseline.mean * (1 - blendWeight));
   }
-  
+
   getActualWindowDuration() {
     const currentRate = this.getCurrentTickRate();
     const baseWindow = currentRate * 40;
-    
+
     // Add variance buffer based on empirical data
     const varianceBuffer = this.empiricalBaseline.stdDev * Math.sqrt(40) / Math.sqrt(20);
-    
+
     return {
       expected: baseWindow,
       conservative: baseWindow + varianceBuffer,
       optimistic: baseWindow - varianceBuffer
     };
   }
-  
+
   getReliabilityScore() {
     const recent = this.tickHistory.slice(-50);
     if (recent.length < 20) return 0.5; // Default medium reliability
-    
+
     const intervals = recent.map(t => t.interval);
     const mean = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
     const variance = intervals.reduce((sum, i) => sum + Math.pow(i - mean, 2), 0) / intervals.length;
     const cv = Math.sqrt(variance) / mean;
-    
+
     // Score based on coefficient of variation
     // CV < 0.1 = very reliable, CV > 0.5 = very unreliable
     return Math.max(0, Math.min(1, 1 - (cv * 2)));
@@ -233,10 +233,10 @@ const PHASE_RULES = {
 function calculateExpectedValueV2(winProbability, betAmount, timingReliability = 1.0) {
   const winOutcome = betAmount * 4;  // Net profit (400%)
   const loseOutcome = -betAmount;    // Total loss
-  
+
   // Adjust probability based on timing reliability
   const adjustedProbability = winProbability * timingReliability;
-  
+
   return (adjustedProbability * winOutcome) + ((1 - adjustedProbability) * loseOutcome);
 }
 
@@ -255,22 +255,22 @@ function getAdaptiveProbabilityV2(tickCount, timingEngine) {
   const baseProb = getBaseProbability(tickCount);
   const currentTickRate = timingEngine.getCurrentTickRate();
   const reliability = timingEngine.getReliabilityScore();
-  
+
   // Use empirical baseline for stability
   const empiricalMean = 271.5;
   const theoreticalMean = 250;
-  
+
   // Calculate timing adjustment factor
   const timingRatio = currentTickRate / theoreticalMean;
   const empiricalRatio = empiricalMean / theoreticalMean;
-  
+
   // Blend current observations with empirical baseline
   const blendedRatio = (timingRatio * reliability) + (empiricalRatio * (1 - reliability));
-  
+
   // Adjust probability for actual window duration
   // Longer windows = higher chance of rug occurring
   const durationAdjustment = Math.pow(blendedRatio, 0.3); // Dampened adjustment
-  
+
   return Math.min(baseProb * durationAdjustment, 0.98); // Cap at 98%
 }
 ```
@@ -281,14 +281,14 @@ function getAdaptiveProbabilityV2(tickCount, timingEngine) {
 ```javascript
 function calculateGapRiskV2(currentTickRate, lastBetTick) {
   const expectedCooldown = 1000; // 1 second theoretical
-  
+
   // Use empirical data for more accurate gap estimation
   const empiricalTickRate = 271.5;
   const actualCooldown = Math.max(currentTickRate, empiricalTickRate) * 4; // ~4 ticks observed
-  
+
   const gapTicks = actualCooldown / currentTickRate;
   const missedWindow = lastBetTick + gapTicks;
-  
+
   return {
     gapDuration: actualCooldown,
     ticksAtRisk: gapTicks,
@@ -306,20 +306,20 @@ function calculateReliabilityScoreV2(tickHistory) {
     stdDev: 295.3,
     cv: 1.09
   };
-  
+
   if (tickHistory.length < 20) {
     // Use empirical baseline for insufficient data
     return 1 - empiricalBaseline.cv;
   }
-  
+
   const intervals = tickHistory.map(t => t.interval);
   const mean = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
   const variance = intervals.reduce((sum, i) => sum + Math.pow(i - mean, 2), 0) / intervals.length;
   const cv = Math.sqrt(variance) / mean;
-  
+
   // Compare to empirical baseline
   const relativeReliability = empiricalBaseline.cv / cv;
-  
+
   // Score between 0 and 1
   return Math.max(0, Math.min(1, relativeReliability));
 }

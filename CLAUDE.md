@@ -2,6 +2,9 @@
 
 **Status:** Schema v2.0.0 | **Date:** January 2, 2026 | **Fork of:** REPLAYER
 
+## DEDICATED MCP SERVER  **@agent-rugs-expert has deep canonical knowledge of this project**
+
+**Query it for all things rugs.fun**
 ---
 
 ## ⚠️ CRITICAL: Chrome Profile Configuration
@@ -14,6 +17,7 @@ Config Key: CHROME_PROFILE=rugs_bot (default in config.py)
 ```
 
 This profile has:
+
 - ✅ Phantom wallet extension installed and configured
 - ✅ Wallet connected to rugs.fun
 - ✅ CDP (Chrome DevTools Protocol) works correctly
@@ -24,9 +28,53 @@ See: `docs/CHROME_PROFILE_SETUP.md` for details.
 
 ---
 
+## Unified Control Panel (January 2026)
+
+**One-command startup replaces separate Tkinter UI:**
+
+```bash
+./scripts/start.sh          # Launch Chrome + Dashboard
+./scripts/start.sh -n       # Skip auto-opening browser tab
+```
+
+**Dashboard URL:** <http://localhost:5000>
+
+### Dashboard Tabs
+
+| Tab | Purpose |
+|-----|---------|
+| **Recording** | Toggle recording, view captured games |
+| **Explorer** | Strategy analysis, Monte Carlo simulation |
+| **Backtest** | Live trading with WebSocket feed + trading buttons |
+| **Profiles** | Trading profile management |
+
+### Trading Controls (Backtest Tab)
+
+## ⚠️ CRITICAL: **Buttons must be mapped to the rugs.fun game in the browser using Xpaths**
+
+Located in the sidebar of the Backtest tab:
+
+- **BUY / SIDE / SELL** buttons execute trades via Chrome CDP
+- **Bet amount controls**: +.01, +.1, 1/2, X2, X (clear)
+- **Percentage buttons**: 25%, 50%, 100% for sell orders
+- **Live game state**: Tick, Price, Phase, Game ID
+
+### Key Files
+
+| Component | Location |
+|-----------|----------|
+| Flask App | `src/recording_ui/app.py` |
+| Browser Service | `src/recording_ui/services/browser_service.py` |
+| Start Script | `scripts/start.sh` |
+| Backtest Template | `src/recording_ui/templates/backtest.html` |
+| Backtest JS | `src/recording_ui/static/js/backtest.js` |
+
+---
+
 ## Mission
 
 VECTRA-PLAYER is a clean-slate refactor of REPLAYER focused on:
+
 1. **Unified data storage** - DuckDB/Parquet as canonical truth + ChromaDB for vectors
 2. **Server-authoritative state** - Trust server in live mode, eliminate local calculations
 3. **RAG integration** - ChromaDB powers `rugs-expert` agent and Protocol Explorer UI
@@ -41,6 +89,7 @@ VECTRA-PLAYER is a clean-slate refactor of REPLAYER focused on:
 ## Development Workflow: Superpowers Methodology
 
 ### Quick Reference
+
 ```bash
 /tdd      # TDD Iron Law - NO code without failing test first
 /verify   # Verification - Evidence before claims
@@ -50,6 +99,7 @@ VECTRA-PLAYER is a clean-slate refactor of REPLAYER focused on:
 ```
 
 ### Test Command
+
 ```bash
 cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
 ```
@@ -59,6 +109,7 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/
 ## Architecture Overview
 
 ### Data Directory Structure
+
 ```
 ~/rugs_data/                          # RUGS_DATA_DIR (env var)
 ├── CONTEXT.md                        # Future AI reference doc
@@ -82,6 +133,7 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/
 ### Event Schema (v2.0.0)
 
 **DocTypes:**
+
 | DocType | Purpose |
 |---------|---------|
 | `ws_event` | Raw WebSocket events |
@@ -97,6 +149,7 @@ cd /home/nomad/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/
 | `short_position` | Short position tracking (placeholder) |
 
 **Latency Tracking Chain:**
+
 ```
 client_ts → server_ts → confirmed_ts
      ↓          ↓            ↓
@@ -110,6 +163,7 @@ send_latency  confirm_latency  total_latency (for bot timing)
 ## Key Components
 
 ### Single Writer: EventStore
+
 ```
 src/services/event_store/
 ├── writer.py       # Buffering, atomic parquet writes
@@ -119,6 +173,7 @@ src/services/event_store/
 ```
 
 **All producers publish to EventBus; EventStore subscribes and persists:**
+
 - `Events.WS_RAW_EVENT` → `ws_event`
 - `Events.GAME_TICK` → `game_tick`
 - `Events.PLAYER_UPDATE` → `server_state`
@@ -128,6 +183,7 @@ src/services/event_store/
 ### Vector Indexer: ChromaDB (Reuses claude-flow)
 
 **Reusable Components from claude-flow:**
+
 ```
 claude-flow/rag-pipeline/
 ├── storage/store.py       # ChromaDB client wrapper (~150 LOC)
@@ -138,6 +194,7 @@ claude-flow/rag-pipeline/
 ```
 
 **ChromaDB MCP Server Tools:**
+
 ```python
 mcp__chroma__chroma_list_collections
 mcp__chroma__chroma_add_documents
@@ -145,6 +202,7 @@ mcp__chroma__chroma_query_documents
 ```
 
 **Collections:**
+
 - `claude_flow_knowledge` - Agent/skills documentation
 - `rugs_events` - WebSocket event data (NEW)
 
@@ -163,6 +221,7 @@ mcp__chroma__chroma_query_documents
 | 12E | ⏳ PENDING | Protocol Explorer UI |
 
 ### Schema v2.0.0 (Dec 23, 2025)
+
 - ✅ #136 Architecture decision: EventStore is canonical
 - ✅ `player_action` schema with full latency tracking
 - ✅ `other_player` schema for ML training data
@@ -171,7 +230,9 @@ mcp__chroma__chroma_query_documents
 - 🔄 Legacy recorder deletion in progress (#137)
 
 ### Legacy Recorders (BEING REMOVED)
+
 These files are deprecated and being deleted:
+
 - `core/demo_recorder.py` → Replaced by `player_action` schema
 - `core/recorder_sink.py` → Replaced by EventStore
 - `services/unified_recorder.py` → Replaced by EventStore
@@ -189,6 +250,7 @@ These files are deprecated and being deleted:
 | Data Directory | `~/rugs_data/` | Canonical storage |
 
 ### claude-flow Integration
+
 - claude-flow stays **separate** as development/orchestration layer
 - VECTRA-PLAYER reuses claude-flow's ChromaDB RAG infrastructure
 - claude-flow's `rugs-expert` agent queries shared ChromaDB
@@ -214,12 +276,14 @@ These files are deprecated and being deleted:
 ## Commands
 
 ### Run & Test
+
 ```bash
 ./run.sh                                     # Launch app
 cd src && python3 -m pytest tests/ -v        # All tests
 ```
 
 ### DuckDB Queries
+
 ```python
 import duckdb
 conn = duckdb.connect()
@@ -227,6 +291,7 @@ df = conn.execute("SELECT * FROM '~/rugs_data/events_parquet/**/*.parquet' LIMIT
 ```
 
 ### Vector Indexing
+
 ```bash
 # Build index from Parquet
 vectra-player index build --full
@@ -240,8 +305,8 @@ vectra-player index query "What fields are in playerUpdate?"
 ## GitHub Repository
 
 **Repo:** `Dutchthenomad/VECTRA-PLAYER`
-**URL:** https://github.com/Dutchthenomad/VECTRA-PLAYER
+**URL:** <https://github.com/Dutchthenomad/VECTRA-PLAYER>
 
 ---
 
-*December 23, 2025 | Schema v2.0.0 - Legacy Cleanup In Progress*
+*January 13, 2026 | Unified Control Panel Complete | Schema v2.0.0*

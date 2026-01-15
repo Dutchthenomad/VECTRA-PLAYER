@@ -41,24 +41,24 @@ def should_place_sidebet(current_tick, prices, model):
     """Decision logic for live trading."""
     # Extract features
     features = extract_features(prices, current_tick)
-    
+
     # Predict probability
     p_win = model.predict_rug_probability(
-        current_tick, 
-        window=40, 
+        current_tick,
+        window=40,
         features=features
     )
-    
+
     # Decision rules
     if current_tick < 200:
         return False, 0.0  # Too early
-    
+
     if p_win < breakeven_probability(5):
         return False, 0.0  # Negative EV
-    
+
     # Calculate bet size (1/4 Kelly)
     kelly_frac = kelly_criterion(p_win, 5) / 4
-    
+
     return True, kelly_frac
 ```
 
@@ -102,7 +102,7 @@ EV = Bet × [P(win) × (Multiplier + 1) - 1]
 
 For 5x payout:
   EV = 0.001 × [P(win) × 6 - 1]
-  
+
 Positive EV when P(win) > 16.67%
 ```
 
@@ -275,19 +275,19 @@ prices = []  # Accumulated price history
 # Update each tick
 if event['event'] == 'gameStateUpdate':
     prices.append(event['price'])
-    
+
     # Extract features
     features = extract_features(prices, current_tick)
-    
+
     # Predict
     p_win = model.predict_rug_probability(current_tick, 40, features)
-    
+
     # Decide
     should_bet, bet_size = should_place_sidebet(current_tick, prices, model)
 ```
 
 ---
 
-**Last Updated**: January 7, 2026  
-**Version**: 1.0.0  
+**Last Updated**: January 7, 2026
+**Version**: 1.0.0
 **Author**: rugs-expert (Claude Code Agent)

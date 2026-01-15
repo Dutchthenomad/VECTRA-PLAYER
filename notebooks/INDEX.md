@@ -110,6 +110,6 @@ jupyter notebook notebooks/sidebet_optimization.ipynb
 
 ---
 
-**Created**: January 7, 2026  
-**Author**: rugs-expert (Claude Code Agent)  
+**Created**: January 7, 2026
+**Author**: rugs-expert (Claude Code Agent)
 **License**: Proprietary (VECTRA-PLAYER project)

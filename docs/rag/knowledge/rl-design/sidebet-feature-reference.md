@@ -152,7 +152,7 @@ obs = np.array([
     0.0,        # cooldown_timer_ms
     0.0,        # allow_pre_round_buys
     145.0,      # connected_players
-    
+
     # Price features (6-12)
     250.0,      # age
     0.23,       # distance_from_peak
@@ -161,25 +161,25 @@ obs = np.array([
     0.112,      # volatility_10
     -0.012,     # momentum_3
     -0.008,     # momentum_5
-    
+
     # Position (13-15)
     0.0,        # position_qty (none)
     0.0,        # avg_cost
     0.0,        # unrealized_pnl_pct
-    
+
     # Market (16-19)
     67.0,       # players_with_positions
     12.456,     # total_market_capital
     8.0,        # recent_trade_count
     0.65,       # rugpool_ratio
-    
+
     # Session (20-24)
     6.45,       # average_multiplier
     1245.0,     # count_2x
     87.0,       # count_10x
     12.0,       # count_50x
     124.5,      # highest_today
-    
+
     # Sidebet (25-27)
     0.0,        # sidebet_active (none)
     0.0,        # sidebet_start_tick

@@ -391,10 +391,10 @@ kf = KFold(n_splits=5, shuffle=True, random_state=42)
 for train_idx, test_idx in kf.split(games_df):
     train_games = games_df.iloc[train_idx]
     test_games = games_df.iloc[test_idx]
-    
+
     # Fit model on train
     model = BayesianSurvivalModel(train_games)
-    
+
     # Evaluate on test
     for game in test_games:
         predicted_p = model.predict(...)
@@ -477,6 +477,6 @@ h(t) ~ GP(μ(t), k(t, t'))
 
 ---
 
-**Last Updated**: January 7, 2026  
-**Author**: rugs-expert (Claude Code Agent)  
+**Last Updated**: January 7, 2026
+**Author**: rugs-expert (Claude Code Agent)
 **Status**: Research document - requires empirical validation
