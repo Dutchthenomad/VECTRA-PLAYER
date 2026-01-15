@@ -10,7 +10,6 @@ Usage:
     .venv/bin/python scripts/capture_live_gamehistory.py
 """
 
-import asyncio
 import json
 import logging
 import signal
@@ -21,8 +20,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from browser.bridge import BrowserBridge, BridgeStatus
-from services.event_bus import event_bus, Events
+from browser.bridge import BridgeStatus, BrowserBridge
+from services.event_bus import Events, event_bus
 
 logging.basicConfig(
     level=logging.INFO,
@@ -91,7 +90,7 @@ class GameHistoryValidator:
 
         # Analyze first game
         first_game = game_history[0]
-        logger.info(f"\nFirst game (index 0):")
+        logger.info("\nFirst game (index 0):")
         logger.info(f"  Game ID: {first_game.get('id')}")
         logger.info(f"  Timestamp: {first_game.get('timestamp')}")
         logger.info(f"  Rugged: {first_game.get('rugged')}")
@@ -102,7 +101,7 @@ class GameHistoryValidator:
         logger.info(f"  globalSideBets: {len(global_sidebets)} sidebets found")
 
         if global_sidebets:
-            logger.info(f"\n  Sample sidebet:")
+            logger.info("\n  Sample sidebet:")
             sample = global_sidebets[0]
             logger.info(f"    Player: {sample.get('username', 'N/A')}")
             logger.info(f"    Target: {sample.get('target')}x")
@@ -115,7 +114,9 @@ class GameHistoryValidator:
             target = sample.get("target", 0)
             won = peak >= target if peak and target else None
             if won is not None:
-                logger.info(f"    Outcome: {'✅ WON' if won else '❌ LOST'} (peak: {peak}x, target: {target}x)")
+                logger.info(
+                    f"    Outcome: {'✅ WON' if won else '❌ LOST'} (peak: {peak}x, target: {target}x)"
+                )
 
         # Check prices array
         prices = first_game.get("prices", [])
@@ -182,6 +183,7 @@ class GameHistoryValidator:
             # Keep alive until captured or interrupted
             while not self.captured and not self._shutdown:
                 import time
+
                 time.sleep(1)
 
         except KeyboardInterrupt:
@@ -195,7 +197,9 @@ class GameHistoryValidator:
 
 
 if __name__ == "__main__":
-    output_file = Path("/home/devops/Desktop/claude-flow/knowledge/rugipedia/raw-data/gameHistory-live-capture.json")
+    output_file = Path(
+        "/home/devops/Desktop/claude-flow/knowledge/rugipedia/raw-data/gameHistory-live-capture.json"
+    )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     validator = GameHistoryValidator(output_file)
