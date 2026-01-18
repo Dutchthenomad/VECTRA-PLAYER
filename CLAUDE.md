@@ -39,6 +39,57 @@ See: `docs/CHROME_PROFILE_SETUP.md` for details.
 
 **Dashboard URL:** <http://localhost:5000>
 
+---
+
+## Foundation Service (Port 9000/9001)
+
+**Status:** On `feature/typescript-frontend-api` branch - ready to merge
+
+The Foundation Service provides a unified WebSocket broadcaster for HTML artifacts:
+
+```bash
+# After merging, start with:
+python -m foundation.launcher
+
+# Services started:
+# - Chrome with rugs_bot profile
+# - WebSocket broadcaster: ws://localhost:9000/feed
+# - Monitoring UI: http://localhost:9001
+```
+
+### Foundation Event Types (Normalized)
+
+| rugs.fun Event | Foundation Type | Purpose |
+|----------------|-----------------|---------|
+| `gameStateUpdate` | `game.tick` | Price/tick stream |
+| `playerUpdate` | `player.state` | Balance/position |
+| `usernameStatus` | `connection.authenticated` | Auth confirmation |
+| `standard/newTrade` | `player.trade` | Trade events |
+| `currentSidebet` | `sidebet.placed` | Sidebet placed |
+| `currentSidebetResult` | `sidebet.result` | Sidebet outcome |
+
+### Foundation Configuration
+
+```python
+# Environment variable overrides available:
+FOUNDATION_PORT=9000        # WebSocket broadcaster
+FOUNDATION_HTTP_PORT=9001   # Monitoring UI
+CDP_PORT=9222               # Chrome DevTools Protocol
+FOUNDATION_HEADLESS=false   # Headless Chrome mode
+```
+
+### Key Foundation Files
+
+| Component | Location |
+|-----------|----------|
+| Config | `src/foundation/config.py` |
+| Normalizer | `src/foundation/normalizer.py` |
+| Broadcaster | `src/foundation/broadcaster.py` |
+| HTTP Server | `src/foundation/http_server.py` |
+| Launcher | `src/foundation/launcher.py` |
+
+---
+
 ### Dashboard Tabs
 
 | Tab | Purpose |
@@ -263,12 +314,14 @@ These files are deprecated and being deleted:
 
 | Document | Location |
 |----------|----------|
-| **Schema v2.0.0 Design** | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
+| **Project Status** | `docs/STATUS.md` |
+| **System Architecture** | `docs/ARCHITECTURE.md` |
+| **Consolidation Plan** | `docs/plans/2026-01-17-consolidation-plan.md` |
+| Schema v2.0.0 Design | `docs/plans/2025-12-23-expanded-event-schema-design.md` |
+| Global Development Plan | `docs/plans/GLOBAL-DEVELOPMENT-PLAN.md` |
 | Migration Guide | `docs/MIGRATION_GUIDE.md` |
-| Phase 12D Plan | `docs/plans/2025-12-21-phase-12d-system-validation-and-legacy-consolidation.md` |
-| Storage Migration Plan | `sandbox/duckdb_parquet_vectordb_migration_plan.md` |
-| Phase 12 Design | `sandbox/2025-12-15-phase-12-unified-data-architecture-design.md` |
 | WebSocket Events Spec | `docs/specs/WEBSOCKET_EVENTS_SPEC.md` |
+| PRNG Analysis | `src/rugs_recordings/PRNG CRAK/HAIKU-CRITICAL-FINDINGS.md` |
 | Data Context | `~/rugs_data/CONTEXT.md` |
 
 ---
@@ -309,4 +362,4 @@ vectra-player index query "What fields are in playerUpdate?"
 
 ---
 
-*January 13, 2026 | Unified Control Panel Complete | Schema v2.0.0*
+*January 17, 2026 | Foundation Service Ready | Schema v2.0.0*
