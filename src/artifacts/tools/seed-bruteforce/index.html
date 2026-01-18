@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Bruteforce - VECTRA</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: var(--space-md);
+            height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .results-panel {
+            flex: 1;
+            overflow: auto;
+        }
+
+        .file-upload {
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .file-upload:hover {
+            border-color: var(--color-primary);
+        }
+
+        .file-upload.dragover {
+            border-color: var(--color-success);
+            background-color: rgba(166, 227, 161, 0.1);
+        }
+
+        .seed-preview {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            word-break: break-all;
+            background-color: var(--color-bg-alt);
+            padding: var(--space-sm);
+            border-radius: var(--radius-sm);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .pattern-option {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-xs);
+        }
+
+        .pattern-option input[type="radio"] {
+            accent-color: var(--color-primary);
+        }
+
+        .results-table {
+            font-size: 0.8rem;
+        }
+
+        .results-table td {
+            vertical-align: top;
+        }
+
+        .seed-cell {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            word-break: break-all;
+            max-width: 200px;
+        }
+
+        .highlight-match {
+            background-color: rgba(166, 227, 161, 0.3);
+            color: var(--color-success);
+        }
+
+        .progress-container {
+            margin-top: var(--space-sm);
+        }
+
+        .analysis-section {
+            margin-bottom: var(--space-md);
+        }
+
+        .analysis-header {
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .correlation-chart {
+            height: 150px;
+            background-color: var(--color-bg-alt);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <header class="artifact-header">
+            <h1>Seed Bruteforce Analysis</h1>
+            <div class="connection-status">
+                <span class="connection-dot disconnected" id="connectionDot"></span>
+                <span id="connectionText">Disconnected</span>
+            </div>
+        </header>
+
+        <main class="artifact-main">
+            <div class="analysis-grid">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Data Loading -->
+                    <div class="card">
+                        <div class="card-header">Load Game Data</div>
+
+                        <div class="file-upload" id="fileUpload">
+                            <p>Drop games_dataset.jsonl here</p>
+                            <p class="text-muted">or click to browse</p>
+                            <input type="file" id="fileInput" accept=".jsonl,.json" style="display:none">
+                        </div>
+
+                        <div class="stats-grid mb-md" style="margin-top: var(--space-sm);">
+                            <div class="stat-item">
+                                <div class="stat-label">Games</div>
+                                <div class="stat-value" id="gameCount">0</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Rugged</div>
+                                <div class="stat-value" id="ruggedCount">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pattern Selection -->
+                    <div class="card">
+                        <div class="card-header">Seed Pattern Analysis</div>
+
+                        <div class="pattern-option">
+                            <input type="radio" name="pattern" id="patternHex" value="hex" checked>
+                            <label for="patternHex">Hex64 Format (SHA-256)</label>
+                        </div>
+                        <div class="pattern-option">
+                            <input type="radio" name="pattern" id="patternTimestamp" value="timestamp">
+                            <label for="patternTimestamp">Timestamp Correlation</label>
+                        </div>
+                        <div class="pattern-option">
+                            <input type="radio" name="pattern" id="patternSequential" value="sequential">
+                            <label for="patternSequential">Sequential Patterns</label>
+                        </div>
+                        <div class="pattern-option">
+                            <input type="radio" name="pattern" id="patternEntropy" value="entropy">
+                            <label for="patternEntropy">Entropy Analysis</label>
+                        </div>
+
+                        <button class="btn btn-primary" id="analyzeBtn" style="margin-top: var(--space-sm); width: 100%;">
+                            Run Analysis
+                        </button>
+
+                        <div class="progress-container" id="progressContainer" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="card">
+                        <div class="card-header">Quick Stats</div>
+                        <div class="seed-preview" id="seedPreview">
+                            Load data to see seed samples...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="results-panel">
+                    <div class="card" style="height: 100%;">
+                        <div class="card-header">Analysis Results</div>
+
+                        <!-- Hex Analysis Section -->
+                        <div class="analysis-section" id="hexAnalysis">
+                            <div class="analysis-header">Hex64 Format Verification</div>
+                            <p id="hexSummary" class="text-muted">Run analysis to see results</p>
+                        </div>
+
+                        <!-- Timestamp Correlation Section -->
+                        <div class="analysis-section" id="timestampAnalysis" style="display: none;">
+                            <div class="analysis-header">Timestamp Correlation</div>
+                            <div class="correlation-chart" id="correlationChart">
+                                Chart placeholder - correlation scatter plot
+                            </div>
+                            <p id="timestampSummary" class="text-muted">Run analysis to see results</p>
+                        </div>
+
+                        <!-- Sequential Pattern Section -->
+                        <div class="analysis-section" id="sequentialAnalysis" style="display: none;">
+                            <div class="analysis-header">Sequential Pattern Detection</div>
+                            <p id="sequentialSummary" class="text-muted">Run analysis to see results</p>
+                        </div>
+
+                        <!-- Entropy Analysis Section -->
+                        <div class="analysis-section" id="entropyAnalysis" style="display: none;">
+                            <div class="analysis-header">Entropy Analysis</div>
+                            <p id="entropySummary" class="text-muted">Run analysis to see results</p>
+                        </div>
+
+                        <!-- Results Table -->
+                        <div style="margin-top: var(--space-md); overflow-x: auto;">
+                            <table class="table results-table" id="resultsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Game ID</th>
+                                        <th>Timestamp</th>
+                                        <th>Server Seed</th>
+                                        <th>Peak</th>
+                                        <th>Final</th>
+                                        <th>Finding</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody">
+                                    <tr>
+                                        <td colspan="6" class="text-muted">Load data and run analysis</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="artifact-footer">
+            <div>
+                <span id="messageCount">0</span> messages |
+                <span id="avgLatency">0</span>ms avg latency
+            </div>
+            <div>
+                <span id="statusText">Ready</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="../../shared/foundation-ws-client.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

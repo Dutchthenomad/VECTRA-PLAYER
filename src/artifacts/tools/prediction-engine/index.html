@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Engine - VECTRA</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: var(--space-md);
+            height: calc(100vh - 120px);
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            overflow: auto;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .prediction-card {
+            background: linear-gradient(135deg, var(--ctp-surface0), var(--ctp-mantle));
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .prediction-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .prediction-value {
+            font-family: var(--font-mono);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .prediction-interval {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin-top: var(--space-xs);
+        }
+
+        .confidence-bar {
+            height: 6px;
+            background-color: var(--ctp-surface1);
+            border-radius: 3px;
+            margin-top: var(--space-sm);
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        .confidence-high { background-color: var(--ctp-green); }
+        .confidence-medium { background-color: var(--ctp-yellow); }
+        .confidence-low { background-color: var(--ctp-red); }
+
+        .regime-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .regime-NORMAL { background: rgba(137, 180, 250, 0.2); color: var(--ctp-blue); }
+        .regime-SUPPRESSED { background: rgba(166, 227, 161, 0.2); color: var(--ctp-green); }
+        .regime-INFLATED { background: rgba(250, 179, 135, 0.2); color: var(--ctp-peach); }
+        .regime-VOLATILE { background: rgba(243, 139, 168, 0.2); color: var(--ctp-red); }
+
+        .game-state-card {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-sm);
+        }
+
+        .game-state-item {
+            text-align: center;
+            padding: var(--space-sm);
+            background: var(--ctp-surface0);
+            border-radius: var(--radius-sm);
+        }
+
+        .accuracy-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--space-xs) 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .accuracy-metric:last-child {
+            border-bottom: none;
+        }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .history-item {
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr 1fr;
+            gap: var(--space-xs);
+            padding: var(--space-xs);
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        .history-item:hover {
+            background: var(--ctp-surface0);
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <header class="artifact-header">
+            <h1>Real-Time Prediction Engine</h1>
+            <div class="flex items-center gap-md">
+                <span class="regime-indicator regime-NORMAL" id="regimeIndicator">NORMAL</span>
+                <div class="connection-status">
+                    <span class="connection-dot disconnected" id="connectionDot"></span>
+                    <span id="connectionText">Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="artifact-main">
+            <div class="prediction-grid">
+                <!-- Main Panel -->
+                <div class="main-panel">
+                    <!-- Current Game State -->
+                    <div class="card">
+                        <div class="card-header">Current Game State</div>
+                        <div class="game-state-card">
+                            <div class="game-state-item">
+                                <div class="stat-label">Tick</div>
+                                <div class="stat-value" id="currentTick">0</div>
+                            </div>
+                            <div class="game-state-item">
+                                <div class="stat-label">Price</div>
+                                <div class="stat-value" id="currentPrice">$1.00</div>
+                            </div>
+                            <div class="game-state-item">
+                                <div class="stat-label">Peak</div>
+                                <div class="stat-value" id="currentPeak">1.00x</div>
+                            </div>
+                            <div class="game-state-item">
+                                <div class="stat-label">Phase</div>
+                                <div class="stat-value" id="currentPhase">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Predictions -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md);">
+                        <!-- Final Price Prediction -->
+                        <div class="prediction-card">
+                            <div class="prediction-header">
+                                <span class="prediction-title">Final Price</span>
+                            </div>
+                            <div class="prediction-value" id="predFinal">$0.0120</div>
+                            <div class="prediction-interval" id="predFinalInterval">[$0.0080 - $0.0160]</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill confidence-high" id="predFinalConfidence" style="width: 85%"></div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px;">
+                                Confidence: <span id="predFinalConfPct">85%</span>
+                            </div>
+                        </div>
+
+                        <!-- Peak Prediction -->
+                        <div class="prediction-card">
+                            <div class="prediction-header">
+                                <span class="prediction-title">Peak Multiplier</span>
+                            </div>
+                            <div class="prediction-value" id="predPeak">2.20x</div>
+                            <div class="prediction-interval" id="predPeakInterval">[0.80x - 4.60x]</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill confidence-medium" id="predPeakConfidence" style="width: 68%"></div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px;">
+                                Confidence: <span id="predPeakConfPct">68%</span>
+                            </div>
+                        </div>
+
+                        <!-- Duration Prediction -->
+                        <div class="prediction-card">
+                            <div class="prediction-header">
+                                <span class="prediction-title">Duration</span>
+                            </div>
+                            <div class="prediction-value" id="predDuration">270</div>
+                            <div class="prediction-interval" id="predDurationInterval">[120 - 420] ticks</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill confidence-high" id="predDurationConfidence" style="width: 84%"></div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px;">
+                                Confidence: <span id="predDurationConfPct">84%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prediction History -->
+                    <div class="card" style="flex: 1;">
+                        <div class="card-header">Prediction History</div>
+                        <div class="history-list" id="historyList">
+                            <div class="history-item" style="font-weight: 600; background: var(--ctp-mantle);">
+                                <span>Game</span>
+                                <span>Pred Final</span>
+                                <span>Actual</span>
+                                <span>Error</span>
+                            </div>
+                            <div class="text-muted" style="padding: var(--space-md); text-align: center;">
+                                Waiting for game data...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Equilibrium Stats -->
+                    <div class="card">
+                        <div class="card-header">Equilibrium Tracker</div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Current</span>
+                            <span class="font-mono" id="eqCurrent">$0.0120</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Long-term</span>
+                            <span class="font-mono" id="eqLongterm">$0.0120</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Volatility</span>
+                            <span class="font-mono" id="eqSigma">0.0060</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Data Points</span>
+                            <span class="font-mono" id="eqDataPoints">0</span>
+                        </div>
+                    </div>
+
+                    <!-- AR Model Stats -->
+                    <div class="card">
+                        <div class="card-header">AR Model</div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Order</span>
+                            <span class="font-mono" id="arOrder">3</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">MSE</span>
+                            <span class="font-mono" id="arMSE">0.0000</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Updates</span>
+                            <span class="font-mono" id="arUpdates">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Accuracy Metrics -->
+                    <div class="card">
+                        <div class="card-header">Accuracy (MAE)</div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Final Price</span>
+                            <span class="font-mono" id="accFinal">-</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Peak</span>
+                            <span class="font-mono" id="accPeak">-</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Duration</span>
+                            <span class="font-mono" id="accDuration">-</span>
+                        </div>
+                        <div class="accuracy-metric">
+                            <span class="text-muted">Sample Size</span>
+                            <span class="font-mono" id="accCount">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="card">
+                        <div class="card-header">Controls</div>
+                        <button class="btn btn-secondary" id="resetBtn" style="width: 100%; margin-bottom: var(--space-sm);">
+                            Reset Models
+                        </button>
+                        <label class="text-muted" style="font-size: 0.75rem;">
+                            <input type="checkbox" id="autoTrain" checked>
+                            Auto-train on game end
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="artifact-footer">
+            <div>
+                <span id="messageCount">0</span> messages |
+                <span id="avgLatency">0</span>ms latency
+            </div>
+            <div>
+                Game: <span id="currentGameId">-</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Components -->
+    <script src="components/equilibrium-tracker.js"></script>
+    <script src="components/dynamic-weighter.js"></script>
+    <script src="components/stochastic-oscillator.js"></script>
+    <script src="components/bayesian-forecaster.js"></script>
+
+    <!-- Shared -->
+    <script src="../../shared/foundation-ws-client.js"></script>
+
+    <!-- Main -->
+    <script src="main.js"></script>
+</body>
+</html>
