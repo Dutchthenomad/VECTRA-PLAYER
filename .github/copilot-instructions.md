@@ -2,6 +2,13 @@
 
 This file provides guidance for GitHub Copilot coding agent when working on issues and pull requests in the VECTRA-PLAYER repository.
 
+## ✅ Agent Workflow
+
+- Run `ruff check .`, `ruff format --check .`, and `cd src && python -m pytest tests/ -v`
+  before and after changes.
+- Make minimal, surgical edits that follow existing patterns.
+- Update tests/docs only when behavior changes or the change directly affects them.
+
 ## 🎯 Project Overview
 
 VECTRA-PLAYER is a unified data architecture for game replay and live trading platform focused on:
