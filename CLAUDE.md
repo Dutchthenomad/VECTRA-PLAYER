@@ -2,6 +2,19 @@
 
 **Status:** Schema v2.0.0 | **Date:** January 2, 2026 | **Fork of:** REPLAYER
 
+## Claude Agent Prompt
+
+Follow `.github/copilot-instructions.md` and repository conventions.
+
+- Run the standard checks before and after changes:
+  ```bash
+  ruff check .
+  ruff format --check .
+  cd src && python -m pytest tests/ -v
+  ```
+- Make minimal, surgical edits, avoid hardcoded paths, and keep EventStore as the single
+  writer to disk.
+
 ## DEDICATED MCP SERVER  **@agent-rugs-expert has deep canonical knowledge of this project**
 
 **Query it for all things rugs.fun**
