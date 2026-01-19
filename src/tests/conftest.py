@@ -2,9 +2,17 @@
 Shared test fixtures for pytest
 """
 
+import sys
 import time
 import warnings
 from decimal import Decimal
+from pathlib import Path
+
+# Add project root to path for scripts imports
+# conftest.py -> tests -> src -> project_root
+_project_root = Path(__file__).resolve().parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 import pytest
 
