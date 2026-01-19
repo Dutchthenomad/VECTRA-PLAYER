@@ -261,10 +261,10 @@ Run validation script on all new artifacts:
 
 ```bash
 # Validate HTML tool
-python src/scripts/validate_artifact.py src/artifacts/tools/my-tool/
+python scripts/validate_artifact.py src/artifacts/tools/my-tool/
 
 # Validate Python subscriber
-python src/scripts/validate_artifact.py src/subscribers/my_subscriber/subscriber.py
+python scripts/validate_artifact.py src/subscribers/my_subscriber/subscriber.py
 ```
 
 ### Validation Checks
@@ -301,7 +301,7 @@ python src/scripts/validate_artifact.py src/subscribers/my_subscriber/subscriber
 
 5. **Validate before commit:**
    ```bash
-   python src/scripts/validate_artifact.py src/artifacts/tools/my-new-tool/
+   python scripts/validate_artifact.py src/artifacts/tools/my-new-tool/
    ```
 
 ---
@@ -333,7 +333,7 @@ python src/scripts/validate_artifact.py src/subscribers/my_subscriber/subscriber
 
 3. **Validate before commit:**
    ```bash
-   python src/scripts/validate_artifact.py src/subscribers/my-subscriber/subscriber.py
+   python scripts/validate_artifact.py src/subscribers/my-subscriber/subscriber.py
    ```
 
 ---
