@@ -1,19 +1,160 @@
-# Project Status
+# VECTRA-PLAYER Project Status
 
-Last updated: 2026-01-03
+**Last Updated:** 2026-01-17
+**Status:** Active Development
+**Schema Version:** 2.0.0
+
+---
 
 ## Canonical Status Sources
 
-- This file is the source of truth for current status.
-- The active roadmap is in `docs/ROADMAP.md`.
-- Superseded status/audit/plan documents are archived in
-  `sandbox/DEVELOPMENT DEPRECATIONS/`.
+- **This file** is the source of truth for current status.
+- **`docs/plans/GLOBAL-DEVELOPMENT-PLAN.md`** is the active roadmap.
+- **`docs/ARCHITECTURE.md`** documents system architecture.
+- Superseded documents are archived in `sandbox/DEVELOPMENT DEPRECATIONS/`.
 
-## Current Phase
+---
 
-**Phase 6: BotActionInterface** - ✅ COMPLETE (2025-12-25)
+## Current State Summary
 
-All 8 implementation phases done. 166 new tests, 1092 total tests passing.
+VECTRA-PLAYER is a unified data architecture for rugs.fun, providing:
+- Real-time WebSocket data capture via Chrome DevTools Protocol
+- Event normalization and persistence to Parquet
+- Browser-based recording UI and trading controls
+- Foundation Service for HTML artifact development (on feature branch)
+
+---
+
+## Branch Status
+
+| Branch | Purpose | Status |
+|--------|---------|--------|
+| `main` | Production-ready code | Current |
+| `feature/typescript-frontend-api` | Foundation Service + API redesign | **Ready to merge** |
+| `auto-claude/001-*` | Development environment automation | Active |
+| `auto-claude/002-*` | Pipeline D training data | Active |
+
+---
+
+## Component Status
+
+### Core Infrastructure (main branch)
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| EventBus | Production | `src/services/event_bus.py` |
+| EventStore | Production | `src/services/event_store/` |
+| LiveStateProvider | Production | `src/services/live_state_provider.py` |
+| BrowserBridge (CDP) | Production | `src/services/browser_bridge.py` |
+| BotActionInterface | Complete | `src/bot_action/` |
+
+### Recording UI (main branch)
+
+| Component | Status | Port |
+|-----------|--------|------|
+| Flask App | Production | 5000 |
+| Browser Service | Production | - |
+| Dashboard Templates | Production | - |
+| Static JS/CSS | Production | - |
+
+### Foundation Service (feature branch - READY TO MERGE)
+
+| Component | Status | Port |
+|-----------|--------|------|
+| WebSocket Broadcaster | Complete | 9000 |
+| HTTP Monitor | Complete | 9001 |
+| Event Normalizer | Complete | - |
+| Launcher | Complete | - |
+
+### PRNG Analysis Tools (main branch)
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Games Dataset | Complete | `src/rugs_recordings/PRNG CRAK/games_dataset.jsonl` (2,835 games) |
+| Explorer v2 | Complete | `src/rugs_recordings/PRNG CRAK/explorer_v2/` |
+| Prediction Engine | Complete | `src/rugs_recordings/PRNG CRAK/prediction_engine/` |
+| Parameter Optimizer | Complete | `src/rugs_recordings/PRNG CRAK/parameter_optimizer/` |
+
+---
+
+## Phase Status Overview
+
+### Completed Phases
+
+| Phase | Description | Completion Date |
+|-------|-------------|-----------------|
+| 12A | Event schemas (58 tests) | 2025-12 |
+| 12B | Parquet Writer + EventStore (84 tests) | 2025-12 |
+| 12C | LiveStateProvider (20 tests) | 2025-12 |
+| 12D | System validation & legacy consolidation | 2025-12 |
+| Schema v2.0.0 | Expanded event schema design | 2025-12-23 |
+| MinimalWindow | UI simplification (93% code reduction) | 2025-12-28 |
+| Pipeline A | Server state validation | 2025-12-27 |
+| Pipeline B | ButtonEvent implementation | 2025-12-27 |
+| Pipeline C | Player action validation | 2025-12-28 |
+| Phase 6 | BotActionInterface (166 tests) | 2025-12-25 |
+| Migration | Environment stabilization | 2026-01-03 |
+
+### In Progress (Current Priority)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Foundation Merge** | WebSocket broadcaster | Ready to merge |
+| **Consolidation** | Documentation update | In progress |
+| Pipeline D | Training data pipeline | Ready to start |
+| HTML Artifacts | Prediction engine, seed bruteforce | Planning |
+
+### Pending
+
+| Phase | Description | Blocker |
+|-------|-------------|---------|
+| 12E | Protocol Explorer UI | Pipeline D |
+| Audit 6 | Gated development validation | Pipeline D |
+| Audit 7 | UI redesign prep | Audit 6 |
+
+---
+
+## Test Status
+
+```
+Total Tests: 1149+ passing
+Last Run: 2025-12-28
+
+Test Command:
+cd /home/devops/Desktop/VECTRA-PLAYER/src && ../.venv/bin/python -m pytest tests/ -v --tb=short
+```
+
+---
+
+## Data Inventory
+
+### Parquet Store (`~/rugs_data/events_parquet/`)
+
+| DocType | Event Count | Description |
+|---------|-------------|-------------|
+| ws_event | ~31,744 | Raw WebSocket events |
+| button_event | ~204 | Human trading actions |
+| game_tick | Growing | Price/tick stream |
+| server_state | Growing | Player balance/position |
+
+### Games Dataset
+
+- **Location:** `src/rugs_recordings/PRNG CRAK/games_dataset.jsonl`
+- **Games:** 2,835
+- **Fields:** game_id, seed, final_price, duration_ticks, peak_multiplier, etc.
+
+---
+
+## Port Configuration
+
+| Service | Port | Status |
+|---------|------|--------|
+| Flask Recording UI | 5000 | Production |
+| Foundation WebSocket | 9000 | Ready (feature branch) |
+| Foundation Monitor | 9001 | Ready (feature branch) |
+| Chrome CDP | 9222 | Production |
+
+---
 
 ## Critical Decision: Shorting Deferred (2025-12-24)
 
@@ -24,82 +165,54 @@ rugs-expert agent confirmed **no empirical data exists** for shorting:
 
 **Action:** Shorting removed from v1.0 scope. Research continues in claude-flow.
 
-## Completed
+---
 
-- ✅ Phase 12A-12D: EventStore, schemas, LiveStateProvider
-- ✅ Schema v2.0.0: Expanded event types (PR #141)
-- ✅ Phase 1: All 12 P0 crash fixes (AUDIT FIX comments verified)
-- ✅ Phase 2: Thread-safety stabilization (PR #142)
-- ✅ rugs-expert integration: ChromaDB ingestion, confirmation mapping
-- ✅ Design docs: BotActionInterface, button XPaths
-- ✅ XPaths verified production-ready (no audit needed)
-- ✅ Phase 6: BotActionInterface (166 tests, "Player Piano" architecture)
+## Key Reference Documents
 
-## Phase 6 Implementation Summary
+| Document | Purpose |
+|----------|---------|
+| `CLAUDE.md` | Project instructions for Claude |
+| `docs/plans/GLOBAL-DEVELOPMENT-PLAN.md` | Master development roadmap |
+| `docs/ARCHITECTURE.md` | System architecture |
+| `docs/plans/2026-01-17-consolidation-plan.md` | Current implementation plan |
+| `docs/specs/WEBSOCKET_EVENTS_SPEC.md` | WebSocket protocol spec |
+| `src/rugs_recordings/PRNG CRAK/HAIKU-CRITICAL-FINDINGS.md` | Prediction algorithms |
 
-| Phase | Component | Tests |
-|-------|-----------|-------|
-| 1 | `types.py` - ActionParams, ActionResult, ExecutionMode, GameContext | 20 |
-| 2 | `executors/base.py` + `simulated.py` - ABC and SimulatedExecutor | 21 |
-| 3 | `executors/tkinter.py` - TkinterExecutor wrapping BotUIController | 21 |
-| 4 | `confirmation/monitor.py` + `mock.py` - ConfirmationMonitor | 21 |
-| 5 | `state/tracker.py` - HYBRID StateTracker | 12 |
-| 6 | `interface.py` - BotActionInterface orchestrator | 17 |
-| 7 | `factory.py` - Factory functions for all 4 modes | 17 |
-| 8 | `recording/human_interceptor.py` - HumanActionInterceptor | 37 |
+---
 
-**Architecture ("Player Piano"):**
-```
-RECORDING   → Human plays, system records inputs with full context
-TRAINING    → RL model trains with fast SimulatedExecutor
-VALIDATION  → Model replays pre-recorded games with UI animation
-LIVE        → Real browser automation (v1.0 stub, v2.0 PuppeteerExecutor)
-```
+## Next Actions (Priority Order)
 
-## Now (Highest Priority)
+1. **Merge Foundation Service branch to main**
+2. **Update CLAUDE.md with Foundation Service documentation**
+3. **Build HTML artifact framework**
+   - foundation-ws-client.js
+   - Seed bruteforce tool
+   - Prediction engine
+   - Orchestrator wrapper
 
-**✅ Migration Stabilization Complete (Jan 3, 2026)**
-
-Priority 1 tasks completed:
-- ✅ Issues #138-140: Closed Dec 26, 2025
-- ✅ MinimalWindow implementation complete
-- ✅ Test suite: 1138/1138 passing (100%)
-- ✅ Async cleanup improvements committed
-- ✅ Path verification: 34 RUGS_DATA_DIR refs, 2 legacy for replay compat
-- ✅ System ready for production development
-
-**Next Steps:**
-- Pipeline D: RL training data generation
-- CDP connection stability verification
-- Phase 3-5 roadmap execution
-
-## Deferred (Pending Research)
-
-- Phase 7: Shorting integration (requires live protocol capture first)
+---
 
 ## Recent Accomplishments
 
 | Date | Event | Description |
 |------|-------|-------------|
-| 2026-01-03 | Priority 1 | Migration stabilization complete - system stable |
-| 2026-01-03 | f6bdc9d | Async cleanup improvements in tests |
-| 2026-01-02 | 1355dfc | Chrome `rugs_bot` profile configured as default |
-| 2026-01-01 | dc3d1a2 | WIP: Migration from old development machine |
+| 2026-01-17 | Consolidation | STATUS.md, ARCHITECTURE.md updated |
+| 2026-01-15 | Design | TypeScript Frontend API plan created |
+| 2026-01-03 | Priority 1 | Migration stabilization complete |
+| 2026-01-02 | Config | Chrome `rugs_bot` profile configured as default |
 | 2025-12-28 | Milestone | MinimalWindow implementation complete |
 | 2025-12-26 | Issues | #138-140 closed (toast, paths, legacy cleanup) |
 | 2025-12-25 | Phase 6 | BotActionInterface COMPLETE - 166 tests |
 | 2025-12-24 | Decision | Shorting deferred - no empirical data |
 
-## Design Documents
-
-| Document | Purpose | Status |
-|----------|---------|--------|
-| `docs/plans/2025-12-23-bot-action-interface-design.md` | BotActionInterface | ✅ Implemented |
-| `docs/plans/2025-12-24-shorting-integration-and-button-automation.md` | Button XPaths | Partial (shorting deferred) |
-| `claude-flow/.../confirmation-mapping.md` | Action→Event mapping | Ready |
+---
 
 ## Archive Policy
 
 If a status, audit, plan, or summary doc is replaced by this file or
 `docs/ROADMAP.md`, it should be moved to
 `sandbox/DEVELOPMENT DEPRECATIONS/` rather than deleted.
+
+---
+
+*Last updated: 2026-01-17*

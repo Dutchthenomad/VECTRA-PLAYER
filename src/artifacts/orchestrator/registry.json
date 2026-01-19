@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "artifacts": [
+    {
+      "id": "seed-bruteforce",
+      "name": "Seed Bruteforce",
+      "path": "../tools/seed-bruteforce/index.html",
+      "description": "PRNG seed pattern analysis",
+      "icon": "🔐"
+    },
+    {
+      "id": "prediction-engine",
+      "name": "Prediction Engine",
+      "path": "../tools/prediction-engine/index.html",
+      "description": "Real-time Bayesian price predictor",
+      "icon": "📊"
+    }
+  ]
+}

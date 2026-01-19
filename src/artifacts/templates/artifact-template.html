@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ARTIFACT_NAME}} - VECTRA</title>
+
+    <!-- Shared Styles -->
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+
+    <!-- Artifact-specific styles (optional) -->
+    <style>
+        /* Add artifact-specific styles here */
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <!-- Header -->
+        <header class="artifact-header">
+            <h1>{{ARTIFACT_NAME}}</h1>
+            <div class="connection-status">
+                <span class="connection-dot disconnected" id="connectionDot"></span>
+                <span id="connectionText">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="artifact-main" id="mainContent">
+            <!-- Artifact content goes here -->
+            <div class="card">
+                <div class="card-header">Getting Started</div>
+                <p>This is a template artifact. Replace this content with your implementation.</p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="artifact-footer">
+            <div>
+                <span id="messageCount">0</span> messages |
+                <span id="avgLatency">0</span>ms avg latency
+            </div>
+            <div>
+                Game: <span id="currentGameId">-</span> |
+                Tick: <span id="currentTick">0</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Shared WebSocket Client -->
+    <script src="../../shared/foundation-ws-client.js"></script>
+
+    <!-- Artifact-specific logic -->
+    <script src="main.js"></script>
+</body>
+</html>
