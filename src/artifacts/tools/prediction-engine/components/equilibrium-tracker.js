@@ -62,13 +62,15 @@ class EquilibriumTracker {
         }
 
         // ===== REGIME DETECTION =====
-        if (Math.abs(residual) > this.thresholdSigma * this.sigma) {
+        // Guard against near-zero sigma to prevent division instability
+        const sigmaSafe = Math.max(this.sigma, 1e-9);
+        if (Math.abs(residual) > this.thresholdSigma * sigmaSafe) {
             if (residual < 0) {
                 this.regime = 'SUPPRESSED';
-                this.regimeStrength = Math.min(1.0, Math.abs(residual) / (this.thresholdSigma * this.sigma));
+                this.regimeStrength = Math.min(1.0, Math.abs(residual) / (this.thresholdSigma * sigmaSafe));
             } else {
                 this.regime = 'INFLATED';
-                this.regimeStrength = Math.min(1.0, Math.abs(residual) / (this.thresholdSigma * this.sigma));
+                this.regimeStrength = Math.min(1.0, Math.abs(residual) / (this.thresholdSigma * sigmaSafe));
             }
         } else {
             this.regime = 'NORMAL';
@@ -78,7 +80,8 @@ class EquilibriumTracker {
         // ===== VOLATILITY REGIME =====
         if (this.sigma > 0.0085) {
             this.regime = 'VOLATILE';
-            this.regimeStrength = (this.sigma - 0.0060) / (0.0120 - 0.0060);
+            // Clamp regimeStrength to [0, 1] range as documented
+            this.regimeStrength = Math.min(1.0, Math.max(0.0, (this.sigma - 0.0060) / (0.0120 - 0.0060)));
         }
 
         // ===== SLOW DRIFT DETECTION =====

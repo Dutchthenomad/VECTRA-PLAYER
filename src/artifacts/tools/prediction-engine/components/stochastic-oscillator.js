@@ -60,10 +60,13 @@ class StochasticOscillationModel {
 
             // Simplified RLS update (diagonal approximation)
             for (let i = 0; i < this.arOrder; i++) {
-                const gain = this.pDiag[i] * regressor[i] /
-                            (this.lambdaRls + this.pDiag[i] * regressor[i] * regressor[i]);
+                // Guard denominator against division by zero
+                const denom = this.lambdaRls + this.pDiag[i] * regressor[i] * regressor[i];
+                const gain = this.pDiag[i] * regressor[i] / Math.max(denom, 1e-9);
                 this.arParams[i] += gain * predictionError;
-                this.pDiag[i] = (1 / this.lambdaRls) * (1 - gain * regressor[i]) * this.pDiag[i];
+                // Clamp covariance to prevent negative/zero values (numerical stability)
+                const pUpdate = (1 / this.lambdaRls) * (1 - gain * regressor[i]) * this.pDiag[i];
+                this.pDiag[i] = Math.max(1e-8, pUpdate);
             }
         }
 
