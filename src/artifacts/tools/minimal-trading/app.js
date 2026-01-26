@@ -152,6 +152,405 @@ const PHASE = {
 };
 
 /**
+ * Strategy configurations (loaded from JSON files in production)
+ */
+const STRATEGIES = {
+  'beta-strat-03': {
+    name: 'beta-strat-03',
+    entry_tick: 219,
+    num_bets: 4,
+    bet_sizes: [0.0027, 0.0027, 0.0027, 0.0027],
+    high_confidence_threshold: 52,
+    high_confidence_multiplier: 2.5,
+    max_drawdown_pct: 0.5,
+    take_profit_target: 1.85
+  },
+  'beta-strat-01': {
+    name: 'beta-strat-01',
+    entry_tick: 200,
+    num_bets: 3,
+    bet_sizes: [0.002, 0.002, 0.002],
+    high_confidence_threshold: 50,
+    high_confidence_multiplier: 2.0,
+    max_drawdown_pct: 0.4,
+    take_profit_target: 1.5
+  },
+  'beta-2': {
+    name: 'beta-2',
+    entry_tick: 150,
+    num_bets: 5,
+    bet_sizes: [0.001, 0.001, 0.001, 0.001, 0.001],
+    high_confidence_threshold: 45,
+    high_confidence_multiplier: 1.5,
+    max_drawdown_pct: 0.3,
+    take_profit_target: 1.25
+  }
+};
+
+/**
+ * Bot Controller - Autonomous sidebet strategy executor
+ *
+ * CANONICAL RULES (from rugs-expert):
+ * - Sidebet window: 40 ticks (tick N to N+39)
+ * - Cooldown between bets: 5 ticks after window expires
+ * - Total spacing: 45 ticks between sidebet placements
+ * - Rug probability: 0.5% per tick (RANDOM)
+ */
+class BotController {
+  // Sidebet timing constants (CANONICAL)
+  static SIDEBET_WINDOW_TICKS = 40;
+  static SIDEBET_COOLDOWN_TICKS = 5;
+  static SIDEBET_SPACING_TICKS = 45;
+
+  constructor(tradeExecutor) {
+    this.tradeExecutor = tradeExecutor;
+    this.running = false;
+    this.strategy = STRATEGIES['beta-strat-03'];
+
+    // Session state
+    this.stats = {
+      games: 0,
+      bets: 0,
+      wins: 0,
+      losses: 0,
+      wagered: 0,
+      pnl: 0
+    };
+
+    // Current game state
+    this.gameState = {
+      gameId: null,
+      betsThisGame: 0,
+      lastBetTick: null,
+      sidebetActive: false,
+      sidebetEndTick: null
+    };
+
+    // Execution lock to prevent race conditions
+    this.executionInProgress = false;
+
+    // Decision log (last 50 entries)
+    this.decisionLog = [];
+    this.maxLogEntries = 50;
+
+    // Callbacks for UI updates
+    this.onStatsUpdate = null;
+    this.onGameStateUpdate = null;
+    this.onLogEntry = null;
+  }
+
+  /**
+   * Start the bot
+   */
+  start() {
+    this.running = true;
+    this.log('info', 'Bot started');
+    this.log('info', `Strategy: ${this.strategy.name}`);
+  }
+
+  /**
+   * Stop the bot
+   */
+  stop() {
+    this.running = false;
+    this.log('info', 'Bot stopped');
+  }
+
+  /**
+   * Set strategy by name
+   */
+  setStrategy(strategyName) {
+    if (STRATEGIES[strategyName]) {
+      this.strategy = STRATEGIES[strategyName];
+      this.log('info', `Strategy changed: ${strategyName}`);
+      this._notifyStatsUpdate();
+    }
+  }
+
+  /**
+   * Process game tick - main decision loop
+   * Called on each game.tick event
+   */
+  async processTick(gameState, playerState) {
+    if (!this.running) return;
+
+    const { tick, price, phase, gameId } = gameState;
+    const { balance, sidebetActive, sidebetEndTick } = playerState;
+
+    // Detect new game
+    if (gameId && gameId !== this.gameState.gameId) {
+      this._onNewGame(gameId);
+    }
+
+    // Check if sidebet expired (40-tick window passed)
+    // NOTE: We track sidebet state internally, don't overwrite from external state
+    if (this.gameState.sidebetActive && this.gameState.sidebetEndTick) {
+      if (tick >= this.gameState.sidebetEndTick) {
+        this._onSidebetExpired(tick);
+      }
+    }
+
+    // Only make decisions during ACTIVE phase
+    if (phase !== 'ACTIVE') {
+      return;
+    }
+
+    // Run decision logic
+    const decision = this._decide(tick, balance);
+
+    if (decision.action === 'SIDEBET') {
+      await this._executeSidebet(decision, tick);
+    }
+
+    this._notifyGameStateUpdate(tick);
+  }
+
+  /**
+   * Process sidebet result event
+   * Event structure: { betAmount, payout, profit, xPayout, startTick, endTick, ... }
+   */
+  processSidebetResult(data) {
+    // Handle various possible field names/structures
+    const payout = data.payout ?? data.winAmount ?? 0;
+    const betAmount = data.betAmount ?? data.amount ?? 0;
+    const profit = data.profit ?? (payout > 0 ? payout - betAmount : -betAmount);
+    const won = payout > 0;
+
+    // Track wins/losses (allow processing even if sidebetActive is false,
+    // since the result event may arrive after we've already started the next bet)
+    if (won) {
+      this.stats.wins++;
+      this.log('win', `SIDEBET WON! +${profit.toFixed(4)} SOL (${data.xPayout || 5}x)`);
+    } else {
+      this.stats.losses++;
+      this.log('loss', `Sidebet lost: ${Math.abs(profit).toFixed(4)} SOL`);
+    }
+
+    this.stats.pnl += profit;
+
+    // Clear active state if this was for the current sidebet
+    if (this.gameState.sidebetActive) {
+      this.gameState.sidebetActive = false;
+    }
+
+    this._notifyStatsUpdate();
+  }
+
+  /**
+   * Main decision logic
+   * @private
+   */
+  _decide(tick, balance) {
+    const config = this.strategy;
+
+    // Gate: Execution in progress (prevents race conditions)
+    if (this.executionInProgress) {
+      return { action: 'HOLD', reason: 'Execution in progress' };
+    }
+
+    // Gate: Max bets per game
+    if (this.gameState.betsThisGame >= config.num_bets) {
+      return { action: 'HOLD', reason: `Max bets (${config.num_bets})` };
+    }
+
+    // Gate: Active sidebet
+    if (this.gameState.sidebetActive) {
+      return { action: 'HOLD', reason: 'Sidebet active' };
+    }
+
+    // Gate: 45-tick spacing
+    if (this.gameState.lastBetTick !== null) {
+      const nextAllowed = this.gameState.lastBetTick + BotController.SIDEBET_SPACING_TICKS;
+      if (tick < nextAllowed) {
+        return { action: 'HOLD', reason: `Cooldown (next: ${nextAllowed})` };
+      }
+    }
+
+    // Gate: Entry tick (first bet only)
+    if (this.gameState.betsThisGame === 0 && tick < config.entry_tick) {
+      return { action: 'HOLD', reason: `Entry tick ${config.entry_tick}` };
+    }
+
+    // Gate: Minimum balance
+    const betSize = config.bet_sizes[Math.min(this.gameState.betsThisGame, config.bet_sizes.length - 1)];
+    if (balance < betSize) {
+      return { action: 'HOLD', reason: 'Insufficient balance' };
+    }
+
+    // All gates passed - place sidebet
+    return {
+      action: 'SIDEBET',
+      betAmount: betSize,
+      reason: `Tick ${tick}, bet #${this.gameState.betsThisGame + 1}`
+    };
+  }
+
+  /**
+   * Execute sidebet
+   * @private
+   */
+  async _executeSidebet(decision, tick) {
+    // CRITICAL: Set execution lock and state SYNCHRONOUSLY before any async operations
+    // This prevents race conditions where multiple ticks trigger bets
+    this.executionInProgress = true;
+    this.gameState.betsThisGame++;
+    this.gameState.lastBetTick = tick;
+    this.gameState.sidebetActive = true;
+    this.gameState.sidebetEndTick = tick + BotController.SIDEBET_WINDOW_TICKS;
+
+    this.log('sidebet', `PLACING: ${decision.betAmount.toFixed(4)} SOL @ tick ${tick}`);
+
+    try {
+      // Clear existing bet amount
+      await this.tradeExecutor.clear();
+      await this._delay(100);
+
+      // Build up to target amount
+      const clicks = this._calculateIncrements(decision.betAmount);
+      for (const amount of clicks) {
+        await this.tradeExecutor.increment(amount);
+        await this._delay(50);
+      }
+
+      // Click sidebet
+      const result = await this.tradeExecutor.sidebet();
+
+      if (result.success) {
+        // Update stats (state already updated above)
+        this.stats.bets++;
+        this.stats.wagered += decision.betAmount;
+
+        this.log('sidebet', `SUCCESS: Window ${tick}-${this.gameState.sidebetEndTick}`);
+        this._notifyStatsUpdate();
+      } else {
+        // Execution failed - but we already counted the attempt
+        // Don't roll back state to avoid double-betting on retry
+        this.log('loss', `FAILED: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      this.log('loss', `ERROR: ${error.message}`);
+    } finally {
+      // Always release execution lock
+      this.executionInProgress = false;
+    }
+  }
+
+  /**
+   * Calculate increment button clicks to reach target amount
+   * @private
+   */
+  _calculateIncrements(target) {
+    const increments = [1.0, 0.1, 0.01, 0.001];
+    const clicks = [];
+    let remaining = target;
+
+    for (const inc of increments) {
+      while (remaining >= inc - 0.0001) {
+        clicks.push(inc);
+        remaining -= inc;
+        remaining = Math.round(remaining * 10000) / 10000;
+      }
+    }
+
+    return clicks;
+  }
+
+  /**
+   * Handle new game
+   * @private
+   */
+  _onNewGame(gameId) {
+    if (this.gameState.gameId) {
+      this.stats.games++;
+    }
+
+    this.gameState = {
+      gameId: gameId,
+      betsThisGame: 0,
+      lastBetTick: null,
+      sidebetActive: false,
+      sidebetEndTick: null
+    };
+
+    this.log('info', `New game: ${gameId.slice(-8)}`);
+    this._notifyStatsUpdate();
+  }
+
+  /**
+   * Handle sidebet expiry (window ended without result yet)
+   * Set sidebetActive = false to allow next bet, but result may still arrive
+   * @private
+   */
+  _onSidebetExpired(tick) {
+    this.log('hold', `Sidebet window ended @ tick ${tick}`);
+    this.gameState.sidebetActive = false;
+    this.gameState.sidebetEndTick = null;
+  }
+
+  /**
+   * Add log entry
+   */
+  log(type, message) {
+    const entry = {
+      time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+      type: type,
+      message: message
+    };
+
+    this.decisionLog.unshift(entry);
+    if (this.decisionLog.length > this.maxLogEntries) {
+      this.decisionLog.pop();
+    }
+
+    if (this.onLogEntry) {
+      this.onLogEntry(entry);
+    }
+  }
+
+  /**
+   * Notify stats update
+   * @private
+   */
+  _notifyStatsUpdate() {
+    if (this.onStatsUpdate) {
+      this.onStatsUpdate(this.stats, this.strategy);
+    }
+  }
+
+  /**
+   * Notify game state update
+   * @private
+   */
+  _notifyGameStateUpdate(tick) {
+    if (this.onGameStateUpdate) {
+      const nextTick = this.gameState.lastBetTick !== null
+        ? this.gameState.lastBetTick + BotController.SIDEBET_SPACING_TICKS
+        : this.strategy.entry_tick;
+
+      const status = this.gameState.sidebetActive ? 'BETTING' :
+                     tick < this.strategy.entry_tick ? 'WAITING' :
+                     this.gameState.betsThisGame >= this.strategy.num_bets ? 'MAXED' : 'READY';
+
+      this.onGameStateUpdate({
+        bets: this.gameState.betsThisGame,
+        maxBets: this.strategy.num_bets,
+        lastTick: this.gameState.lastBetTick,
+        nextTick: nextTick,
+        status: status
+      });
+    }
+  }
+
+  /**
+   * Delay helper
+   * @private
+   */
+  _delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+/**
  * Sequence tracker for grouping button presses
  */
 class SequenceTracker {
@@ -204,6 +603,9 @@ export class MinimalTradingApp {
     // Trade executor for browser automation
     this.tradeExecutor = new TradeExecutor();
 
+    // Bot controller for autonomous trading
+    this.botController = new BotController(this.tradeExecutor);
+
     // Application state
     this.state = {
       // Game state (from WebSocket game.tick)
@@ -216,6 +618,8 @@ export class MinimalTradingApp {
       username: '---',
       balance: 0.0,
       positionQty: 0.0,
+      sidebetActive: false,
+      sidebetEndTick: null,
 
       // Connection state
       connected: false,
@@ -238,9 +642,31 @@ export class MinimalTradingApp {
     this.cacheElements();
     this.bindEventListeners();
     this.subscribeToWebSocket();
+    this.setupBotCallbacks();
     this.client.connect();
 
+    // Initialize bot panel display
+    this.updateStrategyParamsDisplay();
+
     console.log('[MinimalTrading] Initialized');
+  }
+
+  /**
+   * Set up BotController callbacks for UI updates
+   */
+  setupBotCallbacks() {
+    this.botController.onStatsUpdate = (stats, strategy) => {
+      this.updateBotStatsDisplay(stats);
+      this.updateStrategyParamsDisplay();
+    };
+
+    this.botController.onGameStateUpdate = (gameState) => {
+      this.updateBotGameDisplay(gameState);
+    };
+
+    this.botController.onLogEntry = (entry) => {
+      this.addLogEntry(entry);
+    };
   }
 
   /**
@@ -270,7 +696,36 @@ export class MinimalTradingApp {
 
       // Button groups
       pctButtons: document.querySelectorAll('.pct-btn'),
-      incButtons: document.querySelectorAll('.inc-btn')
+      incButtons: document.querySelectorAll('.inc-btn'),
+
+      // Bot panel elements
+      botDot: document.getElementById('bot-dot'),
+      botStatusText: document.getElementById('bot-status-text'),
+      botToggle: document.getElementById('bot-toggle'),
+      strategySelect: document.getElementById('strategy-select'),
+      paramEntry: document.getElementById('param-entry'),
+      paramMaxBets: document.getElementById('param-max-bets'),
+      paramBetSize: document.getElementById('param-bet-size'),
+
+      // Bot stats
+      statGames: document.getElementById('stat-games'),
+      statBets: document.getElementById('stat-bets'),
+      statWins: document.getElementById('stat-wins'),
+      statLosses: document.getElementById('stat-losses'),
+      statRate: document.getElementById('stat-rate'),
+      statWagered: document.getElementById('stat-wagered'),
+      statPnl: document.getElementById('stat-pnl'),
+
+      // Bot game state
+      gameBets: document.getElementById('game-bets'),
+      gameMax: document.getElementById('game-max'),
+      gameLastTick: document.getElementById('game-last-tick'),
+      gameNextTick: document.getElementById('game-next-tick'),
+      gameStatus: document.getElementById('game-status'),
+
+      // Decision log
+      decisionLog: document.getElementById('decision-log'),
+      clearLogBtn: document.getElementById('clear-log')
     };
   }
 
@@ -310,6 +765,11 @@ export class MinimalTradingApp {
 
     // Execute toggle
     this.elements.executeToggle.addEventListener('click', () => this.onExecuteToggle());
+
+    // Bot panel controls
+    this.elements.botToggle.addEventListener('click', () => this.onBotToggle());
+    this.elements.strategySelect.addEventListener('change', (e) => this.onStrategyChange(e.target.value));
+    this.elements.clearLogBtn.addEventListener('click', () => this.onClearLog());
   }
 
   /**
@@ -327,6 +787,9 @@ export class MinimalTradingApp {
 
     // Connection state
     this.client.on('connection', (event) => this.onConnectionChange(event));
+
+    // Sidebet result events (for bot)
+    this.client.on('sidebet.result', (event) => this.onSidebetResult(event.data));
   }
 
   // ==========================================
@@ -346,6 +809,21 @@ export class MinimalTradingApp {
     this.updateTickDisplay();
     this.updatePriceDisplay();
     this.updatePhaseDisplay();
+
+    // Feed tick to bot controller
+    this.botController.processTick(
+      {
+        tick: this.state.tick,
+        price: this.state.price,
+        phase: this.state.phase,
+        gameId: this.state.gameId
+      },
+      {
+        balance: this.state.balance,
+        sidebetActive: this.state.sidebetActive,
+        sidebetEndTick: this.state.sidebetEndTick
+      }
+    );
   }
 
   /**
@@ -387,6 +865,53 @@ export class MinimalTradingApp {
   onConnectionChange(event) {
     this.state.connected = event.connected;
     this.updateConnectionDisplay();
+  }
+
+  /**
+   * Handle sidebet.result event
+   * @param {Object} data - Sidebet result data
+   */
+  onSidebetResult(data) {
+    // Update local state
+    this.state.sidebetActive = false;
+    this.state.sidebetEndTick = null;
+
+    // Pass to bot controller
+    this.botController.processSidebetResult(data);
+  }
+
+  // ==========================================
+  // Bot Control Handlers
+  // ==========================================
+
+  /**
+   * Handle bot toggle button click
+   */
+  onBotToggle() {
+    if (this.botController.running) {
+      this.botController.stop();
+      this.updateBotStatusDisplay(false);
+    } else {
+      this.botController.start();
+      this.updateBotStatusDisplay(true);
+    }
+  }
+
+  /**
+   * Handle strategy selection change
+   * @param {string} strategyName - Selected strategy name
+   */
+  onStrategyChange(strategyName) {
+    this.botController.setStrategy(strategyName);
+    this.updateStrategyParamsDisplay();
+  }
+
+  /**
+   * Handle clear log button click
+   */
+  onClearLog() {
+    this.botController.decisionLog = [];
+    this.elements.decisionLog.innerHTML = '<div class="log-entry log-placeholder">Log cleared...</div>';
   }
 
   // ==========================================
@@ -708,6 +1233,122 @@ export class MinimalTradingApp {
     } else {
       this.elements.executeToggle.textContent = 'EXECUTE: OFF';
       this.elements.executeToggle.classList.remove('enabled');
+    }
+  }
+
+  // ==========================================
+  // Bot Panel Display Methods
+  // ==========================================
+
+  /**
+   * Update bot running status display
+   * @param {boolean} running - Bot running state
+   */
+  updateBotStatusDisplay(running) {
+    if (running) {
+      this.elements.botDot.classList.add('running');
+      this.elements.botStatusText.textContent = 'RUNNING';
+      this.elements.botToggle.textContent = 'STOP BOT';
+      this.elements.botToggle.classList.add('stop');
+    } else {
+      this.elements.botDot.classList.remove('running');
+      this.elements.botStatusText.textContent = 'OFF';
+      this.elements.botToggle.textContent = 'START BOT';
+      this.elements.botToggle.classList.remove('stop');
+    }
+  }
+
+  /**
+   * Update strategy parameters display
+   */
+  updateStrategyParamsDisplay() {
+    const strategy = this.botController.strategy;
+    this.elements.paramEntry.textContent = strategy.entry_tick;
+    this.elements.paramMaxBets.textContent = strategy.num_bets;
+    this.elements.paramBetSize.textContent = strategy.bet_sizes[0].toFixed(4);
+  }
+
+  /**
+   * Update bot session stats display
+   * @param {Object} stats - Session statistics
+   */
+  updateBotStatsDisplay(stats) {
+    this.elements.statGames.textContent = stats.games;
+    this.elements.statBets.textContent = stats.bets;
+    this.elements.statWins.textContent = stats.wins;
+    this.elements.statLosses.textContent = stats.losses;
+
+    // Win rate
+    const total = stats.wins + stats.losses;
+    const rate = total > 0 ? Math.round((stats.wins / total) * 100) : 0;
+    this.elements.statRate.textContent = `${rate}%`;
+
+    // Wagered
+    this.elements.statWagered.textContent = stats.wagered.toFixed(3);
+
+    // PnL with color
+    const pnlEl = this.elements.statPnl;
+    pnlEl.textContent = `${stats.pnl >= 0 ? '+' : ''}${stats.pnl.toFixed(3)}`;
+    pnlEl.classList.remove('pnl-positive', 'pnl-negative', 'pnl-neutral');
+    if (stats.pnl > 0) pnlEl.classList.add('pnl-positive');
+    else if (stats.pnl < 0) pnlEl.classList.add('pnl-negative');
+    else pnlEl.classList.add('pnl-neutral');
+  }
+
+  /**
+   * Update bot current game display
+   * @param {Object} gameState - Current game state
+   */
+  updateBotGameDisplay(gameState) {
+    this.elements.gameBets.textContent = gameState.bets;
+    this.elements.gameMax.textContent = gameState.maxBets;
+    this.elements.gameLastTick.textContent = gameState.lastTick !== null ? gameState.lastTick : '---';
+    this.elements.gameNextTick.textContent = gameState.nextTick !== null ? gameState.nextTick : '---';
+
+    // Status with color
+    const statusEl = this.elements.gameStatus;
+    statusEl.textContent = gameState.status;
+    statusEl.classList.remove('status-waiting', 'status-ready', 'status-betting', 'status-cooldown');
+    switch (gameState.status) {
+      case 'WAITING':
+        statusEl.classList.add('status-waiting');
+        break;
+      case 'READY':
+        statusEl.classList.add('status-ready');
+        break;
+      case 'BETTING':
+        statusEl.classList.add('status-betting');
+        break;
+      case 'MAXED':
+        statusEl.classList.add('status-cooldown');
+        break;
+    }
+  }
+
+  /**
+   * Add entry to decision log display
+   * @param {Object} entry - Log entry {time, type, message}
+   */
+  addLogEntry(entry) {
+    const logEl = this.elements.decisionLog;
+
+    // Remove placeholder if present
+    const placeholder = logEl.querySelector('.log-placeholder');
+    if (placeholder) {
+      placeholder.remove();
+    }
+
+    // Create log entry element
+    const entryEl = document.createElement('div');
+    entryEl.className = `log-entry log-${entry.type}`;
+    entryEl.textContent = `[${entry.time}] ${entry.message}`;
+
+    // Insert at top
+    logEl.insertBefore(entryEl, logEl.firstChild);
+
+    // Limit entries
+    while (logEl.children.length > 50) {
+      logEl.removeChild(logEl.lastChild);
     }
   }
 

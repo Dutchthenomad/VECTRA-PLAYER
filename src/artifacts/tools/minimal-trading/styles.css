@@ -39,10 +39,9 @@
    Root Container
    ============================================ */
 .minimal-trading {
-  width: 900px;
-  min-width: 800px;
-  height: 200px;
-  min-height: 180px;
+  width: 100%;
+  min-width: 700px;
+  height: 100vh;
   background: var(--mt-bg);
   color: var(--mt-text);
   font-family: Arial, sans-serif;
@@ -185,7 +184,6 @@
   display: flex;
   align-items: stretch;
   gap: 10px;
-  flex: 1;
   padding: 5px 0;
 }
 
@@ -427,7 +425,7 @@ button.flash-error {
 @media (max-width: 850px) {
   .minimal-trading {
     width: 100%;
-    min-width: 800px;
+    min-width: 700px;
   }
 
   .inc-btn,
@@ -440,4 +438,243 @@ button.flash-error {
     width: 80px;
     font-size: 12pt;
   }
+}
+
+/* ============================================
+   Bot Control Panel
+   ============================================ */
+.bot-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Bot Header */
+.bot-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--mt-panel);
+  border-radius: 4px;
+  border: 1px solid var(--mt-separator);
+}
+
+.bot-toggle-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+
+.bot-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+.bot-dot {
+  font-size: 14px;
+  color: var(--btn-red);
+  transition: color 0.3s;
+}
+
+.bot-dot.running {
+  color: var(--phase-active);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.bot-toggle-btn {
+  padding: 6px 14px;
+  font-size: 10pt;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--phase-active);
+  color: #000;
+  transition: all 0.2s;
+}
+
+.bot-toggle-btn:hover {
+  background: var(--btn-buy-hover);
+}
+
+.bot-toggle-btn.stop {
+  background: var(--btn-red);
+  color: #fff;
+}
+
+.bot-toggle-btn.stop:hover {
+  background: var(--btn-red-hover);
+}
+
+.bot-strategy-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.strategy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strategy-row .label {
+  color: var(--mt-text-dim);
+  font-size: 10pt;
+}
+
+.strategy-select {
+  background: var(--mt-bg);
+  border: 1px solid var(--mt-separator);
+  color: var(--mt-text);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 10pt;
+  cursor: pointer;
+}
+
+.strategy-select:focus {
+  outline: none;
+  border-color: var(--btn-sell);
+}
+
+.strategy-params {
+  font-size: 9pt;
+  color: var(--mt-text-dim);
+}
+
+.strategy-params span {
+  color: var(--mt-text);
+  font-weight: bold;
+}
+
+/* Stats Row */
+.bot-stats-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Bot Sections */
+.bot-section {
+  background: var(--mt-panel);
+  border: 1px solid var(--mt-separator);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.stats-section,
+.game-section {
+  flex: 1;
+}
+
+.section-title {
+  font-size: 9pt;
+  font-weight: bold;
+  color: var(--mt-text-dim);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 12px;
+  font-size: 10pt;
+}
+
+.stats-grid span {
+  color: var(--mt-text-dim);
+}
+
+.stats-grid strong {
+  color: var(--mt-text);
+}
+
+/* PnL Colors */
+.pnl-positive { color: var(--phase-active) !important; }
+.pnl-negative { color: var(--btn-red) !important; }
+.pnl-neutral { color: var(--mt-text-dim) !important; }
+
+/* Status Colors */
+.status-waiting { color: var(--mt-text-dim) !important; }
+.status-ready { color: var(--btn-sidebet) !important; }
+.status-betting { color: var(--phase-active) !important; }
+.status-cooldown { color: var(--btn-sell) !important; }
+
+/* Decision Log */
+.log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+}
+
+.decision-log {
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 10pt;
+  background: #0d0d0d;
+  border-radius: 3px;
+  padding: 6px 8px;
+  min-height: 80px;
+  max-height: 200px;
+}
+
+.log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry.log-hold { color: var(--mt-text-dim); }
+.log-entry.log-sidebet { color: var(--phase-active); }
+.log-entry.log-win { color: #00ff88; font-weight: bold; }
+.log-entry.log-loss { color: var(--btn-red); }
+.log-entry.log-placeholder { color: #555; font-style: italic; }
+.log-entry.log-info { color: var(--btn-sell); }
+
+.clear-log-btn {
+  font-size: 8pt;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--mt-separator);
+  color: var(--mt-text-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-log-btn:hover {
+  background: var(--mt-separator);
+  color: var(--mt-text);
 }
