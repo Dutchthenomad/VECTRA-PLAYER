@@ -1,0 +1,22 @@
+{
+  "name": "minimal-trading",
+  "version": "1.0.0",
+  "description": "Minimal trading UI - HTML port of Tkinter MinimalWindow for RL training data collection",
+  "author": "VECTRA",
+  "created": "2026-01-24",
+  "spec_version": "MINIMAL-UI-SPEC v1.0.0",
+  "requires": {
+    "foundation-ws-client": "^1.0.0",
+    "vectra-styles": "^1.0.0"
+  },
+  "events_consumed": [
+    "game.tick",
+    "player.state",
+    "connection.authenticated",
+    "connection"
+  ],
+  "events_emitted": [
+    "button.press"
+  ],
+  "api_endpoints": []
+}

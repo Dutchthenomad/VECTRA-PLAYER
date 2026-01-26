@@ -1,0 +1,23 @@
+{
+  "name": "recording-control",
+  "version": "1.0.0",
+  "description": "Control panel for the Recording Service - toggle recording, view stats, and monitor captured games",
+  "author": "VECTRA Team",
+  "created": "2026-01-19",
+  "requires": {
+    "foundation-ws-client": "^1.0.0",
+    "vectra-styles": "^1.0.0",
+    "recording-service": "^1.0.0"
+  },
+  "events_consumed": [
+    "game.tick"
+  ],
+  "api_endpoints": [
+    "GET http://localhost:9010/health",
+    "GET http://localhost:9010/recording/status",
+    "POST http://localhost:9010/recording/start",
+    "POST http://localhost:9010/recording/stop",
+    "GET http://localhost:9010/recording/stats",
+    "GET http://localhost:9010/recording/recent"
+  ]
+}

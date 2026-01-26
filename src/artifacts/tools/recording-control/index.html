@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recording Control - VECTRA</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        /* Recording-specific styles */
+        .recording-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: var(--space-md);
+            height: calc(100vh - 100px);
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            overflow: auto;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        /* Status Card */
+        .status-card {
+            background: linear-gradient(135deg, var(--ctp-surface0), var(--ctp-mantle));
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .status-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse-recording 2s infinite;
+        }
+
+        .status-dot.recording {
+            background-color: var(--ctp-green);
+            box-shadow: 0 0 12px var(--ctp-green);
+        }
+
+        .status-dot.stopped {
+            background-color: var(--ctp-red);
+            box-shadow: none;
+            animation: none;
+        }
+
+        @keyframes pulse-recording {
+            0%, 100% { opacity: 1; box-shadow: 0 0 12px var(--ctp-green); }
+            50% { opacity: 0.7; box-shadow: 0 0 6px var(--ctp-green); }
+        }
+
+        .status-label {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .status-label.recording { color: var(--ctp-green); }
+        .status-label.stopped { color: var(--ctp-red); }
+
+        .status-meta {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-top: var(--space-xs);
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            padding: var(--space-sm) var(--space-xl);
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .toggle-btn.stop {
+            background-color: var(--ctp-red);
+            color: var(--ctp-base);
+        }
+
+        .toggle-btn.start {
+            background-color: var(--ctp-green);
+            color: var(--ctp-base);
+        }
+
+        .toggle-btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        /* Stats Grid */
+        .recording-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-sm);
+        }
+
+        .stat-card {
+            background-color: var(--ctp-surface0);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+            letter-spacing: 0.05em;
+            margin-top: var(--space-xs);
+        }
+
+        .stat-card.highlight .stat-value {
+            color: var(--ctp-green);
+        }
+
+        /* Recent Games Table */
+        .recent-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .recent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .recent-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: var(--space-sm);
+        }
+
+        .game-row {
+            display: grid;
+            grid-template-columns: 1fr 80px 70px 60px;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            transition: background-color 0.15s;
+        }
+
+        .game-row:hover {
+            background-color: var(--ctp-surface1);
+        }
+
+        .game-row .game-id {
+            color: var(--ctp-sapphire);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .game-row .ticks {
+            color: var(--color-text-muted);
+            text-align: right;
+        }
+
+        .game-row .multiplier {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .game-row .multiplier.high { color: var(--ctp-green); }
+        .game-row .multiplier.mid { color: var(--ctp-yellow); }
+        .game-row .multiplier.low { color: var(--ctp-red); }
+
+        .game-row .time {
+            color: var(--color-text-muted);
+            text-align: right;
+        }
+
+        /* Sidebar */
+        .config-card {
+            background-color: var(--ctp-surface0);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .config-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: var(--space-sm);
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-xs) 0;
+            font-size: 0.85rem;
+        }
+
+        .config-item .label {
+            color: var(--color-text-muted);
+        }
+
+        .config-item .value {
+            font-family: var(--font-mono);
+            color: var(--color-text);
+        }
+
+        /* Storage Indicator */
+        .storage-bar {
+            margin-top: var(--space-md);
+        }
+
+        .storage-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: var(--space-xs);
+        }
+
+        .storage-track {
+            height: 6px;
+            background-color: var(--ctp-surface1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .storage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ctp-green), var(--ctp-teal));
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* Live Feed */
+        .feed-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 200px;
+        }
+
+        .feed-list {
+            flex: 1;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            line-height: 1.6;
+        }
+
+        .feed-entry {
+            padding: 2px var(--space-xs);
+            border-radius: 2px;
+        }
+
+        .feed-entry:nth-child(odd) {
+            background-color: rgba(255,255,255,0.02);
+        }
+
+        .feed-entry .timestamp {
+            color: var(--ctp-overlay0);
+        }
+
+        .feed-entry .event-type {
+            color: var(--ctp-mauve);
+        }
+
+        .feed-entry .event-data {
+            color: var(--color-text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <!-- Header -->
+        <header class="artifact-header">
+            <h1>RECORDING CONTROL</h1>
+            <div class="connection-status">
+                <span class="connection-dot disconnected"></span>
+                <span>Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="artifact-main">
+            <div class="recording-grid">
+                <!-- Main Panel -->
+                <div class="main-panel">
+                    <!-- Status Card -->
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-title">Recording Status</span>
+                            <button class="toggle-btn stop" id="toggleBtn" onclick="toggleRecording()">
+                                STOP
+                            </button>
+                        </div>
+                        <div class="status-indicator">
+                            <div class="status-dot recording" id="statusDot"></div>
+                            <span class="status-label recording" id="statusLabel">RECORDING</span>
+                        </div>
+                        <div class="status-meta" id="statusMeta">
+                            Loading...
+                        </div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="recording-stats">
+                        <div class="stat-card highlight">
+                            <div class="stat-value" id="sessionGames">0</div>
+                            <div class="stat-label">Session Games</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="todayGames">0</div>
+                            <div class="stat-label">Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalGames">0</div>
+                            <div class="stat-label">Total Stored</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="lastRug">--</div>
+                            <div class="stat-label">Last Rug</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Games -->
+                    <div class="card recent-card">
+                        <div class="recent-header">
+                            <span class="card-header">Recent Captures</span>
+                            <button class="btn btn-secondary" onclick="clearRecent()">Clear</button>
+                        </div>
+                        <div class="recent-list" id="recentList">
+                            <div style="padding: var(--space-md); color: var(--color-text-muted); text-align: center;">
+                                Loading recent games...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Configuration -->
+                    <div class="config-card" id="serviceHealthCard">
+                        <div class="config-title">Configuration</div>
+                        <div class="config-item">
+                            <span class="label">Storage Path</span>
+                            <span class="value">~/rugs_recordings/</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Format</span>
+                            <span class="value">Parquet</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Dedup</span>
+                            <span class="value" style="color: var(--ctp-green);">Enabled</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Auto-start</span>
+                            <span class="value" style="color: var(--ctp-green);">ON</span>
+                        </div>
+
+                        <div class="storage-bar">
+                            <div class="storage-info">
+                                <span class="text-muted">Storage Used</span>
+                                <span class="font-mono">0 MB / 50 GB</span>
+                            </div>
+                            <div class="storage-track">
+                                <div class="storage-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Feed -->
+                    <div class="card feed-card">
+                        <div class="card-header">Live Event Feed</div>
+                        <div class="feed-list" id="feedList">
+                            <div class="feed-entry">
+                                <span class="timestamp">--:--:--</span>
+                                <span class="event-type">INIT</span>
+                                <span class="event-data">Waiting for connection...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Health -->
+                    <div class="config-card" id="serviceHealthCard">
+                        <div class="config-title">Service Health</div>
+                        <div class="config-item">
+                            <span class="label">Container</span>
+                            <span class="value" id="healthContainer" style="color: var(--ctp-yellow);">Loading...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Uptime</span>
+                            <span class="value" id="healthUptime">--</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Memory</span>
+                            <span class="value" id="healthMemory">--</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Last Error</span>
+                            <span class="value" id="healthLastError" style="color: var(--ctp-green);">None</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="artifact-footer">
+            <span>Foundation v1.0 | Recording Service v1.0</span>
+            <span>Port: 9010 | API: localhost:9010</span>
+        </footer>
+    </div>
+
+    <!-- REQUIRED: Foundation WebSocket client - import for window global -->
+    <script type="module">
+        import { FoundationWSClient } from '../../shared/foundation-ws-client.js';
+        window.FoundationWSClient = FoundationWSClient;
+    </script>
+
+    <!-- REQUIRED: Application logic -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -6,9 +6,10 @@ Launches:
 1. Foundation service (WebSocket broadcaster + HTTP server)
 2. Chrome with rugs_bot profile via CDP
 3. Tab 1: rugs.fun (game)
-4. Tab 2: http://localhost:9001 (monitoring UI)
-5. CDP interception feeds events to Foundation broadcaster
-6. Waits for usernameStatus to confirm authentication
+4. Tab 2: http://localhost:9001/monitor/ (Foundation System Monitor - detailed events)
+5. Tab 3: http://localhost:9001/ (VECTRA Control Panel - service management)
+6. CDP interception feeds events to Foundation broadcaster
+7. Waits for usernameStatus to confirm authentication
 
 Usage:
     python -m foundation.launcher
@@ -31,6 +32,16 @@ if str(src_dir) not in sys.path:
 from foundation.config import FoundationConfig
 from foundation.http_server import FoundationHTTPServer
 from foundation.service import FoundationService
+from foundation.service_manager import ServiceManager
+
+# Browser executor for trade API
+try:
+    from browser.executor import BrowserExecutor
+
+    BROWSER_EXECUTOR_AVAILABLE = True
+except ImportError:
+    BrowserExecutor = None
+    BROWSER_EXECUTOR_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +55,10 @@ class FoundationLauncher:
     2. Launch Chrome with rugs_bot profile
     3. Navigate Tab 1 to rugs.fun
     4. Setup CDP interception
-    5. Open Tab 2 with monitoring UI
-    6. Wait for usernameStatus authentication
-    7. Ready for subscribers
+    5. Open Tab 2 with System Monitor (/monitor/)
+    6. Open Tab 3 with Control Panel (/)
+    7. Wait for usernameStatus authentication
+    8. Ready for subscribers
     """
 
     MONITOR_URL = "http://localhost:{port}"
@@ -56,6 +68,16 @@ class FoundationLauncher:
         self.config = config or FoundationConfig()
         self.service = FoundationService(self.config)
         self.http_server = FoundationHTTPServer(self.config)
+
+        # Initialize Service Manager for managing subscriber services
+        project_root = Path(__file__).parent.parent.parent
+        self.service_manager = ServiceManager(project_root)
+
+        # Inject service manager into HTTP server for API endpoints
+        self.http_server.set_service_manager(self.service_manager)
+
+        # Browser executor for trade API (created after browser connects)
+        self.browser_executor: BrowserExecutor | None = None
 
         self._running = False
         self._browser_manager = None
@@ -96,6 +118,9 @@ class FoundationLauncher:
             # Step 5: Open monitoring UI in Tab 2
             await self._open_monitoring_tab()
 
+            # Step 5b: Create Trade API executor
+            await self._create_trade_executor()
+
             # Step 6: Wait for authentication
             authenticated = await self._wait_for_authentication()
 
@@ -122,8 +147,15 @@ class FoundationLauncher:
             await self.stop()
 
     async def _start_foundation_services(self):
-        """Start WebSocket broadcaster and HTTP server."""
+        """Start WebSocket broadcaster, HTTP server, and Service Manager."""
         logger.info("Starting Foundation services...")
+
+        # Discover available services
+        discovered = self.service_manager.discover_services()
+        logger.info(f"  Discovered services: {discovered}")
+
+        # Start Service Manager health check loop
+        await self.service_manager.start()
 
         # Start broadcaster in background
         self._broadcaster_task = asyncio.create_task(self.service.broadcaster.start())
@@ -210,19 +242,27 @@ class FoundationLauncher:
             logger.warning("  No browser page available")
 
     async def _open_monitoring_tab(self):
-        """Open Tab 2 with monitoring UI."""
-        logger.info("Opening monitoring UI...")
+        """Open Tab 2 (System Monitor) and Tab 3 (Control Panel)."""
+        logger.info("Opening monitoring UIs...")
 
-        monitor_url = self.MONITOR_URL.format(port=self.config.http_port)
+        base_url = self.MONITOR_URL.format(port=self.config.http_port)
+        monitor_url = f"{base_url}/monitor/"
+        control_panel_url = base_url
 
         if self._browser_manager and self._browser_manager.context:
-            # Open new tab
+            # Tab 2: Foundation System Monitor (detailed event view)
             monitor_page = await self._browser_manager.context.new_page()
             await monitor_page.goto(monitor_url, wait_until="networkidle")
-            logger.info(f"  Tab 2: {monitor_url}")
+            logger.info(f"  Tab 2: {monitor_url} (System Monitor)")
+
+            # Tab 3: VECTRA Control Panel (service management)
+            control_page = await self._browser_manager.context.new_page()
+            await control_page.goto(control_panel_url, wait_until="networkidle")
+            logger.info(f"  Tab 3: {control_panel_url} (Control Panel)")
         else:
-            logger.info(f"  Monitor available at: {monitor_url}")
-            logger.info("  (Open manually in Chrome Tab 2)")
+            logger.info(f"  System Monitor: {monitor_url}")
+            logger.info(f"  Control Panel: {control_panel_url}")
+            logger.info("  (Open manually in Chrome)")
 
     async def _wait_for_authentication(self) -> bool:
         """Wait for usernameStatus event."""
@@ -260,6 +300,35 @@ class FoundationLauncher:
                 logger.info(f"  Authenticated as: {data.get('username')}")
                 self._auth_event.set()
 
+    async def _create_trade_executor(self):
+        """Create BrowserExecutor for Trade API and inject into HTTP server."""
+        if not BROWSER_EXECUTOR_AVAILABLE:
+            logger.warning("BrowserExecutor not available - Trade API disabled")
+            return
+
+        if not self._browser_manager:
+            logger.warning("No browser manager available - Trade API disabled")
+            return
+
+        logger.info("Creating BrowserExecutor for Trade API...")
+
+        try:
+            self.browser_executor = BrowserExecutor(
+                profile_name=self.config.chrome_profile,
+                use_cdp=True,
+            )
+
+            # Share the existing browser manager (don't create a new connection)
+            self.browser_executor.cdp_manager = self._browser_manager
+
+            # Inject into HTTP server for trade endpoints
+            self.http_server.set_browser_executor(self.browser_executor)
+            logger.info("  Trade API ready (sharing browser connection)")
+
+        except Exception as e:
+            logger.error(f"Failed to create BrowserExecutor: {e}")
+            self.browser_executor = None
+
     async def _run_forever(self):
         """Run until interrupted."""
         stop_event = asyncio.Event()
@@ -282,8 +351,17 @@ class FoundationLauncher:
         self._running = False
         logger.info("Stopping Foundation launcher...")
 
+        # Stop Service Manager (stops all managed services)
+        await self.service_manager.stop()
+
         # Stop broadcaster
         await self.service.broadcaster.stop()
+
+        # Clear browser executor reference (browser manager is shared, don't stop it)
+        if self.browser_executor:
+            self.browser_executor.cdp_manager = None
+            self.browser_executor = None
+            logger.info("BrowserExecutor cleared")
 
         # Disconnect browser
         if self._browser_manager:

@@ -1,0 +1,443 @@
+/**
+ * Minimal Trading UI Styles
+ *
+ * Extends vectra-styles.css - do not duplicate shared variables.
+ * See: docs/specs/MINIMAL-UI-SPEC.md for complete specification.
+ */
+
+/* ============================================
+   CSS Variables (Trading-specific extensions)
+   ============================================ */
+.minimal-trading {
+  /* Use vectra-styles.css variables with fallbacks */
+  --mt-bg: var(--ctp-base, #1a1a1a);
+  --mt-panel: var(--ctp-surface0, #2a2a2a);
+  --mt-text: var(--ctp-text, #ffffff);
+  --mt-text-dim: var(--ctp-overlay0, #888888);
+  --mt-separator: var(--ctp-surface1, #666666);
+
+  /* Phase colors */
+  --phase-active: #00ff66;
+  --phase-presale: #ffcc00;
+  --phase-cooldown: #ff3366;
+  --phase-rugged: #ff3366;
+
+  /* Button colors */
+  --btn-buy: #00ff66;
+  --btn-buy-hover: #00cc55;
+  --btn-sidebet: #ffcc00;
+  --btn-sidebet-hover: #ddaa00;
+  --btn-sell: #3399ff;
+  --btn-sell-hover: #2277dd;
+  --btn-gray: #666666;
+  --btn-selected: #00cc66;
+  --btn-red: #cc3333;
+  --btn-red-hover: #ff4444;
+}
+
+/* ============================================
+   Root Container
+   ============================================ */
+.minimal-trading {
+  width: 900px;
+  min-width: 800px;
+  height: 200px;
+  min-height: 180px;
+  background: var(--mt-bg);
+  color: var(--mt-text);
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   Status Bar
+   ============================================ */
+.status-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-label {
+  color: var(--mt-text-dim);
+  font-size: 10pt;
+}
+
+.status-value {
+  color: var(--mt-text);
+  font-size: 10pt;
+  font-weight: bold;
+}
+
+/* Phase coloring */
+.status-phase {
+  color: var(--mt-text);
+}
+.status-phase.active { color: var(--phase-active); }
+.status-phase.presale { color: var(--phase-presale); }
+.status-phase.cooldown { color: var(--phase-cooldown); }
+.status-phase.rugged { color: var(--phase-rugged); }
+
+/* User and Balance */
+.user-info,
+.balance-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.balance-value {
+  color: var(--phase-active);
+  font-size: 10pt;
+  font-weight: bold;
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.connection-dot {
+  font-size: 12pt;
+  color: var(--btn-gray);
+  transition: color 0.2s;
+}
+.connection-dot.connected {
+  color: var(--phase-active);
+}
+
+.connect-btn {
+  background: var(--btn-sell);
+  color: var(--mt-text);
+  border: none;
+  padding: 4px 10px;
+  font-size: 9pt;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.connect-btn:hover {
+  background: var(--btn-sell-hover);
+}
+.connect-btn.connected {
+  background: var(--phase-active);
+  color: #000;
+  cursor: default;
+}
+
+/* Execute Toggle */
+.execute-toggle {
+  background: var(--btn-red);
+  color: var(--mt-text);
+  border: none;
+  padding: 4px 10px;
+  font-size: 9pt;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.execute-toggle:hover {
+  background: var(--btn-red-hover);
+}
+.execute-toggle.enabled {
+  background: var(--btn-buy-hover);
+  color: #000;
+}
+
+/* ============================================
+   Separator
+   ============================================ */
+.separator {
+  height: 1px;
+  background: var(--mt-separator);
+  margin: 5px 0;
+}
+
+/* ============================================
+   Controls Section
+   ============================================ */
+.controls {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex: 1;
+  padding: 5px 0;
+}
+
+/* Percentage Frame */
+.pct-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pct-btn {
+  width: 50px;
+  padding: 4px 8px;
+  background: var(--btn-gray);
+  color: var(--mt-text);
+  border: 2px solid var(--btn-gray);
+  font-size: 9pt;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.1s;
+}
+.pct-btn:hover {
+  background: var(--btn-selected);
+  color: #000;
+}
+.pct-btn.selected {
+  background: var(--btn-selected);
+  color: #000;
+  border-width: 3px;
+  border-style: inset;
+}
+
+/* Center Frame */
+.center-frame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.inc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inc-buttons,
+.util-buttons {
+  display: flex;
+  gap: 3px;
+}
+
+.spacer {
+  width: 30px;
+}
+
+.inc-btn,
+.util-btn {
+  width: 60px;
+  padding: 4px 6px;
+  background: var(--mt-panel);
+  color: var(--mt-text);
+  border: 1px solid var(--mt-separator);
+  font-size: 9pt;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.inc-btn:hover,
+.util-btn:hover {
+  background: var(--btn-gray);
+}
+
+/* Bet Entry Row */
+.bet-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bet-label {
+  color: var(--mt-text-dim);
+  font-size: 9pt;
+}
+
+.clear-btn {
+  width: 30px;
+  height: 28px;
+  background: var(--btn-red);
+  color: var(--mt-text);
+  border: none;
+  font-size: 10pt;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.clear-btn:hover {
+  background: var(--btn-red-hover);
+}
+
+.bet-input {
+  width: 100px;
+  padding: 4px 8px;
+  background: var(--mt-panel);
+  color: var(--mt-text);
+  border: 2px inset var(--mt-separator);
+  font-size: 12pt;
+  text-align: right;
+  border-radius: 3px;
+}
+.bet-input:focus {
+  outline: none;
+  border-color: var(--btn-sell);
+}
+
+.bet-unit {
+  color: var(--mt-text-dim);
+  font-size: 10pt;
+  font-weight: bold;
+}
+
+/* Action Frame */
+.action-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.action-btn {
+  width: 100px;
+  height: 40px;
+  border: 2px outset;
+  font-size: 14pt;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+
+.buy-btn {
+  background: var(--btn-buy);
+  color: #000;
+  border-color: var(--btn-buy);
+}
+.buy-btn:hover {
+  background: var(--btn-buy-hover);
+}
+.buy-btn:active {
+  border-style: inset;
+}
+
+.sidebet-btn {
+  background: var(--btn-sidebet);
+  color: #000;
+  border-color: var(--btn-sidebet);
+}
+.sidebet-btn:hover {
+  background: var(--btn-sidebet-hover);
+}
+.sidebet-btn:active {
+  border-style: inset;
+}
+
+.sell-btn {
+  background: var(--btn-sell);
+  color: var(--mt-text);
+  border-color: var(--btn-sell);
+}
+.sell-btn:hover {
+  background: var(--btn-sell-hover);
+}
+.sell-btn:active {
+  border-style: inset;
+}
+
+/* ============================================
+   Loading & Feedback States (Trade Execution)
+   ============================================ */
+
+/* Loading state - button disabled with opacity */
+button.loading {
+  opacity: 0.6;
+  cursor: wait;
+  pointer-events: none;
+}
+
+/* Success flash - green pulse */
+@keyframes flash-success {
+  0% { background-color: inherit; }
+  50% { background-color: var(--btn-buy); box-shadow: 0 0 10px var(--btn-buy); }
+  100% { background-color: inherit; }
+}
+
+button.flash-success {
+  animation: flash-success 0.3s ease-out;
+}
+
+/* Error flash - red pulse */
+@keyframes flash-error {
+  0% { background-color: inherit; }
+  50% { background-color: var(--btn-red); box-shadow: 0 0 10px var(--btn-red); }
+  100% { background-color: inherit; }
+}
+
+button.flash-error {
+  animation: flash-error 0.3s ease-out;
+}
+
+/* Action buttons loading state (preserve their colors) */
+.action-btn.loading {
+  opacity: 0.7;
+}
+
+.buy-btn.flash-success {
+  animation: none;
+  background-color: var(--btn-buy-hover);
+  box-shadow: 0 0 15px var(--btn-buy);
+  transition: all 0.15s ease-out;
+}
+
+.sell-btn.flash-success {
+  animation: none;
+  background-color: var(--btn-sell-hover);
+  box-shadow: 0 0 15px var(--btn-sell);
+  transition: all 0.15s ease-out;
+}
+
+.sidebet-btn.flash-success {
+  animation: none;
+  background-color: var(--btn-sidebet-hover);
+  box-shadow: 0 0 15px var(--btn-sidebet);
+  transition: all 0.15s ease-out;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+@media (max-width: 850px) {
+  .minimal-trading {
+    width: 100%;
+    min-width: 800px;
+  }
+
+  .inc-btn,
+  .util-btn {
+    width: 50px;
+    font-size: 8pt;
+  }
+
+  .action-btn {
+    width: 80px;
+    font-size: 12pt;
+  }
+}
