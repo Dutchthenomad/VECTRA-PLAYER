@@ -1,0 +1,50 @@
+{
+  "name": "optimization-service",
+  "version": "1.0.0",
+  "description": "Statistical optimization and strategy profile producer. Runs survival analysis, Bayesian rug signals, Kelly sizing, and Monte Carlo simulations.",
+  "author": "VECTRA Team",
+  "created": "2026-01-26",
+  "port": 9020,
+  "health_endpoint": "/health",
+  "start_command": "./start.sh",
+  "working_dir": "services/optimization",
+  "requires_foundation": true,
+  "events_consumed": [
+    "game.tick"
+  ],
+  "events_emitted": [],
+  "dependencies": [],
+  "requires": {
+    "foundation": "^1.0.0",
+    "python": ">=3.11"
+  },
+  "api_endpoints": [
+    "GET /health",
+    "GET /profiles",
+    "GET /profiles/{profile_id}",
+    "POST /profiles/generate",
+    "GET /analysis/survival",
+    "GET /analysis/bayesian",
+    "GET /stats"
+  ],
+  "docker": {
+    "enabled": true,
+    "port": 9020,
+    "health_endpoint": "/health",
+    "volumes": [
+      "/data/strategy_profiles"
+    ]
+  },
+  "storage": {
+    "format": "parquet",
+    "location": "/data/strategy_profiles",
+    "partitioning": "by_date"
+  },
+  "features": {
+    "survival_analysis": true,
+    "bayesian_rug_signal": true,
+    "kelly_sizing": true,
+    "monte_carlo": true,
+    "strategy_profiles": true
+  }
+}

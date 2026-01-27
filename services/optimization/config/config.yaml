@@ -1,0 +1,16 @@
+# Optimization Service Configuration
+foundation_ws_url: ws://localhost:9000/feed
+storage_path: ~/rugs_data/strategy_profiles
+port: 9020
+host: 0.0.0.0
+
+# Analysis parameters
+monte_carlo_iterations: 10000
+kelly_fraction: 0.25
+min_edge_threshold: 0.02
+optimal_entry_tick: 200
+
+# Bayesian parameters
+gap_warning_threshold_ms: 350
+gap_high_alert_threshold_ms: 450
+gap_detected_threshold_ms: 500

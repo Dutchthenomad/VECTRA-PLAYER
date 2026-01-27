@@ -1,0 +1,7 @@
+numpy>=1.24.0
+scipy>=1.11.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pyarrow>=14.0.0
+pyyaml>=6.0
+websockets>=12.0
