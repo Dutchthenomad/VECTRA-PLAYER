@@ -16,6 +16,11 @@ from .kelly import (
     kelly_criterion,
     recommend_bet_size,
 )
+from .monte_carlo import (
+    MonteCarloConfig,
+    MonteCarloSimulator,
+    ScalingMode,
+)
 from .survival import (
     compute_conditional_probability,
     compute_hazard_rate,
@@ -43,4 +48,8 @@ __all__ = [
     "recommend_bet_size",
     "calculate_all_variants",
     "KellyResult",
+    # Monte Carlo
+    "MonteCarloSimulator",
+    "MonteCarloConfig",
+    "ScalingMode",
 ]
