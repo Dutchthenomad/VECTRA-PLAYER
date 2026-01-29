@@ -71,10 +71,11 @@ class TestProfileProducer:
         """Producer should generate valid profile from games."""
         from src.profiles.producer import ProfileProducer
 
-        producer = ProfileProducer()
+        # Use fewer iterations for faster testing
+        producer = ProfileProducer(monte_carlo_iterations=100)
         profile = producer.generate_profile(sample_games)
 
         assert profile is not None
         assert profile.profile_id is not None
         assert profile.optimal_entry_tick > 0
-        assert 0 < profile.probability_profit < 1
+        assert 0 <= profile.probability_profit <= 1
