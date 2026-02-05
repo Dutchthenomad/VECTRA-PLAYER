@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  rugs-feed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vectra-rugs-feed
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-9016}:${PORT:-9016}"
+
+    volumes:
+      # Configuration (read-only)
+      - ./config:/app/config:ro
+
+      # SQLite database (persistent)
+      - ${DATA_PATH:-rugs-feed-data}:/data
+
+    environment:
+      - RUGS_BACKEND_URL=${RUGS_BACKEND_URL:-https://backend.rugs.fun}
+      - PORT=${PORT:-9016}
+      - HOST=0.0.0.0
+      - STORAGE_PATH=/data/rugs_feed.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MAX_RECONNECT_ATTEMPTS=${MAX_RECONNECT_ATTEMPTS:-100}
+      - RECONNECT_DELAY=${RECONNECT_DELAY:-5}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-9016}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    networks:
+      - vectra-network
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  rugs-feed-data:
+    name: vectra-rugs-feed-data
+
+networks:
+  vectra-network:
+    name: vectra-network
+    driver: bridge
