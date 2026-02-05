@@ -1,0 +1,23 @@
+{
+  "name": "rugs-feed",
+  "version": "1.0.0",
+  "description": "Direct WebSocket capture service for rugs.fun events",
+  "port": 9016,
+  "health_endpoint": "/health",
+  "start_command": "python -m src.main",
+  "working_dir": "services/rugs-feed",
+  "requires_foundation": false,
+  "events_consumed": [],
+  "events_emitted": ["raw.game_state", "raw.trade", "raw.sidebet", "raw.seed_reveal"],
+  "dependencies": [],
+  "author": "VECTRA Team",
+  "created": "2026-02-04",
+  "docker": {
+    "image": "vectra-rugs-feed",
+    "compose_file": "docker-compose.yml"
+  },
+  "storage": {
+    "type": "sqlite",
+    "path": "/data/rugs_feed.db"
+  }
+}
