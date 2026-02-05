@@ -1,0 +1,18 @@
+# Rugs Feed Service Configuration
+
+# Backend connection
+rugs_backend_url: "https://backend.rugs.fun"
+
+# Storage
+storage_path: "/data/rugs_feed.db"
+
+# API Server
+port: 9016
+host: "0.0.0.0"
+
+# Reconnection settings
+max_reconnect_attempts: 100
+reconnect_delay_seconds: 5
+
+# Logging
+log_level: "INFO"
