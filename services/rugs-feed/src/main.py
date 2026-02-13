@@ -3,6 +3,7 @@ Rugs Feed Service Main Entry Point
 
 Starts:
 - Direct Socket.IO connection to rugs.fun
+- WebSocket broadcaster for downstream subscribers
 - SQLite storage for event capture
 - FastAPI server for querying captured data
 
@@ -20,7 +21,8 @@ import uvicorn
 import yaml
 
 from .api import create_app
-from .client import CapturedEvent, RugsFeedClient
+from .broadcaster import get_broadcaster
+from .client import CapturedEvent, GameHistoryEntry, RugsFeedClient
 from .storage import EventStorage
 
 # Configure logging
@@ -96,10 +98,15 @@ async def run_service():
     logger.info(f"Backend URL: {config['rugs_backend_url']}")
     logger.info(f"Storage Path: {config['storage_path']}")
     logger.info(f"API Port: {config['port']}")
+    logger.info(f"WebSocket Feed: ws://localhost:{config['port']}/feed")
 
     # Initialize storage
     _storage = EventStorage(config["storage_path"])
     await _storage.initialize()
+
+    # Initialize broadcaster
+    broadcaster = get_broadcaster()
+    broadcaster.start()
 
     # Event handler that stores to SQLite
     def on_event(event: CapturedEvent):
@@ -107,10 +114,18 @@ async def run_service():
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
 
-    # Initialize client
+    # Game history handler (complete records from gameHistory on rug)
+    def on_game_history(entry: GameHistoryEntry):
+        task = asyncio.create_task(_storage.store_game_history(entry))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+
+    # Initialize client with broadcaster
     _client = RugsFeedClient(
         url=config["rugs_backend_url"],
         on_event=on_event,
+        broadcaster=broadcaster,
+        on_game_history=on_game_history,
     )
 
     # Create API app
@@ -161,16 +176,22 @@ async def run_service():
         while not shutdown_event.is_set():
             try:
                 stats = await _storage.get_stats()
+                broadcaster_stats = broadcaster.get_stats()
                 logger.info(
                     f"Stats: {stats['total_games']} games, "
                     f"{stats['seed_reveals']} seeds, "
-                    f"{stats['total_events']} events"
+                    f"{stats['total_events']} events, "
+                    f"{stats.get('game_history_records', 0)} history records, "
+                    f"{broadcaster_stats['client_count']} ws clients"
                 )
             except Exception as e:
                 logger.error(f"Stats error: {e}")
             await asyncio.sleep(300)  # Every 5 minutes
 
     try:
+        # Start broadcaster's event loop
+        await broadcaster.start_broadcast_loop()
+
         await asyncio.gather(
             run_api(),
             run_websocket(),
@@ -180,6 +201,7 @@ async def run_service():
         logger.info("Service tasks cancelled")
     finally:
         logger.info("Cleaning up...")
+        broadcaster.stop()
         if _client:
             await _client.disconnect()
         if _storage:

@@ -3,25 +3,42 @@
 #
 # Usage: ./scripts/start.sh [OPTIONS]
 #
-# This script starts everything needed for VECTRA:
-#   1. Chrome browser with rugs_bot profile (CDP enabled on port 9222)
-#   2. Flask recording dashboard on port 5000
-#   3. Opens dashboard in Chrome tab
+# This script delegates to the main ./vectra launcher.
+# For the new Foundation-based Control Panel, run: ./vectra start
 #
-# The dashboard provides:
-#   - Chrome browser connection (CONNECT button)
-#   - Trading controls (BUY/SELL/SIDEBET)
-#   - Bet amount controls
-#   - Recording toggle
-#   - Game state display
-#
-# Options:
+# Legacy options (for backward compatibility):
 #   -n, --no-browser    Don't auto-open Chrome tab
 #   -c, --no-chrome     Don't launch Chrome (assumes already running)
 #   -p, --port PORT     Use custom dashboard port (default: 5000)
+#   --legacy            Use legacy Flask recording UI instead of Foundation
 #   -h, --help          Show this help
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Check for --legacy flag to use old behavior
+for arg in "$@"; do
+    if [ "$arg" = "--legacy" ]; then
+        echo "Running in legacy mode (Flask recording UI)..."
+        shift
+        # Continue to legacy code below
+        break
+    fi
+done
+
+# Default: delegate to new ./vectra launcher
+if [[ ! " $* " =~ " --legacy " ]]; then
+    echo "Delegating to ./vectra start..."
+    echo "(Use --legacy flag for the old Flask recording UI)"
+    echo ""
+    exec "$PROJECT_DIR/vectra" start
+fi
+
+# ============================================================================
+# LEGACY MODE BELOW (Flask recording UI)
+# ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"

@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bayesian Predictor | rugs.fun</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-muted: #555566;
+            --accent-green: #00ff88;
+            --accent-red: #ff4466;
+            --accent-yellow: #ffcc00;
+            --accent-blue: #4488ff;
+            --accent-purple: #aa66ff;
+            --border-color: #2a2a3a;
+            --glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
+            --glow-red: 0 0 20px rgba(255, 68, 102, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Subtle grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header h1 span {
+            color: var(--accent-green);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            box-shadow: var(--glow-green);
+        }
+
+        /* Main grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Current game panel */
+        .game-phase {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .phase-active { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
+        .phase-cooldown { background: rgba(136, 136, 160, 0.2); color: var(--text-secondary); }
+        .phase-presale { background: rgba(255, 204, 0, 0.2); color: var(--accent-yellow); }
+        .phase-rugged { background: rgba(255, 68, 102, 0.2); color: var(--accent-red); }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .stat-value.price { color: var(--accent-green); }
+        .stat-value.peak { color: var(--accent-yellow); }
+        .stat-value.tick { color: var(--accent-blue); }
+
+        /* Prediction panel */
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .prediction-item {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .prediction-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .prediction-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .prediction-ci {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .confidence-bar {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .regime-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        .regime-normal { background: rgba(136, 136, 160, 0.2); color: var(--text-secondary); }
+        .regime-suppressed { background: rgba(255, 68, 102, 0.2); color: var(--accent-red); }
+        .regime-inflated { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
+        .regime-volatile { background: rgba(255, 204, 0, 0.2); color: var(--accent-yellow); }
+
+        /* Accuracy stats */
+        .accuracy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .accuracy-item {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .accuracy-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .accuracy-value.good { color: var(--accent-green); }
+        .accuracy-value.warn { color: var(--accent-yellow); }
+        .accuracy-value.bad { color: var(--accent-red); }
+
+        /* History table */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .history-table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .result-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            line-height: 18px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 0.65rem;
+        }
+
+        .result-icon.hit {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-green);
+        }
+
+        .result-icon.miss {
+            background: rgba(255, 68, 102, 0.2);
+            color: var(--accent-red);
+        }
+
+        /* Warmup overlay */
+        .warmup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 15, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            z-index: 10;
+        }
+
+        .warmup-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .warmup-progress {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: var(--accent-yellow);
+        }
+
+        /* Full width cards */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card.relative {
+            position: relative;
+        }
+
+        /* Direction indicator */
+        .direction-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .direction-arrow {
+            font-size: 1.5rem;
+        }
+
+        .direction-arrow.up { color: var(--accent-green); }
+        .direction-arrow.down { color: var(--accent-red); }
+        .direction-arrow.stable { color: var(--text-secondary); }
+
+        .direction-text {
+            font-size: 0.85rem;
+        }
+
+        /* No data state */
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Bayesian <span>Predictor</span></h1>
+            <div class="connection-status">
+                <div class="status-dot" id="wsStatus"></div>
+                <span id="wsStatusText">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- Current Game -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Current Game</span>
+                    <span class="game-phase phase-cooldown" id="gamePhase">WAITING</span>
+                </div>
+                <div class="card-body">
+                    <div id="gameId" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px;">
+                        --
+                    </div>
+                    <div class="game-stats">
+                        <div class="stat-box">
+                            <div class="stat-label">Price</div>
+                            <div class="stat-value price" id="currentPrice">1.00</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Peak</div>
+                            <div class="stat-value peak" id="currentPeak">1.00</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Tick</div>
+                            <div class="stat-value tick" id="currentTick">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction -->
+            <div class="card relative">
+                <div class="card-header">
+                    <span class="card-title">Prediction</span>
+                    <span class="regime-badge regime-normal" id="regimeBadge">NORMAL</span>
+                </div>
+                <div class="card-body">
+                    <div class="prediction-grid">
+                        <div class="prediction-item">
+                            <div class="prediction-label">Peak Multiplier</div>
+                            <div class="prediction-value" id="predPeak">--</div>
+                            <div class="prediction-ci" id="predPeakCI">CI: --</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="peakConfBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="prediction-item">
+                            <div class="prediction-label">Duration (ticks)</div>
+                            <div class="prediction-value" id="predDuration">--</div>
+                            <div class="prediction-ci" id="predDurationCI">CI: --</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="durationConfBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="direction-indicator">
+                        <span class="direction-arrow stable" id="directionArrow">→</span>
+                        <span class="direction-text" id="directionText">Waiting for prediction...</span>
+                    </div>
+                </div>
+
+                <!-- Warmup overlay -->
+                <div class="warmup-overlay" id="warmupOverlay" style="display: none;">
+                    <div class="warmup-text">Warming up model...</div>
+                    <div class="warmup-progress" id="warmupProgress">0 / 5 games</div>
+                </div>
+            </div>
+
+            <!-- Accuracy Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Accuracy Stats</span>
+                </div>
+                <div class="card-body">
+                    <div class="accuracy-grid">
+                        <div class="accuracy-item">
+                            <div class="stat-label">Peak CI Hit Rate</div>
+                            <div class="accuracy-value" id="peakHitRate">--%</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Duration CI Hit Rate</div>
+                            <div class="accuracy-value" id="durationHitRate">--%</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Avg Peak Error</div>
+                            <div class="accuracy-value" id="avgPeakError">--%</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Avg Duration Error</div>
+                            <div class="accuracy-value" id="avgDurationError">--%</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">
+                        <span id="totalPredictions">0</span> predictions tracked
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forecaster State -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Forecaster State</span>
+                </div>
+                <div class="card-body">
+                    <div class="accuracy-grid">
+                        <div class="accuracy-item">
+                            <div class="stat-label">Final μ</div>
+                            <div class="accuracy-value" id="finalMu" style="color: var(--accent-purple);">0.0135</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Peak μ</div>
+                            <div class="accuracy-value" id="peakMu" style="color: var(--accent-blue);">2.50</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Duration μ</div>
+                            <div class="accuracy-value" id="durationMu" style="color: var(--accent-yellow);">200</div>
+                        </div>
+                        <div class="accuracy-item">
+                            <div class="stat-label">Games Seen</div>
+                            <div class="accuracy-value" id="gamesSeen" style="color: var(--text-primary);">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <span class="card-title">Prediction History</span>
+                </div>
+                <div class="card-body" style="overflow-x: auto;">
+                    <table class="history-table" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Pred Peak</th>
+                                <th>Actual Peak</th>
+                                <th>Peak CI</th>
+                                <th>Pred Dur</th>
+                                <th>Actual Dur</th>
+                                <th>Dur CI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr>
+                                <td colspan="7" class="no-data">No predictions yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const WS_URL = 'ws://localhost:9000/feed';
+        const API_URL = 'http://localhost:9002';
+        const API_POLL_INTERVAL = 500; // ms
+
+        // State
+        let wsConnected = false;
+        let currentGameId = null;
+
+        // DOM elements
+        const elements = {
+            wsStatus: document.getElementById('wsStatus'),
+            wsStatusText: document.getElementById('wsStatusText'),
+            gamePhase: document.getElementById('gamePhase'),
+            gameId: document.getElementById('gameId'),
+            currentPrice: document.getElementById('currentPrice'),
+            currentPeak: document.getElementById('currentPeak'),
+            currentTick: document.getElementById('currentTick'),
+            predPeak: document.getElementById('predPeak'),
+            predPeakCI: document.getElementById('predPeakCI'),
+            predDuration: document.getElementById('predDuration'),
+            predDurationCI: document.getElementById('predDurationCI'),
+            peakConfBar: document.getElementById('peakConfBar'),
+            durationConfBar: document.getElementById('durationConfBar'),
+            regimeBadge: document.getElementById('regimeBadge'),
+            directionArrow: document.getElementById('directionArrow'),
+            directionText: document.getElementById('directionText'),
+            warmupOverlay: document.getElementById('warmupOverlay'),
+            warmupProgress: document.getElementById('warmupProgress'),
+            peakHitRate: document.getElementById('peakHitRate'),
+            durationHitRate: document.getElementById('durationHitRate'),
+            avgPeakError: document.getElementById('avgPeakError'),
+            avgDurationError: document.getElementById('avgDurationError'),
+            totalPredictions: document.getElementById('totalPredictions'),
+            finalMu: document.getElementById('finalMu'),
+            peakMu: document.getElementById('peakMu'),
+            durationMu: document.getElementById('durationMu'),
+            gamesSeen: document.getElementById('gamesSeen'),
+            historyBody: document.getElementById('historyBody')
+        };
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                wsConnected = true;
+                elements.wsStatus.classList.add('connected');
+                elements.wsStatusText.textContent = 'Connected';
+                console.log('WebSocket connected');
+            };
+
+            ws.onclose = () => {
+                wsConnected = false;
+                elements.wsStatus.classList.remove('connected');
+                elements.wsStatusText.textContent = 'Disconnected';
+                console.log('WebSocket disconnected, reconnecting...');
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWSMessage(data);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+        }
+
+        // Handle WebSocket messages (for real-time price updates)
+        function handleWSMessage(msg) {
+            if (msg.type !== 'game.tick') return;
+
+            const data = msg.data;
+            const gameId = msg.gameId;
+
+            // Update game ID
+            if (gameId !== currentGameId) {
+                currentGameId = gameId;
+                elements.gameId.textContent = gameId || '--';
+            }
+
+            // Update phase
+            const phase = detectPhase(data);
+            updatePhase(phase);
+
+            // Update price/peak/tick
+            if (data.price !== undefined) {
+                elements.currentPrice.textContent = data.price.toFixed(2);
+            }
+            if (data.tick !== undefined) {
+                elements.currentTick.textContent = data.tick;
+            }
+
+            // Track peak locally
+            const price = data.price || 1.0;
+            const currentPeak = parseFloat(elements.currentPeak.textContent) || 1.0;
+            if (data.active && !data.rugged && price > currentPeak) {
+                elements.currentPeak.textContent = price.toFixed(2);
+            }
+
+            // Reset peak on new game
+            if (data.active && data.tick === 0) {
+                elements.currentPeak.textContent = '1.00';
+            }
+        }
+
+        function detectPhase(data) {
+            if (data.cooldownTimer > 0) {
+                return data.allowPreRoundBuys ? 'presale' : 'cooldown';
+            }
+            if (data.rugged && !data.active) return 'cooldown';
+            if (data.allowPreRoundBuys && !data.active) return 'presale';
+            if (data.active && !data.rugged) return 'active';
+            if (data.rugged) return 'rugged';
+            return 'unknown';
+        }
+
+        function updatePhase(phase) {
+            const el = elements.gamePhase;
+            el.textContent = phase.toUpperCase();
+            el.className = 'game-phase phase-' + phase;
+        }
+
+        // Poll prediction API
+        async function pollAPI() {
+            try {
+                const response = await fetch(`${API_URL}/state`);
+                if (!response.ok) throw new Error('API error');
+                const state = await response.json();
+                updateFromState(state);
+            } catch (e) {
+                // API not available - that's okay, just wait
+            }
+        }
+
+        function updateFromState(state) {
+            // Game state
+            if (state.game_state) {
+                const gs = state.game_state;
+                elements.gamesSeen.textContent = gs.games_seen || 0;
+
+                // Warmup overlay
+                if (!gs.warmed_up && gs.games_seen < 5) {
+                    elements.warmupOverlay.style.display = 'flex';
+                    elements.warmupProgress.textContent = `${gs.games_seen} / 5 games`;
+                } else {
+                    elements.warmupOverlay.style.display = 'none';
+                }
+            }
+
+            // Current prediction
+            if (state.current_prediction) {
+                const pred = state.current_prediction;
+
+                // Peak
+                elements.predPeak.textContent = pred.peak.point.toFixed(2) + 'x';
+                elements.predPeakCI.textContent = `CI: [${pred.peak.ci_lower.toFixed(1)}, ${pred.peak.ci_upper.toFixed(1)}]`;
+                elements.peakConfBar.style.width = (pred.peak.confidence * 100) + '%';
+
+                // Duration
+                elements.predDuration.textContent = pred.duration.point;
+                elements.predDurationCI.textContent = `CI: [${pred.duration.ci_lower}, ${pred.duration.ci_upper}]`;
+                elements.durationConfBar.style.width = (pred.duration.confidence * 100) + '%';
+
+                // Regime
+                const regime = pred.regime || 'normal';
+                elements.regimeBadge.textContent = regime.toUpperCase();
+                elements.regimeBadge.className = 'regime-badge regime-' + regime;
+
+                // Direction
+                const dir = pred.final_direction || 'stable';
+                elements.directionArrow.className = 'direction-arrow ' + dir;
+                elements.directionArrow.textContent = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
+                const dirTexts = {
+                    'up': 'Expecting price recovery (mean reversion up)',
+                    'down': 'Expecting price correction (mean reversion down)',
+                    'stable': 'Expecting price to stay near equilibrium'
+                };
+                elements.directionText.textContent = dirTexts[dir] || 'Waiting for prediction...';
+            }
+
+            // Accuracy stats
+            if (state.accuracy_stats) {
+                const stats = state.accuracy_stats;
+
+                const peakHit = (stats.peak_ci_hit_rate * 100);
+                elements.peakHitRate.textContent = peakHit.toFixed(0) + '%';
+                elements.peakHitRate.className = 'accuracy-value ' + getAccuracyClass(peakHit, 70, 50);
+
+                const durHit = (stats.duration_ci_hit_rate * 100);
+                elements.durationHitRate.textContent = durHit.toFixed(0) + '%';
+                elements.durationHitRate.className = 'accuracy-value ' + getAccuracyClass(durHit, 70, 50);
+
+                const peakErr = stats.avg_peak_error;
+                elements.avgPeakError.textContent = peakErr.toFixed(1) + '%';
+                elements.avgPeakError.className = 'accuracy-value ' + getAccuracyClass(100 - peakErr, 70, 50);
+
+                const durErr = stats.avg_duration_error;
+                elements.avgDurationError.textContent = durErr.toFixed(1) + '%';
+                elements.avgDurationError.className = 'accuracy-value ' + getAccuracyClass(100 - durErr, 70, 50);
+
+                elements.totalPredictions.textContent = stats.total_predictions || 0;
+            }
+
+            // Forecaster state
+            if (state.forecaster) {
+                const fc = state.forecaster;
+                elements.finalMu.textContent = fc.final_mu.toFixed(4);
+                elements.peakMu.textContent = fc.peak_mu.toFixed(2);
+                elements.durationMu.textContent = Math.round(fc.duration_mu);
+            }
+
+            // History
+            if (state.recent_predictions && state.recent_predictions.length > 0) {
+                updateHistory(state.recent_predictions);
+            }
+        }
+
+        function getAccuracyClass(value, goodThreshold, warnThreshold) {
+            if (value >= goodThreshold) return 'good';
+            if (value >= warnThreshold) return 'warn';
+            return 'bad';
+        }
+
+        function updateHistory(predictions) {
+            const rows = predictions.slice().reverse().map(pred => {
+                const peakHit = pred.peak.within_ci;
+                const durHit = pred.duration.within_ci;
+
+                return `
+                    <tr>
+                        <td>${pred.game_id.substring(0, 20)}...</td>
+                        <td>${pred.peak.point.toFixed(2)}x</td>
+                        <td>${pred.peak.actual ? pred.peak.actual.toFixed(2) + 'x' : '--'}</td>
+                        <td><span class="result-icon ${peakHit ? 'hit' : 'miss'}">${peakHit ? '✓' : '✗'}</span></td>
+                        <td>${pred.duration.point}</td>
+                        <td>${pred.duration.actual || '--'}</td>
+                        <td><span class="result-icon ${durHit ? 'hit' : 'miss'}">${durHit ? '✓' : '✗'}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            elements.historyBody.innerHTML = rows || '<tr><td colspan="7" class="no-data">No predictions yet</td></tr>';
+        }
+
+        // Initialize
+        function init() {
+            connectWebSocket();
+            setInterval(pollAPI, API_POLL_INTERVAL);
+            pollAPI(); // Initial poll
+        }
+
+        init();
+    </script>
+</body>
+</html>

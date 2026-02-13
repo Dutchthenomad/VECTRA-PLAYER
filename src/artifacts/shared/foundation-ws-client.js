@@ -16,7 +16,14 @@
  *   const client = new FoundationWSClient();
  *   client.on('game.tick', (data) => console.log(data));
  *   client.connect();
+ *
+ * For centralized state management, use FoundationState:
+ *   import { FoundationState } from '/shared/foundation-state.js';
+ *   FoundationState.subscribe('game.tick', (data) => console.log(data.price));
  */
+
+// Import FoundationState for automatic state updates
+import { FoundationState } from './foundation-state.js';
 
 class FoundationWSClient {
     /**
@@ -94,6 +101,10 @@ class FoundationWSClient {
                 this.metrics.lastConnectedTime = Date.now();
 
                 console.log('[Foundation] Connected');
+
+                // Update centralized state manager
+                FoundationState._processMessage('connection', { connected: true }, null);
+
                 this.emit('connection', { connected: true });
                 this.emit('_connected');
                 resolve();
@@ -121,6 +132,10 @@ class FoundationWSClient {
             this.ws.onclose = (event) => {
                 this.metrics.connected = false;
                 console.log(`[Foundation] Disconnected (code: ${event.code})`);
+
+                // Update centralized state manager
+                FoundationState._processMessage('connection', { connected: false }, null);
+
                 this.emit('connection', { connected: false, code: event.code });
 
                 if (!this.intentionalClose) {
@@ -159,7 +174,11 @@ class FoundationWSClient {
             buffer.shift();
         }
 
-        // Emit to listeners
+        // Update centralized state manager
+        // This allows artifacts to use FoundationState.subscribe() instead of client.on()
+        FoundationState._processMessage(type, data, gameId);
+
+        // Emit to listeners (maintains backward compatibility with client.on())
         this.emit(type, { type, ts, gameId, seq, data });
         this.emit('*', { type, ts, gameId, seq, data });
     }
@@ -299,7 +318,10 @@ class FoundationWSClient {
     }
 }
 
-// Export for module usage
+// Export for ES module usage
+export { FoundationWSClient };
+
+// Also support CommonJS
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { FoundationWSClient };
 }

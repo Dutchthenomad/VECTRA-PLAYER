@@ -1,0 +1,183 @@
+/**
+ * VECTRA Control Panel Styles
+ * Extends vectra-styles.css with Control Panel specific components
+ */
+
+/* =============================================================================
+   Panel Title
+   ============================================================================= */
+.panel-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =============================================================================
+   Services List
+   ============================================================================= */
+.services-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.service-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.service-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.service-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.service-status-dot.running {
+    background-color: var(--color-success);
+    box-shadow: 0 0 6px var(--color-success);
+}
+
+.service-status-dot.stopped {
+    background-color: var(--color-text-muted);
+}
+
+.service-status-dot.starting {
+    background-color: var(--color-warning);
+    animation: pulse 1s infinite;
+}
+
+.service-status-dot.stopping {
+    background-color: var(--color-warning);
+    animation: pulse 1s infinite;
+}
+
+.service-status-dot.error {
+    background-color: var(--color-error);
+}
+
+.service-name {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.service-port {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.service-status-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-alt);
+    color: var(--color-text-muted);
+}
+
+.service-actions {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+/* Small button variant */
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+}
+
+/* =============================================================================
+   Quick Links
+   ============================================================================= */
+.quick-links {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.quick-links .btn {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* =============================================================================
+   Loading & Error States
+   ============================================================================= */
+.loading-placeholder,
+.no-services,
+.error {
+    padding: var(--space-md);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.error {
+    color: var(--color-error);
+}
+
+/* =============================================================================
+   Uptime Display
+   ============================================================================= */
+.uptime {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-left: var(--space-md);
+}
+
+/* =============================================================================
+   Phase Styling in Stats
+   ============================================================================= */
+.stat-value.phase-betting {
+    color: var(--ctp-peach);
+}
+
+.stat-value.phase-live,
+.stat-value.phase-active {
+    color: var(--ctp-green);
+}
+
+.stat-value.phase-cooldown {
+    color: var(--ctp-blue);
+}
+
+.stat-value.phase-rugged {
+    color: var(--ctp-red);
+}
+
+/* =============================================================================
+   Responsive Adjustments
+   ============================================================================= */
+@media (max-width: 600px) {
+    .service-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .service-actions {
+        justify-content: flex-end;
+    }
+
+    .quick-links .btn {
+        min-width: 100%;
+    }
+}

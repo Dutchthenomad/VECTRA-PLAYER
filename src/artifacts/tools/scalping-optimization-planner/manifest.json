@@ -1,0 +1,13 @@
+{
+  "name": "scalping-optimization-planner",
+  "version": "0.1.0",
+  "description": "Offline planning console for entry-first Bayesian optimization, drift-based exit sweeps, and Monte Carlo robustness sizing",
+  "author": "VECTRA",
+  "created": "2026-02-08",
+  "requires": {
+    "vectra-styles": "^1.0.0"
+  },
+  "events_consumed": [],
+  "events_emitted": [],
+  "api_endpoints": []
+}

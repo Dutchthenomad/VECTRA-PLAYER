@@ -1,0 +1,23 @@
+{
+  "name": "TestStrategy-Kelly25",
+  "initial_balance": 0.1,
+  "params": {
+    "entry_tick": 219,
+    "num_bets": 4,
+    "bet_sizes": [
+      0.001,
+      0.001,
+      0.001,
+      0.001
+    ],
+    "use_kelly_sizing": true,
+    "kelly_fraction": 0.25,
+    "use_dynamic_sizing": true,
+    "high_confidence_threshold": 55,
+    "high_confidence_multiplier": 2.0,
+    "reduce_on_drawdown": true,
+    "max_drawdown_pct": 0.15,
+    "take_profit_target": 1.5
+  },
+  "created": "2026-01-11T23:23:19Z"
+}

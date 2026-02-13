@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundation System Monitor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header id="header">
+        <div class="header-left">
+            <span class="logo">▣</span>
+            <h1>FOUNDATION SYSTEM MONITOR</h1>
+        </div>
+        <div id="connection-indicator" data-status="disconnected">
+            <span id="status-dot"></span>
+            <span>STATUS:</span>
+            <span id="status-text" data-value="DISCONNECTED">DISCONNECTED</span>
+            <span class="separator">-</span>
+            <span id="ws-url" data-value="ws://localhost:9000/feed">ws://localhost:9000/feed</span>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main id="dashboard">
+        <!-- Row 1: Status Panels -->
+        <div class="panel-row">
+            <!-- Connection Status Panel -->
+            <section id="panel-connection" class="panel" data-panel="connection">
+                <h2 class="panel-title cyan">CONNECTION STATUS</h2>
+                <div class="panel-content">
+                    <div class="stat-row">
+                        <label>Username</label>
+                        <span id="conn-username" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Player ID</label>
+                        <span id="conn-player-id" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Last Event</label>
+                        <span id="conn-last-event" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Events/sec</label>
+                        <span id="conn-events-rate" class="value-box" data-value="0">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Game State Panel -->
+            <section id="panel-game" class="panel" data-panel="game">
+                <h2 class="panel-title green">GAME STATE</h2>
+                <div class="panel-content">
+                    <div class="stat-row">
+                        <label>Phase</label>
+                        <span id="game-phase" class="value-box phase-value" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Game ID</label>
+                        <span id="game-id" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Price</label>
+                        <span id="game-price" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Tick count</label>
+                        <span id="game-tick" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Cooldown</label>
+                        <span id="game-cooldown" class="value-box" data-value="-">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Player State Panel -->
+            <section id="panel-player" class="panel" data-panel="player">
+                <h2 class="panel-title magenta">PLAYER STATE</h2>
+                <div class="panel-content">
+                    <div class="stat-row">
+                        <label>Balance</label>
+                        <span id="player-cash" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Position qty</label>
+                        <span id="player-position" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>Avg cost</label>
+                        <span id="player-avg-cost" class="value-box" data-value="-">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <label>PnL</label>
+                        <span id="player-pnl" class="value-box pnl-value" data-value="-">-</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Row 2: Event Log -->
+        <section id="panel-events" class="panel panel-wide" data-panel="events">
+            <div class="panel-header">
+                <h2 class="panel-title">EVENT LOG</h2>
+                <div class="panel-controls">
+                    <select id="event-filter" class="control-select" data-filter="">
+                        <option value="">Filter</option>
+                        <option value="game.tick">game.tick</option>
+                        <option value="game.start">game.start</option>
+                        <option value="game.end">game.end</option>
+                        <option value="player.state">player.state</option>
+                        <option value="player.trade">player.trade</option>
+                        <option value="connection">connection.*</option>
+                    </select>
+                    <button id="btn-clear-log" class="control-btn" type="button">Clear</button>
+                    <label class="toggle-label">
+                        Auto-scroll
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="chk-autoscroll" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div id="event-log" class="log-container">
+                <!-- Events populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Row 3: Protocol Discovery -->
+        <section id="panel-discovery" class="panel panel-wide" data-panel="discovery">
+            <div class="panel-header">
+                <h2 class="panel-title">PROTOCOL DISCOVERY</h2>
+                <div class="panel-controls">
+                    <label class="toggle-label">
+                        Raw Capture
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="chk-raw-events">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </label>
+                    <label class="toggle-label">
+                        Unknown Highlight
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="chk-highlight-unknown">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </label>
+                    <span class="stat-inline">
+                        Event Count <span id="discovery-count" data-value="0">-</span>
+                    </span>
+                    <button id="btn-export-jsonl" class="control-btn export-btn" type="button">EXPORT JSONL</button>
+                </div>
+            </div>
+            <div id="discovery-log" class="log-container discovery-log">
+                <!-- Raw events populated by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer id="footer">
+        <span>Foundation v1.0</span>
+        <span>Seq: <span id="footer-seq" data-value="0">0</span></span>
+    </footer>
+
+    <script src="/static/monitor.js"></script>
+</body>
+</html>

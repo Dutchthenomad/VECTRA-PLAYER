@@ -21,6 +21,8 @@ This specification defines the **OFFICIAL** port allocations for all VECTRA serv
 | **9000** | Foundation WebSocket | WS | Event broadcast feed | `src/foundation/` |
 | **9001** | Foundation HTTP | HTTP | Monitoring UI, health check | `src/foundation/` |
 | **9010** | Recording Service | HTTP | Recording control API | `services/recording/` |
+| **9016** | Rugs Feed Service | HTTP | Raw WebSocket capture API | `services/rugs-feed/` |
+| **9017** | Rugs Sanitizer Service | HTTP/WS | Sanitized multi-channel feed | `services/rugs-sanitizer/` |
 | **9222** | Chrome CDP | CDP | Chrome DevTools Protocol | Chrome browser |
 
 ### Future Allocations (Reserved, Not Yet Implemented)
@@ -62,6 +64,8 @@ CDP_PORT=9222
 RECORDING_PORT=9010
 ML_TRAINING_PORT=9011
 RL_EPISODE_PORT=9012
+RUGS_FEED_PORT=9016
+RUGS_SANITIZER_PORT=9017
 
 # Analysis Services
 ALERT_SERVICE_PORT=9013

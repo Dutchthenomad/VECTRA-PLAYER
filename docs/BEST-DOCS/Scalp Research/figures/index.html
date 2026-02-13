@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scalping Outcomes Visual Report</title>
+  <style>
+    :root {
+      --bg: #060b16;
+      --panel: #0f172a;
+      --edge: #334155;
+      --text: #e2e8f0;
+      --muted: #93c5fd;
+    }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, #0f1b36 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    .meta { margin: 0 0 20px; color: var(--muted); }
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: color-mix(in srgb, var(--panel) 92%, black);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 20px; }
+    .card p { margin: 0 0 12px; color: #cbd5e1; }
+    img { width: 100%; height: auto; border: 1px solid #1f2937; border-radius: 8px; background: #0b1220; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Scalping Outcomes Visual Report</h1>
+    <p class="meta">Generated: 2026-02-08 04:27:02 UTC | Source: checkpoints/scalping_opt_sweep_2026-02-08.json + checkpoints/scalping_opt_fullgrid_envelope_2026-02-08.json</p>
+    <div class="grid">
+            <section class="card">
+              <h2>PnL Envelope Percentiles</h2>
+              <p>Fast read of downside/median/upside bounds in SOL.</p>
+              <img src="01_pnl_percentiles.svg" alt="PnL Envelope Percentiles" />
+            </section>
+
+            <section class="card">
+              <h2>Net SOL Distribution</h2>
+              <p>Shows how much of the grid is high-return, low-return, or dead-zone.</p>
+              <img src="02_net_sol_histogram.svg" alt="Net SOL Distribution" />
+            </section>
+
+            <section class="card">
+              <h2>Playbook Mode Performance</h2>
+              <p>Compares best vs typical outcomes for each entry logic family.</p>
+              <img src="03_playbook_mode_performance.svg" alt="Playbook Mode Performance" />
+            </section>
+
+            <section class="card">
+              <h2>Drift Reference Performance</h2>
+              <p>Compares P50/P75/P90 anchors under same grid.</p>
+              <img src="04_drift_reference_performance.svg" alt="Drift Reference Performance" />
+            </section>
+
+            <section class="card">
+              <h2>Top-50: Classification Window</h2>
+              <p>Where high performers concentrate by baseline ticks.</p>
+              <img src="05_top50_classification_counts.svg" alt="Top-50: Classification Window" />
+            </section>
+
+            <section class="card">
+              <h2>Top-50: Entry Cutoff</h2>
+              <p>Where high performers concentrate by allowed entry horizon.</p>
+              <img src="06_top50_entry_cutoff_counts.svg" alt="Top-50: Entry Cutoff" />
+            </section>
+
+            <section class="card">
+              <h2>Top-50: Max Hold</h2>
+              <p>Where high performers concentrate by hold duration.</p>
+              <img src="07_top50_hold_counts.svg" alt="Top-50: Max Hold" />
+            </section>
+
+            <section class="card">
+              <h2>Heatmap: Classification x Cutoff</h2>
+              <p>Averaged surface to spot broad plateaus before rigid thresholds.</p>
+              <img src="08_heatmap_classification_vs_cutoff_mean_net.svg" alt="Heatmap: Classification x Cutoff" />
+            </section>
+            </div>
+  </main>
+</body>
+</html>

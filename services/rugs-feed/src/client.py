@@ -5,6 +5,8 @@ Captures raw events including:
 - gameStateUpdate with provablyFair.serverSeed
 - standard/newTrade for timing analysis
 - Sidebet events
+
+Broadcasts all events to downstream subscribers via WebSocket.
 """
 
 import logging
@@ -12,9 +14,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import socketio
+
+if TYPE_CHECKING:
+    from .broadcaster import RawEventBroadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +46,21 @@ class CapturedEvent:
     raw_message: str | None = None
 
 
+@dataclass
+class GameHistoryEntry:
+    """A complete game from gameHistory (captured on rug)."""
+
+    game_id: str
+    timestamp_ms: int
+    peak_multiplier: float
+    rugged: bool
+    server_seed: str | None
+    server_seed_hash: str | None
+    global_trades: list[dict]
+    global_sidebets: list[dict]
+    game_version: str | None = None
+
+
 class RugsFeedClient:
     """
     Direct Socket.IO client for rugs.fun backend.
@@ -49,28 +69,43 @@ class RugsFeedClient:
     - Server seed reveals (provablyFair)
     - Game state updates with timestamps
     - Trade events for timing correlation
+
+    Broadcasts all events to downstream WebSocket subscribers.
+    Captures gameHistory on rug events (dual-broadcast deduplication).
     """
 
     def __init__(
         self,
         url: str = RUGS_BACKEND_URL,
         on_event: Callable[[CapturedEvent], None] | None = None,
+        broadcaster: "RawEventBroadcaster | None" = None,
+        on_game_history: Callable[[GameHistoryEntry], None] | None = None,
     ):
         """
         Initialize client.
 
         Args:
             url: Backend URL (default: https://backend.rugs.fun)
-            on_event: Callback for captured events
+            on_event: Callback for captured events (storage)
+            broadcaster: WebSocket broadcaster for downstream services
+            on_game_history: Callback for complete game records from gameHistory
         """
         self._url = url
         self._on_event = on_event
+        self._broadcaster = broadcaster
+        self._on_game_history = on_game_history
         self._state = ConnectionState.DISCONNECTED
         self._sio: socketio.AsyncClient | None = None
         self._handlers: dict[str, Callable] = {}
         self._current_game_id: str | None = None
         self._reconnect_attempts = 0
         self._max_reconnect_attempts = 10
+
+        # Deduplication: track which gameHistory entries we've already captured
+        # Server broadcasts gameHistory TWICE on rug (dual-broadcast mechanism)
+        self._captured_game_ids: set[str] = set()
+        # Limit memory usage - only track recent 100 games
+        self._max_captured_ids = 100
 
         # Register default handlers
         self._register_handlers()
@@ -163,12 +198,20 @@ class RugsFeedClient:
             await self._sio.wait()
 
     def _emit_event(self, event: CapturedEvent) -> None:
-        """Emit captured event to callback."""
+        """Emit captured event to callback and broadcaster."""
+        # Storage callback
         if self._on_event:
             try:
                 self._on_event(event)
             except Exception as e:
                 logger.error(f"Event callback error: {e}")
+
+        # Broadcast to downstream WebSocket subscribers
+        if self._broadcaster:
+            try:
+                self._broadcaster.broadcast(event)
+            except Exception as e:
+                logger.error(f"Broadcast error: {e}")
 
     async def _handle_game_state(self, *args) -> None:
         """Handle gameStateUpdate event."""
@@ -193,6 +236,12 @@ class RugsFeedClient:
             logger.info(f"SEED REVEAL: game={game_id} seed={server_seed[:16]}...")
 
         self._emit_event(event)
+
+        # Capture gameHistory when present
+        # This happens during cooldown (active=False) after game ends
+        # gameHistory contains complete game records with serverSeed
+        if data.get("gameHistory"):
+            await self._capture_game_history(data)
 
     async def _handle_trade(self, *args) -> None:
         """Handle standard/newTrade event."""
@@ -247,3 +296,68 @@ class RugsFeedClient:
             data=data,
         )
         self._emit_event(event)
+
+    async def _capture_game_history(self, data: dict) -> None:
+        """
+        Capture complete game records from gameHistory.
+
+        Called whenever gameHistory is present in the event data.
+        Server broadcasts gameHistory during cooldown phase (active=False).
+        The dual-broadcast mechanism may send it twice - we deduplicate by game_id.
+
+        gameHistory contains last 10 games with:
+        - id, timestamp, peakMultiplier, rugged
+        - provablyFair (serverSeed, serverSeedHash) - CRITICAL FOR PRNG
+        - globalTrades, globalSidebets
+        - gameVersion
+        """
+        game_history = data.get("gameHistory", [])
+        if not game_history:
+            return
+
+        new_games = 0
+        for game in game_history:
+            game_id = game.get("id")
+            if not game_id:
+                continue
+
+            # Deduplicate - skip if already captured
+            if game_id in self._captured_game_ids:
+                continue
+
+            # Mark as captured
+            self._captured_game_ids.add(game_id)
+
+            # Memory management - keep only recent games
+            if len(self._captured_game_ids) > self._max_captured_ids:
+                # Remove oldest (first added)
+                oldest = next(iter(self._captured_game_ids))
+                self._captured_game_ids.discard(oldest)
+
+            # Extract provablyFair data
+            provably_fair = game.get("provablyFair", {})
+
+            # Create GameHistoryEntry
+            entry = GameHistoryEntry(
+                game_id=game_id,
+                timestamp_ms=game.get("timestamp", 0),
+                peak_multiplier=game.get("peakMultiplier", 0.0),
+                rugged=game.get("rugged", False),
+                server_seed=provably_fair.get("serverSeed"),
+                server_seed_hash=provably_fair.get("serverSeedHash"),
+                global_trades=game.get("globalTrades", []),
+                global_sidebets=game.get("globalSidebets", []),
+                game_version=game.get("gameVersion"),
+            )
+
+            # Emit to callback
+            if self._on_game_history:
+                try:
+                    self._on_game_history(entry)
+                except Exception as e:
+                    logger.error(f"Game history callback error: {e}")
+
+            new_games += 1
+
+        if new_games > 0:
+            logger.info(f"Captured {new_games} new games from gameHistory")

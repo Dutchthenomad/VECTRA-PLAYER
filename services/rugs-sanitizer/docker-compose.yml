@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  rugs-sanitizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vectra-rugs-sanitizer
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-9017}:${PORT:-9017}"
+
+    volumes:
+      # Configuration (read-only)
+      - ./config:/app/config:ro
+
+    environment:
+      - UPSTREAM_URL=${UPSTREAM_URL:-ws://vectra-rugs-feed:9016/feed}
+      - PORT=${PORT:-9017}
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HISTORY_COLLECTION_INTERVAL=${HISTORY_COLLECTION_INTERVAL:-10}
+
+    depends_on:
+      rugs-feed:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-9017}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    networks:
+      - vectra-network
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Reference to upstream service (must be running)
+  rugs-feed:
+    container_name: vectra-rugs-feed
+    image: vectra-rugs-feed:latest
+    networks:
+      - vectra-network
+
+networks:
+  vectra-network:
+    name: vectra-network
+    driver: bridge

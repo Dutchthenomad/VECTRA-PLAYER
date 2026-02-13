@@ -1,9 +1,9 @@
 # VECTRA-PLAYER Global Development Plan
 
-**Date:** 2026-01-17 (Updated - Foundation Service + Artifact Framework)
+**Date:** 2026-01-25 (Updated - Trade API + Artifact Bug Fixes)
 **Status:** CANONICAL - Master Plan (supersedes ALL individual phase docs)
 **Purpose:** Unified, gated development roadmap integrating foundation audit + bot training pipeline
-**Tests:** 1138+ passing
+**Tests:** 1149+ passing
 
 ---
 
@@ -108,7 +108,10 @@ This document merges them into a single, properly-gated plan where foundation wo
 | Audit 7 | UI Redesign Prep | ⏳ PENDING | Audit 6 |
 | **INFRASTRUCTURE** | | | |
 | Foundation | WebSocket Broadcaster + HTTP Monitor | ✅ COMPLETE (2026-01-17) | None |
+| Trade API | Browser automation via HTTP | ✅ COMPLETE (2026-01-25) | Foundation |
 | Artifacts | HTML Tool Framework | ✅ COMPLETE (2026-01-17) | Foundation |
+| Minimal Trading | Trading buttons artifact | ✅ COMPLETE (2026-01-25) | Trade API |
+| Recording Control | Recording service UI | ✅ COMPLETE (2026-01-25) | Foundation |
 
 **Legend:** ✅ Complete | 🔄 Partial | ⚠️ Ready for verification | ⏳ Pending/Blocked
 
@@ -192,6 +195,60 @@ src/artifacts/
 ```
 
 **Verification:** All files created, committed to main branch
+
+### Trade API (2026-01-25) ✅ COMPLETE
+
+**What Was Done:**
+- Added `/api/trade/*` endpoints to Foundation HTTP server
+- Browser automation via BrowserExecutor (CDP clicks)
+- Shared browser connection with Foundation launcher
+
+**Endpoints Added:**
+| Endpoint | Action |
+|----------|--------|
+| `POST /api/trade/buy` | Click BUY button |
+| `POST /api/trade/sell` | Click SELL button |
+| `POST /api/trade/sidebet` | Click SIDEBET button |
+| `POST /api/trade/increment` | Click +0.001/+0.01/+0.1/+1 |
+| `POST /api/trade/percentage` | Click 10%/25%/50%/100% |
+| `POST /api/trade/clear` | Click X (clear) |
+| `POST /api/trade/half` | Click 1/2 |
+| `POST /api/trade/double` | Click X2 |
+| `POST /api/trade/max` | Click MAX |
+
+**Files Modified:**
+- `src/foundation/http_server.py` - Trade API endpoints
+- `src/foundation/launcher.py` - BrowserExecutor injection
+
+### Minimal Trading Artifact (2026-01-25) ✅ COMPLETE
+
+**What Was Done:**
+- Full button mapping to Trade API
+- TradeExecutor class for HTTP calls
+- Loading states and success/error feedback
+- Live game state display via Foundation WebSocket
+
+**Files Created:**
+```
+src/artifacts/tools/minimal-trading/
+├── index.html
+├── app.js              # TradeExecutor + button handlers
+├── styles.css          # Loading/feedback states
+├── manifest.json
+└── README.md
+```
+
+### Recording Control Bug Fixes (2026-01-25) ✅ COMPLETE
+
+**16 bugs fixed:**
+- Wrong ticks field name (now tries multiple field names)
+- Missing lastError display in health
+- No interval cleanup (added cleanup() function)
+- Null reference errors in status updates
+- Hardcoded 50GB max storage (now from API)
+- XSS vulnerability in color parameter
+- Race condition in RUG event handling
+- Plus 9 more minor fixes
 
 ---
 
@@ -366,22 +423,42 @@ The audit phases run IN PARALLEL with feature development, but inform and unbloc
 
 ## Quick Reference: What To Do Next
 
-### Completed This Session (2025-12-28)
+### Completed This Session (2026-01-25)
 
-**MinimalWindow Migration + Wiring Fixes:**
-- ✅ MinimalWindow replaces MainWindow (93% code reduction)
-- ✅ CDP connection working (1565 events captured)
-- ✅ ButtonEvents emit on BUY/SELL/SIDEBET clicks
-- ✅ All 1138 tests passing
-- ✅ Pushed to GitHub (commit 340798a)
+**Trade API + Minimal Trading UI:**
+- ✅ Trade API endpoints in Foundation HTTP server
+- ✅ Minimal Trading artifact with full button mapping
+- ✅ Recording Control 16 bug fixes
+- ✅ Committed: 7efa6cc
 
-### Current: Pipeline D - Training Data Pipeline
+### Current Priority: Test & Validate Trade API
+
+**Status:** READY FOR TESTING
+
+**Verification Steps:**
+```bash
+# 1. Start Foundation with Trade API
+./vectra start
+
+# 2. Test API directly
+curl -X POST http://localhost:9001/api/trade/increment -H "Content-Type: application/json" -d '{"amount": 0.01}'
+
+# 3. Open minimal-trading UI
+xdg-open http://localhost:9001/artifacts/minimal-trading/
+
+# 4. Click buttons, verify browser clicks
+```
+
+### Next: Build Remaining Artifacts
+
+**Pending Artifacts:**
+1. [ ] Prediction Engine (port Bayesian forecaster)
+2. [ ] Seed Bruteforce (port PRNG analysis)
+3. [ ] Orchestrator (tab wrapper)
+
+### Then: Pipeline D - Training Data Pipeline
 
 **Status:** READY TO START - All prerequisites met
-
-**Objective:** Generate RL training data from captured gameplay sessions
-
-**Implementation Plan:** `docs/plans/2025-12-28-pipeline-d-training-data-implementation.md`
 
 **Tasks:**
 1. [ ] Create Observation Schema (`src/ml/schemas.py`)

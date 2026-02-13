@@ -3,169 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Foundation System Monitor</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <title>VECTRA Control Panel</title>
+
+    <!-- Shared VECTRA styles -->
+    <link rel="stylesheet" href="/shared/vectra-styles.css">
+    <!-- Control Panel specific styles -->
+    <link rel="stylesheet" href="/static/control-panel.css">
 </head>
 <body>
-    <!-- Header -->
-    <header id="header">
-        <div class="header-left">
-            <span class="logo">▣</span>
-            <h1>FOUNDATION SYSTEM MONITOR</h1>
-        </div>
-        <div id="connection-indicator" data-status="disconnected">
-            <span id="status-dot"></span>
-            <span>STATUS:</span>
-            <span id="status-text" data-value="DISCONNECTED">DISCONNECTED</span>
-            <span class="separator">-</span>
-            <span id="ws-url" data-value="ws://localhost:9000/feed">ws://localhost:9000/feed</span>
-        </div>
-    </header>
+    <div class="artifact-container">
+        <!-- Header -->
+        <header class="artifact-header">
+            <h1>VECTRA Control Panel</h1>
+            <div class="connection-status">
+                <span class="connection-dot" id="connectionDot"></span>
+                <span id="connectionText">Connecting...</span>
+                <span class="uptime" id="uptime"></span>
+            </div>
+        </header>
 
-    <!-- Main Dashboard -->
-    <main id="dashboard">
-        <!-- Row 1: Status Panels -->
-        <div class="panel-row">
-            <!-- Connection Status Panel -->
-            <section id="panel-connection" class="panel" data-panel="connection">
-                <h2 class="panel-title cyan">CONNECTION STATUS</h2>
-                <div class="panel-content">
-                    <div class="stat-row">
-                        <label>Username</label>
-                        <span id="conn-username" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Player ID</label>
-                        <span id="conn-player-id" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Last Event</label>
-                        <span id="conn-last-event" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Events/sec</label>
-                        <span id="conn-events-rate" class="value-box" data-value="0">0</span>
-                    </div>
+        <!-- Main Content -->
+        <main class="artifact-main">
+            <!-- Services Section -->
+            <section class="panel mb-md">
+                <h2 class="panel-title">Services</h2>
+                <div id="servicesList" class="services-list">
+                    <div class="loading-placeholder">Loading services...</div>
                 </div>
             </section>
 
-            <!-- Game State Panel -->
-            <section id="panel-game" class="panel" data-panel="game">
-                <h2 class="panel-title green">GAME STATE</h2>
-                <div class="panel-content">
-                    <div class="stat-row">
-                        <label>Phase</label>
-                        <span id="game-phase" class="value-box phase-value" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Game ID</label>
-                        <span id="game-id" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Price</label>
-                        <span id="game-price" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Tick count</label>
-                        <span id="game-tick" class="value-box" data-value="-">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <label>Cooldown</label>
-                        <span id="game-cooldown" class="value-box" data-value="-">-</span>
-                    </div>
+            <!-- Quick Links Section -->
+            <section class="panel mb-md">
+                <h2 class="panel-title">Open in New Tab</h2>
+                <div class="quick-links">
+                    <a href="https://rugs.fun" target="_blank" class="btn btn-secondary">
+                        rugs.fun
+                    </a>
+                    <a href="/artifacts/minimal-trading/" target="_blank" class="btn btn-secondary">
+                        minimal-trading
+                    </a>
+                    <a href="/artifacts/recording-control/" target="_blank" class="btn btn-secondary">
+                        recording-control
+                    </a>
                 </div>
             </section>
 
-            <!-- Player State Panel -->
-            <section id="panel-player" class="panel" data-panel="player">
-                <h2 class="panel-title magenta">PLAYER STATE</h2>
-                <div class="panel-content">
-                    <div class="stat-row">
-                        <label>Balance</label>
-                        <span id="player-cash" class="value-box" data-value="-">-</span>
+            <!-- Live Stats Section -->
+            <section class="panel">
+                <h2 class="panel-title">Live Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Events/sec</div>
+                        <div class="stat-value" id="eventsPerSec">0</div>
                     </div>
-                    <div class="stat-row">
-                        <label>Position qty</label>
-                        <span id="player-position" class="value-box" data-value="-">-</span>
+                    <div class="stat-item">
+                        <div class="stat-label">Subscribers</div>
+                        <div class="stat-value" id="subscriberCount">0</div>
                     </div>
-                    <div class="stat-row">
-                        <label>Avg cost</label>
-                        <span id="player-avg-cost" class="value-box" data-value="-">-</span>
+                    <div class="stat-item">
+                        <div class="stat-label">Phase</div>
+                        <div class="stat-value" id="gamePhase">--</div>
                     </div>
-                    <div class="stat-row">
-                        <label>PnL</label>
-                        <span id="player-pnl" class="value-box pnl-value" data-value="-">-</span>
+                    <div class="stat-item">
+                        <div class="stat-label">Tick</div>
+                        <div class="stat-value" id="gameTick">--</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Price</div>
+                        <div class="stat-value" id="gamePrice">--</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Game ID</div>
+                        <div class="stat-value font-mono" id="gameId" style="font-size: 0.75rem;">--</div>
                     </div>
                 </div>
             </section>
-        </div>
+        </main>
 
-        <!-- Row 2: Event Log -->
-        <section id="panel-events" class="panel panel-wide" data-panel="events">
-            <div class="panel-header">
-                <h2 class="panel-title">EVENT LOG</h2>
-                <div class="panel-controls">
-                    <select id="event-filter" class="control-select" data-filter="">
-                        <option value="">Filter</option>
-                        <option value="game.tick">game.tick</option>
-                        <option value="game.start">game.start</option>
-                        <option value="game.end">game.end</option>
-                        <option value="player.state">player.state</option>
-                        <option value="player.trade">player.trade</option>
-                        <option value="connection">connection.*</option>
-                    </select>
-                    <button id="btn-clear-log" class="control-btn" type="button">Clear</button>
-                    <label class="toggle-label">
-                        Auto-scroll
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="chk-autoscroll" checked>
-                            <span class="toggle-slider"></span>
-                        </div>
-                    </label>
-                </div>
-            </div>
-            <div id="event-log" class="log-container">
-                <!-- Events populated by JavaScript -->
-            </div>
-        </section>
+        <!-- Footer -->
+        <footer class="artifact-footer">
+            <span>Foundation v1.0.0</span>
+            <span id="lastEvent">Last event: --</span>
+        </footer>
+    </div>
 
-        <!-- Row 3: Protocol Discovery -->
-        <section id="panel-discovery" class="panel panel-wide" data-panel="discovery">
-            <div class="panel-header">
-                <h2 class="panel-title">PROTOCOL DISCOVERY</h2>
-                <div class="panel-controls">
-                    <label class="toggle-label">
-                        Raw Capture
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="chk-raw-events">
-                            <span class="toggle-slider"></span>
-                        </div>
-                    </label>
-                    <label class="toggle-label">
-                        Unknown Highlight
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="chk-highlight-unknown">
-                            <span class="toggle-slider"></span>
-                        </div>
-                    </label>
-                    <span class="stat-inline">
-                        Event Count <span id="discovery-count" data-value="0">-</span>
-                    </span>
-                    <button id="btn-export-jsonl" class="control-btn export-btn" type="button">EXPORT JSONL</button>
-                </div>
-            </div>
-            <div id="discovery-log" class="log-container discovery-log">
-                <!-- Raw events populated by JavaScript -->
-            </div>
-        </section>
-    </main>
+    <!-- Foundation WebSocket Client -->
+    <script type="module">
+        import { FoundationWSClient } from '/shared/foundation-ws-client.js';
 
-    <!-- Footer -->
-    <footer id="footer">
-        <span>Foundation v1.0</span>
-        <span>Seq: <span id="footer-seq" data-value="0">0</span></span>
-    </footer>
+        // Initialize client
+        const client = new FoundationWSClient();
 
-    <script src="/static/monitor.js"></script>
+        // DOM elements
+        const connectionDot = document.getElementById('connectionDot');
+        const connectionText = document.getElementById('connectionText');
+        const uptimeEl = document.getElementById('uptime');
+        const servicesListEl = document.getElementById('servicesList');
+        const eventsPerSecEl = document.getElementById('eventsPerSec');
+        const subscriberCountEl = document.getElementById('subscriberCount');
+        const gamePhaseEl = document.getElementById('gamePhase');
+        const gameTickEl = document.getElementById('gameTick');
+        const gamePriceEl = document.getElementById('gamePrice');
+        const gameIdEl = document.getElementById('gameId');
+        const lastEventEl = document.getElementById('lastEvent');
+
+        // Event counter for events/sec calculation
+        let eventCount = 0;
+        let lastEventCountTime = Date.now();
+
+        // Connection status
+        client.on('connection', ({ connected }) => {
+            connectionDot.className = 'connection-dot ' + (connected ? 'connected' : 'disconnected');
+            connectionText.textContent = connected ? 'Connected' : 'Disconnected';
+        });
+
+        // Game tick events
+        client.on('game.tick', (event) => {
+            const data = event.data || {};
+            eventCount++;
+
+            // Update stats
+            if (data.phase) {
+                gamePhaseEl.textContent = data.phase;
+                gamePhaseEl.className = 'stat-value phase-' + data.phase.toLowerCase();
+            }
+            if (data.tickCount !== undefined) {
+                gameTickEl.textContent = data.tickCount;
+            }
+            if (data.price !== undefined) {
+                gamePriceEl.textContent = data.price.toFixed(2) + 'x';
+            }
+            if (event.gameId) {
+                gameIdEl.textContent = event.gameId.substring(0, 8) + '...';
+            }
+
+            lastEventEl.textContent = 'Last event: game.tick @ ' + new Date().toLocaleTimeString();
+        });
+
+        // All events (for counting)
+        client.on('*', () => {
+            eventCount++;
+        });
+
+        // Calculate events per second
+        setInterval(() => {
+            const now = Date.now();
+            const elapsed = (now - lastEventCountTime) / 1000;
+            const eps = Math.round(eventCount / elapsed);
+            eventsPerSecEl.textContent = eps;
+            eventCount = 0;
+            lastEventCountTime = now;
+        }, 1000);
+
+        // Fetch and render services
+        async function loadServices() {
+            try {
+                const response = await fetch('/api/services');
+                const data = await response.json();
+
+                if (data.services && data.services.length > 0) {
+                    renderServices(data.services);
+                } else {
+                    servicesListEl.innerHTML = '<div class="no-services">No services registered</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load services:', error);
+                servicesListEl.innerHTML = '<div class="error">Failed to load services</div>';
+            }
+        }
+
+        function renderServices(services) {
+            servicesListEl.innerHTML = services.map(svc =>
+                '<div class="service-item" data-name="' + svc.name + '">' +
+                    '<div class="service-info">' +
+                        '<span class="service-status-dot ' + svc.status + '"></span>' +
+                        '<span class="service-name">' + svc.name + '</span>' +
+                        '<span class="service-port">[port ' + svc.port + ']</span>' +
+                        '<span class="service-status-text">' + svc.status.toUpperCase() + '</span>' +
+                    '</div>' +
+                    '<div class="service-actions">' +
+                        (svc.status === 'stopped' || svc.status === 'error'
+                            ? '<button class="btn btn-success btn-sm" onclick="startService(\'' + svc.name + '\')">START</button>'
+                            : '<button class="btn btn-danger btn-sm" onclick="stopService(\'' + svc.name + '\')">STOP</button>'
+                        ) +
+                    '</div>' +
+                '</div>'
+            ).join('');
+        }
+
+        // Service control functions (global for onclick)
+        window.startService = async function(name) {
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                const response = await fetch('/api/services/' + name + '/start', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    setTimeout(loadServices, 500);
+                } else {
+                    alert('Failed to start ' + name + ': ' + result.error);
+                }
+            } catch (error) {
+                console.error('Start service error:', error);
+                alert('Error starting ' + name);
+            }
+            loadServices();
+        };
+
+        window.stopService = async function(name) {
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                const response = await fetch('/api/services/' + name + '/stop', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    setTimeout(loadServices, 500);
+                } else {
+                    alert('Failed to stop ' + name + ': ' + result.error);
+                }
+            } catch (error) {
+                console.error('Stop service error:', error);
+                alert('Error stopping ' + name);
+            }
+            loadServices();
+        };
+
+        // Fetch uptime periodically
+        async function updateUptime() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                if (data.uptime_seconds) {
+                    const mins = Math.floor(data.uptime_seconds / 60);
+                    const secs = Math.floor(data.uptime_seconds % 60);
+                    uptimeEl.textContent = 'Up: ' + mins + 'm ' + secs + 's';
+                }
+            } catch (error) {
+                // Ignore
+            }
+        }
+
+        // Poll services for status updates
+        setInterval(loadServices, 5000);
+        setInterval(updateUptime, 10000);
+
+        // Initial load
+        loadServices();
+        updateUptime();
+
+        // Connect to Foundation
+        client.connect().catch(err => {
+            console.error('WebSocket connection failed:', err);
+            connectionDot.className = 'connection-dot disconnected';
+            connectionText.textContent = 'Connection Failed';
+        });
+    </script>
 </body>
 </html>

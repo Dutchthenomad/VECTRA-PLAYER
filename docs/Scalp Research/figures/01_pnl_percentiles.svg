@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-label="PnL Envelope Across All 2,100 Configurations">
+<rect x="0" y="0" width="1200" height="760" fill="#0b1220"/>
+<text x="100" y="52" font-size="28" fill="#e2e8f0" font-weight="700">PnL Envelope Across All 2,100 Configurations</text>
+<text x="100" y="80" font-size="16" fill="#93c5fd">Net SOL and End SOL percentiles from full-grid run on 1,772-game dataset.</text>
+<rect x="100" y="110" width="1060" height="510" fill="#111827" stroke="#334155"/>
+<line x1="100" y1="620.00" x2="1160" y2="620.00" stroke="#1f2937"/>
+<text x="90" y="624.00" text-anchor="end" font-size="12" fill="#94a3b8">0.0</text>
+<line x1="100" y1="518.00" x2="1160" y2="518.00" stroke="#1f2937"/>
+<text x="90" y="522.00" text-anchor="end" font-size="12" fill="#94a3b8">6.5</text>
+<line x1="100" y1="416.00" x2="1160" y2="416.00" stroke="#1f2937"/>
+<text x="90" y="420.00" text-anchor="end" font-size="12" fill="#94a3b8">13.0</text>
+<line x1="100" y1="314.00" x2="1160" y2="314.00" stroke="#1f2937"/>
+<text x="90" y="318.00" text-anchor="end" font-size="12" fill="#94a3b8">19.5</text>
+<line x1="100" y1="212.00" x2="1160" y2="212.00" stroke="#1f2937"/>
+<text x="90" y="216.00" text-anchor="end" font-size="12" fill="#94a3b8">26.1</text>
+<line x1="100" y1="110.00" x2="1160" y2="110.00" stroke="#1f2937"/>
+<text x="90" y="114.00" text-anchor="end" font-size="12" fill="#94a3b8">32.6</text>
+<line x1="100" y1="620" x2="1160" y2="620" stroke="#64748b"/>
+<line x1="100" y1="110" x2="100" y2="620" stroke="#64748b"/>
+<text x="24" y="128" font-size="14" fill="#94a3b8" transform="rotate(-90 24 128)">SOL</text>
+<rect x="152.00" y="620.00" width="52.00" height="0.00" fill="#38bdf8"/>
+<rect x="208.00" y="463.40" width="52.00" height="156.60" fill="#34d399"/>
+<text x="206.00" y="646" text-anchor="middle" font-size="12" fill="#cbd5e1">min</text>
+<rect x="364.00" y="620.00" width="52.00" height="0.00" fill="#38bdf8"/>
+<rect x="420.00" y="463.40" width="52.00" height="156.60" fill="#34d399"/>
+<text x="418.00" y="646" text-anchor="middle" font-size="12" fill="#cbd5e1">p10</text>
+<rect x="576.00" y="563.91" width="52.00" height="56.09" fill="#38bdf8"/>
+<rect x="632.00" y="407.31" width="52.00" height="212.69" fill="#34d399"/>
+<text x="630.00" y="646" text-anchor="middle" font-size="12" fill="#cbd5e1">median</text>
+<rect x="788.00" y="463.36" width="52.00" height="156.64" fill="#38bdf8"/>
+<rect x="844.00" y="306.76" width="52.00" height="313.24" fill="#34d399"/>
+<text x="842.00" y="646" text-anchor="middle" font-size="12" fill="#cbd5e1">p90</text>
+<rect x="1000.00" y="321.24" width="52.00" height="298.76" fill="#38bdf8"/>
+<rect x="1056.00" y="164.64" width="52.00" height="455.36" fill="#34d399"/>
+<text x="1054.00" y="646" text-anchor="middle" font-size="12" fill="#cbd5e1">max</text>
+<rect x="100" y="691" width="18" height="18" fill="#38bdf8"/>
+<text x="124" y="705" font-size="14" fill="#cbd5e1">Net SOL</text>
+<rect x="320" y="691" width="18" height="18" fill="#34d399"/>
+<text x="344" y="705" font-size="14" fill="#cbd5e1">End SOL</text>
+</svg>

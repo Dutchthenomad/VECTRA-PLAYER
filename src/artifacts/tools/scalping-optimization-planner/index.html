@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalping Optimization Planner - Dev Lab</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        .layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 12px;
+            min-height: calc(100vh - 130px);
+        }
+
+        .panel-col {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .desc {
+            color: var(--color-text-muted);
+            font-size: 13px;
+            line-height: 1.35;
+            margin: 0 0 8px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-row label {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        .check-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .muted {
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        .card pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .pill {
+            border: 1px solid var(--color-border);
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 12px;
+            background: var(--ctp-surface0);
+            display: inline-block;
+        }
+
+        .step-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .step-card {
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 8px;
+            background: var(--ctp-mantle);
+        }
+
+        .step-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .step-value {
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: 340px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--color-border);
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: var(--ctp-mantle);
+            z-index: 2;
+            font-weight: 600;
+        }
+
+        .help-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 17, 27, 0.82);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .help-modal {
+            width: min(940px, 96vw);
+            max-height: 88vh;
+            overflow: auto;
+            background: var(--ctp-base);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .help-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .help-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+
+        .help-tab-btn.active {
+            background: var(--ctp-surface1);
+            border-color: var(--color-info);
+        }
+
+        .help-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .help-section {
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 8px;
+            background: var(--ctp-mantle);
+        }
+
+        .help-section h3 {
+            margin: 0 0 6px;
+            font-size: 14px;
+        }
+
+        .help-section ul {
+            margin: 0;
+            padding-left: 16px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 1100px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <header class="artifact-header">
+            <h1>Scalping Optimization Planner (Prototype Dev Lab)</h1>
+            <div class="connection-status">
+                <span class="connection-dot connected"></span>
+                <span>Offline Planning Mode</span>
+            </div>
+        </header>
+
+        <main class="artifact-main">
+            <p class="desc">
+                This artifact is a planning console for entry-first optimization and Monte Carlo robustness testing.
+                Use it to lock your exploration matrix before running heavy experiments.
+            </p>
+
+            <div class="layout">
+                <div class="panel-col">
+                    <div class="card">
+                        <div class="card-header">Kickoff Builder</div>
+                        <p class="desc">
+                            Generate a run specification markdown block from the current controls so the plan is explicit and reproducible.
+                        </p>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" id="helpBtn">Open Method Help</button>
+                            <button class="btn btn-success" id="generateBtn">Generate Kickoff Markdown</button>
+                            <button class="btn" id="copyBtn">Copy Markdown</button>
+                        </div>
+                        <p class="muted" id="statusText">Ready to generate kickoff plan.</p>
+                        <pre id="kickoffText">Kickoff markdown not generated yet.</pre>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Phase 1: Entry-First Search Builder</div>
+                        <p class="desc">
+                            Define search space for entry signal discovery before full exit optimization.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row">
+                                <label for="searchMode">Search Mode</label>
+                                <select id="searchMode">
+                                    <option value="bayes" selected>Bayesian (TPE/GP)</option>
+                                    <option value="grid">Grid Sweep</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="promotionPct">Promotion % (Stage A -> B)</label>
+                                <input id="promotionPct" type="number" min="1" max="100" value="15">
+                            </div>
+                            <div class="control-row">
+                                <label for="stageATrials">Stage A Trials (Bayes)</label>
+                                <input id="stageATrials" type="number" min="10" max="100000" value="300">
+                            </div>
+                            <div class="control-row">
+                                <label for="stageBTrials">Stage B Trials (Bayes)</label>
+                                <input id="stageBTrials" type="number" min="5" max="100000" value="120">
+                            </div>
+                            <div class="control-row">
+                                <label for="classifyMin">Classification Ticks Min</label>
+                                <input id="classifyMin" type="number" min="5" max="200" value="20">
+                            </div>
+                            <div class="control-row">
+                                <label for="classifyMax">Classification Ticks Max</label>
+                                <input id="classifyMax" type="number" min="5" max="300" value="40">
+                            </div>
+                            <div class="control-row">
+                                <label for="classifyStep">Classification Ticks Step</label>
+                                <input id="classifyStep" type="number" min="1" max="50" value="5">
+                            </div>
+                            <div class="control-row">
+                                <label for="cutoffMin">Entry Cutoff Min Tick</label>
+                                <input id="cutoffMin" type="number" min="1" max="500" value="30">
+                            </div>
+                            <div class="control-row">
+                                <label for="cutoffMax">Entry Cutoff Max Tick</label>
+                                <input id="cutoffMax" type="number" min="1" max="800" value="60">
+                            </div>
+                            <div class="control-row">
+                                <label for="cutoffStep">Entry Cutoff Step</label>
+                                <input id="cutoffStep" type="number" min="1" max="50" value="5">
+                            </div>
+                            <div class="control-row">
+                                <label for="holdTicks">Hold Ticks Options (CSV)</label>
+                                <input id="holdTicks" type="text" value="3,5,7,9">
+                            </div>
+                            <div class="control-row">
+                                <label for="thresholdProfiles">Threshold Profiles / Family</label>
+                                <input id="thresholdProfiles" type="number" min="1" max="200" value="6">
+                            </div>
+                            <div class="control-row">
+                                <label for="confidenceGateCount">Confidence Gate Levels</label>
+                                <input id="confidenceGateCount" type="number" min="1" max="50" value="3">
+                            </div>
+                            <div class="control-row">
+                                <label for="stageAGames">Stage A Games</label>
+                                <input id="stageAGames" type="number" min="10" max="100000" value="500">
+                            </div>
+                            <div class="control-row">
+                                <label for="stageBGames">Stage B Games</label>
+                                <input id="stageBGames" type="number" min="10" max="100000" value="1772">
+                            </div>
+                        </div>
+                        <div class="check-grid">
+                            <label class="check-row"><input type="checkbox" class="familyCheck" value="MOMENTUM" checked>Momentum</label>
+                            <label class="check-row"><input type="checkbox" class="familyCheck" value="PULLBACK" checked>Pullback Continuation</label>
+                            <label class="check-row"><input type="checkbox" class="familyCheck" value="BREAKOUT" checked>Breakout</label>
+                            <label class="check-row"><input type="checkbox" class="familyCheck" value="MEAN_REVERT" checked>Mean Reversion</label>
+                        </div>
+                        <pre id="phase1Summary">No phase summary yet.</pre>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Phase 2: Exit Surface Builder</div>
+                        <p class="desc">
+                            Configure drift-anchored TP/SL permutations for shortlisted entry candidates.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row">
+                                <label for="candidateCount">Stage 2 Candidates</label>
+                                <input id="candidateCount" type="number" min="1" max="10000" value="30">
+                            </div>
+                            <div class="control-row">
+                                <label for="tpMin">TP Mult Min</label>
+                                <input id="tpMin" type="number" min="1" max="20" value="1">
+                            </div>
+                            <div class="control-row">
+                                <label for="tpMax">TP Mult Max</label>
+                                <input id="tpMax" type="number" min="1" max="20" value="5">
+                            </div>
+                            <div class="control-row">
+                                <label for="slMin">SL Mult Min</label>
+                                <input id="slMin" type="number" min="1" max="20" value="1">
+                            </div>
+                            <div class="control-row">
+                                <label for="slMax">SL Mult Max</label>
+                                <input id="slMax" type="number" min="1" max="20" value="4">
+                            </div>
+                        </div>
+                        <div class="check-grid">
+                            <label class="check-row"><input type="checkbox" class="driftRefCheck" value="P50" checked>P50 Drift</label>
+                            <label class="check-row"><input type="checkbox" class="driftRefCheck" value="P75" checked>P75 Drift</label>
+                            <label class="check-row"><input type="checkbox" class="driftRefCheck" value="P90" checked>P90 Drift</label>
+                        </div>
+                        <pre id="phase2Summary">No phase summary yet.</pre>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Phase 3: Monte Carlo Robustness Builder</div>
+                        <p class="desc">
+                            Estimate simulation scale for robustness testing of promoted candidates.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row">
+                                <label for="mcCandidateCount">MC Candidate Count</label>
+                                <input id="mcCandidateCount" type="number" min="1" max="5000" value="10">
+                            </div>
+                            <div class="control-row">
+                                <label for="pathsPerCandidate">Paths / Candidate</label>
+                                <input id="pathsPerCandidate" type="number" min="100" max="500000" value="10000">
+                            </div>
+                            <div class="control-row">
+                                <label for="gamesPerPath">Games / Path</label>
+                                <input id="gamesPerPath" type="number" min="50" max="5000" value="500">
+                            </div>
+                            <div class="control-row">
+                                <label for="stressScenarios">Regime Stress Scenarios</label>
+                                <input id="stressScenarios" type="number" min="1" max="100" value="4">
+                            </div>
+                        </div>
+                        <pre id="phase3Summary">No phase summary yet.</pre>
+                    </div>
+                </div>
+
+                <div class="panel-col">
+                    <div class="card">
+                        <div class="card-header">Pipeline Visualization</div>
+                        <p class="desc">
+                            Live view of evaluation volume by phase, based on current controls.
+                        </p>
+                        <div class="step-grid">
+                            <div class="step-card">
+                                <div class="step-title">Step 1: Entry Discovery (Stage A)</div>
+                                <div class="step-value" id="step1Value">-</div>
+                            </div>
+                            <div class="step-card">
+                                <div class="step-title">Step 2: Entry Recheck (Stage B)</div>
+                                <div class="step-value" id="step2Value">-</div>
+                            </div>
+                            <div class="step-card">
+                                <div class="step-title">Step 3: Exit Surface Search</div>
+                                <div class="step-value" id="step3Value">-</div>
+                            </div>
+                            <div class="step-card">
+                                <div class="step-title">Step 4: Monte Carlo Paths</div>
+                                <div class="step-value" id="step4Value">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Empirical Baseline Snapshot (min60 canonical)</div>
+                        <p class="desc">
+                            Grounding facts from 1,772 games used to bound realistic exploration ranges.
+                        </p>
+                        <pre id="baselineText">Loading baseline...</pre>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Soft Label Guide (before rigid thresholds)</div>
+                        <p class="desc">
+                            Use this as first-pass triage during optimization.
+                        </p>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Label</th>
+                                        <th>Definition</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Explore</td>
+                                        <td>Top utility region with stable neighboring parameters.</td>
+                                        <td>Promote to Stage 2 and MC stress tests.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Avoid</td>
+                                        <td>Dominated profile or consistent downside failures.</td>
+                                        <td>Drop from optimization queue.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Noise</td>
+                                        <td>Low support, unstable ranking, or outlier-led behavior.</td>
+                                        <td>Quarantine until more evidence appears.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="artifact-footer">
+            <span>Prototype scope: strategy exploration planning and run matrix validation</span>
+            <span class="pill" id="footTotal">No calculations yet</span>
+        </footer>
+    </div>
+
+    <div class="help-overlay hidden" id="helpOverlay">
+        <div class="help-modal">
+            <div class="help-head">
+                <div class="card-header">Method Help</div>
+                <button class="btn" id="helpCloseBtn">Close</button>
+            </div>
+            <p class="desc">
+                This help is specific to optimizing the exploration process, not only the trading strategy.
+            </p>
+            <div class="help-tabs">
+                <button class="btn help-tab-btn" data-help-tab="entry">Entry-First</button>
+                <button class="btn help-tab-btn" data-help-tab="exit">Exit Surface</button>
+                <button class="btn help-tab-btn" data-help-tab="mc">Monte Carlo</button>
+                <button class="btn help-tab-btn" data-help-tab="labels">Labels</button>
+            </div>
+            <div class="help-grid">
+                <div class="help-section help-panel" data-help-panel="entry">
+                    <h3>Entry-First Principle</h3>
+                    <ul>
+                        <li>Find robust entry edge before heavy exit tuning.</li>
+                        <li>Use Stage A for broad search and Stage B for full-dataset validation.</li>
+                        <li>Prefer stable parameter neighborhoods, not single-point peaks.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="exit">
+                    <h3>Exit Surface Principle</h3>
+                    <ul>
+                        <li>Use drift-based TP/SL permutations after entry candidates are selected.</li>
+                        <li>Evaluate net SOL and end SOL, not only win rate.</li>
+                        <li>Look for plateau regions that survive local perturbations.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="mc">
+                    <h3>Monte Carlo Principle</h3>
+                    <ul>
+                        <li>Bootstrap full games with replacement to model sequence risk.</li>
+                        <li>Run stress scenarios with regime-mix shifts.</li>
+                        <li>Track terminal SOL distribution and drawdown profile.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="labels">
+                    <h3>Explore / Avoid / Noise</h3>
+                    <ul>
+                        <li>Explore: high utility and stability.</li>
+                        <li>Avoid: hard downside failures or dominated performance.</li>
+                        <li>Noise: unstable effects without clear repeatability.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

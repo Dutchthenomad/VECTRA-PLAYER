@@ -14,6 +14,27 @@
       "path": "../tools/prediction-engine/index.html",
       "description": "Real-time Bayesian price predictor",
       "icon": "📊"
+    },
+    {
+      "id": "scalping-explorer",
+      "name": "Scalping Explorer",
+      "path": "../tools/scalping-explorer/index.html",
+      "description": "Offline first-25-tick regime and scalp playbook lab",
+      "icon": "🛠"
+    },
+    {
+      "id": "scalping-optimization-planner",
+      "name": "Scalping Optimization Planner",
+      "path": "../tools/scalping-optimization-planner/index.html",
+      "description": "Entry-first BO + drift exits + Monte Carlo planning console",
+      "icon": "🧭"
+    },
+    {
+      "id": "scalping-bot-v1-simulator",
+      "name": "Scalping Bot V1 Simulator",
+      "path": "../tools/scalping-bot-v1-simulator/index.html",
+      "description": "Toggleable V1 bot profile simulator on prerecorded games",
+      "icon": "🤖"
     }
   ]
 }

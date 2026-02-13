@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  recording-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vectra-recording-service
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-9010}:${PORT:-9010}"
+
+    volumes:
+      # Configuration (read-only)
+      - ./config:/app/config:ro
+
+      # Data storage (persistent)
+      - ${DATA_PATH:-~/rugs_recordings/raw_captures}:/data/raw_captures
+
+      # Foundation package from parent project (development)
+      - ../../src/foundation:/app/foundation:ro
+
+    environment:
+      - FOUNDATION_WS_URL=${FOUNDATION_WS_URL:-ws://host.docker.internal:9000/feed}
+      - PORT=${PORT:-9010}
+      - HOST=0.0.0.0
+      - STORAGE_PATH=/data/raw_captures
+      - DEDUP_PATH=/app/config/seen_games.json
+      - AUTO_START_RECORDING=${AUTO_START_RECORDING:-true}
+      - PYTHONPATH=/app
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-9010}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - vectra-network
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  vectra-network:
+    name: vectra-network
+    driver: bridge

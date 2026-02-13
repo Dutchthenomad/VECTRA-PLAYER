@@ -104,3 +104,38 @@ extracted_selectors.py
 bot_config.json.bak
 *.json.bak
 .cache/
+
+# Service runtime data (large, regenerable)
+services/rugs-feed/data/
+
+# Playwright MCP screenshots and captured data
+.playwright-mcp/
+
+# IDE run configs and plugin caches
+.run/
+.claude-plugin/
+
+# Compiler artifacts
+a.out
+
+# PID files
+*.pid
+
+# Excalidraw library (binary, user-specific)
+.excalidraw-library.excalidrawlib
+
+# Debug/progress screenshots at project root
+/*.png
+
+# Large reference game data (keep one copy in rosetta-stone, not BEST-DOCS dupe)
+docs/BEST-DOCS/rosetta-stone/
+
+# Debug artifacts
+ws_debug.html
+a.out
+apply_conflict_fix.sh
+start_debugging.sh
+setup_pyright_lsp.sh
+vectra
+.vectra.log
+.vectra.pid

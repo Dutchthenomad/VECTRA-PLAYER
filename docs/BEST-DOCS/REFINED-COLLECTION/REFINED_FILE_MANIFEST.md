@@ -1,0 +1,80 @@
+# Refined Workspace Manifest
+
+Generated: 2026-02-12
+Scope: files inside `REFINED-COLLECTION/`
+
+Total refined files: 71
+
+## Files
+
+- `00-governance/CONSTANTS_AND_SEMANTICS.md`
+- `00-governance/DECISION_LOG.md`
+- `00-governance/DOC_STANDARDS.md`
+- `00-governance/GLOSSARY.md`
+- `00-governance/README.md`
+- `01-architecture/CONTRACTS/EVENT_SCHEMAS.md`
+- `01-architecture/CONTRACTS/FOUNDATION_API.md`
+- `01-architecture/CONTRACTS/README.md`
+- `01-architecture/EVENT_MODEL.md`
+- `01-architecture/MODES_AND_EXECUTION_MODEL.md`
+- `01-architecture/README.md`
+- `01-architecture/SERVICE_BOUNDARIES.md`
+- `01-architecture/SYSTEM_OVERVIEW.md`
+- `02-domain/DATA_MODEL/CANONICAL_DATASETS.md`
+- `02-domain/DATA_MODEL/FEATURE_DICTIONARY.md`
+- `02-domain/DATA_MODEL/README.md`
+- `02-domain/PROTOCOL/README.md`
+- `02-domain/PROTOCOL/REFERENCE_DATA_GUIDE.md`
+- `02-domain/PROTOCOL/RUGS_WS_PROTOCOL.md`
+- `02-domain/README.md`
+- `02-domain/TRADING/MARKET_MECHANICS.md`
+- `02-domain/TRADING/POSITION_AND_SIDEBET_RULES.md`
+- `02-domain/TRADING/README.md`
+- `03-strategy-and-math/OPTIMIZATION/MONTE_CARLO.md`
+- `03-strategy-and-math/OPTIMIZATION/README.md`
+- `03-strategy-and-math/OPTIMIZATION/STRATEGY_PROFILE_GENERATION.md`
+- `03-strategy-and-math/PROBABILITY/BAYESIAN_RUG_SIGNAL.md`
+- `03-strategy-and-math/PROBABILITY/README.md`
+- `03-strategy-and-math/PROBABILITY/SURVIVAL_MODEL.md`
+- `03-strategy-and-math/README.md`
+- `03-strategy-and-math/RISK/DRAWDOWN_CONTROL.md`
+- `03-strategy-and-math/RISK/POSITION_SIZING.md`
+- `03-strategy-and-math/RISK/README.md`
+- `03-strategy-and-math/RISK/RISK_METRICS.md`
+- `03-strategy-and-math/RL/OBSERVATION_ACTION_REWARD.md`
+- `03-strategy-and-math/RL/README.md`
+- `03-strategy-and-math/RL/RL_ENVIRONMENT_SPEC.md`
+- `04-systems/BACKTEST/README.md`
+- `04-systems/EXPLORER/README.md`
+- `04-systems/FOUNDATION/README.md`
+- `04-systems/LIVE_SIMULATOR/README.md`
+- `04-systems/ML_PIPELINES/README.md`
+- `04-systems/README.md`
+- `05-operations/DEPLOYMENT/README.md`
+- `05-operations/MONITORING/README.md`
+- `05-operations/README.md`
+- `05-operations/RUNBOOKS/README.md`
+- `05-operations/TESTING_AND_VALIDATION/README.md`
+- `06-research/INVESTIGATIONS/README.md`
+- `06-research/PRNG/README.md`
+- `06-research/README.md`
+- `06-research/SCALPING/HANDBOOK/README.md`
+- `06-research/SCALPING/README.md`
+- `07-evidence/AUDITS/README.md`
+- `07-evidence/CHECKPOINTS/README.md`
+- `07-evidence/DATASETS/README.md`
+- `07-evidence/EXPERIMENTS/README.md`
+- `07-evidence/FIGURES/README.md`
+- `07-evidence/README.md`
+- `07-evidence/SESSIONS/README.md`
+- `08-legacy/ARCHIVE_DOCS/README.md`
+- `08-legacy/FLAT_SNAPSHOTS/README.md`
+- `08-legacy/PROTOTYPES/README.md`
+- `08-legacy/README.md`
+- `FILE_MANIFEST.md`
+- `INDEX.md`
+- `MIGRATION_MAP.md`
+- `PAYOUT_BREAKEVEN_SEMANTICS.md`
+- `README.md`
+- `REFINED_FILE_MANIFEST.md`
+- `SORTING_LAYOUT_BLUEPRINT.md`

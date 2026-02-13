@@ -1,0 +1,48 @@
+{
+  "name": "recording-service",
+  "version": "1.0.0",
+  "description": "Captures game data via gameHistory extraction on RUG events. Stores complete games to Parquet with deduplication.",
+  "author": "VECTRA Team",
+  "created": "2026-01-19",
+  "port": 9010,
+  "health_endpoint": "/health",
+  "start_command": "./start.sh",
+  "working_dir": "services/recording",
+  "requires_foundation": true,
+  "events_consumed": [
+    "game.tick"
+  ],
+  "events_emitted": [],
+  "dependencies": [],
+  "requires": {
+    "foundation": "^1.0.0",
+    "python": ">=3.11"
+  },
+  "api_endpoints": [
+    "GET /health",
+    "GET /recording/status",
+    "POST /recording/start",
+    "POST /recording/stop",
+    "GET /recording/stats",
+    "GET /recording/recent"
+  ],
+  "docker": {
+    "enabled": true,
+    "port": 9010,
+    "health_endpoint": "/health",
+    "volumes": [
+      "/data/raw_captures"
+    ]
+  },
+  "storage": {
+    "format": "parquet",
+    "location": "/data/raw_captures",
+    "partitioning": "by_date"
+  },
+  "features": {
+    "gameHistory_extraction": true,
+    "deduplication": true,
+    "toggle_persistence": true,
+    "auto_reconnect": true
+  }
+}

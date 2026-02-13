@@ -1,0 +1,30 @@
+# Recording Service Configuration
+# Environment variables override these values
+#
+# Priority: Environment > Config File > Defaults
+
+# Foundation Service WebSocket URL
+# Docker:      ws://host.docker.internal:9000/feed
+# Local:       ws://localhost:9000/feed
+foundation_ws_url: "ws://localhost:9000/feed"
+
+# Storage path for captured games (Parquet files)
+# Docker:      /data/raw_captures (mounted volume)
+# Local:       ~/rugs_recordings/raw_captures
+storage_path: "~/rugs_recordings/raw_captures"
+
+# Deduplication state persistence path
+# Docker:      /app/config/seen_games.json
+# Local:       ./config/seen_games.json (relative to service dir)
+dedup_path: "./config/seen_games.json"
+
+# API server configuration
+host: "0.0.0.0"
+port: 9010
+
+# Start recording automatically on service startup
+auto_start_recording: true
+
+# Advanced settings
+max_dedup_cache_size: 10000  # Maximum gameIds to track for dedup
+storage_buffer_size: 10     # Games to buffer before flushing to disk
