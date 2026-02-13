@@ -162,7 +162,7 @@
         // Route by event type - DISPLAY ONLY
         switch (event.type) {
             case 'game.tick':
-                displayGameState(event.data);
+                displayGameState(event.data, event.gameId);
                 break;
             case 'player.state':
                 displayPlayerState(event.data);
@@ -187,10 +187,12 @@
 
     /**
      * Display game state - PURE DISPLAY
+     * @param {Object} data - Game state data
+     * @param {string} gameId - Game ID (from event.gameId, not data.gameId)
      */
-    function displayGameState(data) {
+    function displayGameState(data, gameId) {
         updateElement(elements.gamePhase, data.phase || '-');
-        updateElement(elements.gameId, data.gameId || '-');
+        updateElement(elements.gameId, gameId || '-');
         updateElement(elements.gamePrice, data.price ? formatPrice(data.price) : '-');
         updateElement(elements.gameTick, data.tickCount ?? '-');
 

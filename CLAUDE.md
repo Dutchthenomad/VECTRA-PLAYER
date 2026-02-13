@@ -15,6 +15,36 @@ Follow `.github/copilot-instructions.md` and repository conventions.
 - Make minimal, surgical edits, avoid hardcoded paths, and keep EventStore as the single
   writer to disk.
 
+---
+
+## Current Status (Updated 2026-01-18)
+
+**Active Task:** Establish compliance framework and guardrails before continuing development
+
+**Branch:** `main`
+
+**What's Happening:**
+1. Context was scattered across sessions - causing duplicated/forgotten work
+2. Created hookify rules to enforce focus (`.claude/hookify.*.local.md`)
+3. Need to verify Foundation Service works, then document boilerplate spec
+4. User must approve before any new development
+
+**Next Steps (in order):**
+1. Restart terminals, verify hookify rules trigger
+2. Verify Foundation Service: `python -m foundation.launcher`
+3. Create `docs/specs/FOUNDATION-BOILERPLATE.md` with standardized client pattern
+4. THEN proceed to brute force + Bayesian systems
+
+**DO NOT start new features until user confirms this foundation is solid.**
+
+**Plan File:** `.claude/plans/unified-percolating-hearth.md`
+
+**Reference Prompts:**
+- `.claude/prompts/foundation-system-design.md` - Architecture spec
+- `.claude/prompts/live-bot-integration.md` - Bot integration context
+
+---
+
 ## DEDICATED MCP SERVER  **@agent-rugs-expert has deep canonical knowledge of this project**
 
 **Query it for all things rugs.fun**

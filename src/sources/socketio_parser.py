@@ -160,7 +160,23 @@ def _parse_event(data: str, raw: str) -> SocketIOFrame | None:
 
     if isinstance(parsed, list) and len(parsed) >= 1:
         event_name = parsed[0]
-        event_data = parsed[1] if len(parsed) > 1 else None
+
+        # rugs.fun sends events in two formats:
+        # 1. 42["event", {data}] - standard format
+        # 2. 42["event", {__trace, traceparent}, {actual_data}] - traced format
+        #
+        # For traced format, the actual data is in parsed[2], not parsed[1]
+        if len(parsed) == 3 and isinstance(parsed[1], dict):
+            # Check if parsed[1] is trace metadata
+            if "__trace" in parsed[1] or "traceparent" in parsed[1]:
+                # Actual data is in parsed[2]
+                event_data = parsed[2]
+            else:
+                event_data = parsed[1]
+        elif len(parsed) > 1:
+            event_data = parsed[1]
+        else:
+            event_data = None
 
         return SocketIOFrame(type="event", event_name=event_name, data=event_data, raw=raw)
 

@@ -13,12 +13,13 @@ logger = logging.getLogger(__name__)
 
 class FoundationHTTPServer:
     """
-    HTTP server for Foundation monitoring dashboard.
+    HTTP server for Foundation monitoring dashboard and artifact tools.
 
     Serves:
     - GET /health - Health check endpoint
     - GET / - Monitoring dashboard
     - GET /static/* - Static assets (JS, CSS)
+    - GET /artifacts/* - HTML artifact tools (prediction engine, seed bruteforce, etc.)
     """
 
     def __init__(self, config: FoundationConfig | None = None):
@@ -27,6 +28,9 @@ class FoundationHTTPServer:
 
         # Static files directory
         self.static_dir = Path(__file__).parent / "static"
+
+        # Artifacts directory (HTML tools: prediction engine, seed bruteforce, etc.)
+        self.artifacts_dir = Path(__file__).parent.parent / "artifacts"
 
         # Create aiohttp app
         self.app = web.Application()
@@ -42,6 +46,12 @@ class FoundationHTTPServer:
         # Static files (create dir if needed)
         if self.static_dir.exists():
             self.app.router.add_static("/static", self.static_dir)
+
+        # Artifacts directory - HTML tools (prediction engine, seed bruteforce, etc.)
+        # Served at /artifacts/* - e.g., /artifacts/orchestrator/index.html
+        if self.artifacts_dir.exists():
+            self.app.router.add_static("/artifacts", self.artifacts_dir)
+            logger.info(f"Serving artifacts from {self.artifacts_dir}")
 
     async def _handle_health(self, request: web.Request) -> web.Response:
         """

@@ -2,6 +2,7 @@
 Shared test fixtures for pytest
 """
 
+import gc
 import sys
 import time
 import warnings
@@ -28,6 +29,37 @@ def setup_test_logging():
     setup_logging()
 
 
+@pytest.fixture(autouse=True, scope="function")
+def cleanup_socketio_gc():
+    """
+    SIGABRT FIX: Force garbage collection after each test to prevent
+    python-socketio objects from being collected during pytest finalization.
+
+    The python-socketio library has a bug where its JSON decoder crashes
+    when called during Python's garbage collector finalization phase.
+    By forcing GC while pytest is still in control, we avoid this issue.
+    """
+    yield
+    # Force garbage collection while pytest framework is active
+    # This cleans up any lingering socketio.Packet objects
+    gc.collect()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def session_gc_cleanup():
+    """
+    SIGABRT FIX: Final garbage collection at session end.
+
+    Ensures all Socket.IO and other C-extension objects are collected
+    before pytest's finalization phase to prevent crashes.
+    """
+    yield
+    # Multiple GC passes to ensure cyclic references are cleaned
+    gc.collect()
+    gc.collect()
+    gc.collect()
+
+
 @pytest.fixture(autouse=True)
 def cleanup_async_tasks():
     """
@@ -37,8 +69,8 @@ def cleanup_async_tasks():
     not complete before test teardown. This fixture ensures they complete.
     """
     yield
-    # Give async tasks time to complete
-    time.sleep(0.05)
+    # Give async tasks time to complete (increased from 0.05 for thread cleanup)
+    time.sleep(0.1)
 
     # Suppress warnings about pending tasks since we've given them time to complete
     warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
@@ -155,3 +187,6 @@ def cleanup_event_bus():
 
     # Clear all subscribers after test
     event_bus.clear_all()
+    # SIGABRT FIX: Stop the event bus thread to prevent thread accumulation
+    # Without this, threads accumulate across tests causing resource exhaustion
+    event_bus.stop()

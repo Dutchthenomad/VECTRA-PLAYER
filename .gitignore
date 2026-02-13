@@ -104,3 +104,15 @@ extracted_selectors.py
 bot_config.json.bak
 *.json.bak
 .cache/
+
+# Playwright MCP screenshots
+.playwright-mcp/
+
+# Dashboard screenshots (can be regenerated)
+dashboard_*.png
+
+# Jupyter workspace config
+notebooks/.jupyter/
+
+# Claude Code local hookify rules (machine-specific)
+.claude/hookify.*.local.md
