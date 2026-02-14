@@ -51,7 +51,7 @@ jobs:
           done <<< "$COMMITS"
           exit $FAILED
 
-  # ── Gate 2: Lint ────────────────────────────────────────────────────
+  # ── Gate 2: Lint (Python) ──────────────────────────────────────────
   lint:
     name: CI / lint
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
       - name: Ruff format check (services)
         run: ruff format --check services/ governance/
 
-  # ── Gate 3: Service Tests (Matrix) ──────────────────────────────────
+  # ── Gate 3: Service Tests (Matrix) ─────────────────────────────────
   test-services:
     name: CI / test-${{ matrix.service }}
     runs-on: ubuntu-latest
@@ -102,7 +102,7 @@ jobs:
         run: |
           python -m pytest tests/ -v --tb=short --timeout=60
 
-  # ── Gate 4: Root Tests (Legacy) ─────────────────────────────────────
+  # ── Gate 4: Root Tests (Legacy) ────────────────────────────────────
   test-root:
     name: CI / test-root
     runs-on: ubuntu-latest
@@ -130,7 +130,61 @@ jobs:
         run: |
           xvfb-run python -m pytest tests/ -q --disable-warnings --maxfail=5 --timeout=60
 
-  # ── Gate 5: Docker Build ────────────────────────────────────────────
+  # ── Gate 5: Contract Tests ─────────────────────────────────────────
+  contracts:
+    name: CI / contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Verify service contracts
+        run: python -m pytest tests/verify_contracts.py -v --tb=short
+
+  # ── Gate 6: Frontend (nexus-ui) ────────────────────────────────────
+  frontend:
+    name: CI / frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/nexus-ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: services/nexus-ui
+        run: npm ci --legacy-peer-deps
+
+      - name: TypeScript check
+        working-directory: services/nexus-ui
+        run: npx tsc --noEmit
+
+      - name: Vitest
+        working-directory: services/nexus-ui
+        run: npx vitest run
+
+      - name: Storybook build
+        working-directory: services/nexus-ui
+        run: npx storybook build -o storybook-static
+        continue-on-error: true
+
+      - name: Production build
+        working-directory: services/nexus-ui
+        run: npm run build
+
+  # ── Gate 7: Docker Build ───────────────────────────────────────────
   docker:
     name: CI / docker-build
     runs-on: ubuntu-latest

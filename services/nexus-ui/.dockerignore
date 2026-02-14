@@ -3,3 +3,4 @@ dist
 .git
 .env.local
 *.md
+storybook-static/

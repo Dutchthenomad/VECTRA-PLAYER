@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -139,3 +139,10 @@ setup_pyright_lsp.sh
 vectra
 .vectra.log
 .vectra.pid
+
+# Node.js
+node_modules/
+
+# Frontend build artifacts
+services/nexus-ui/dist/
+services/nexus-ui/storybook-static/

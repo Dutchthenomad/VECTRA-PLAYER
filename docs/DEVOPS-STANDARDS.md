@@ -161,15 +161,16 @@ If it's fast but skips a rule, it gets blocked.
 
 ## Enforcement Stack Summary
 
-| Layer | Mechanism | When It Fires |
-|-------|-----------|--------------|
-| **Session** | 17 hookify rules | Every file edit/write in Claude Code |
-| **Commit** | Pre-commit hooks (ruff, branch name, commit msg) | Every `git commit` |
-| **PR** | GitHub Actions CI (5 jobs) | Every push / PR |
-| **Merge** | Branch protection | Before merge to main |
-| **Contract** | `verify_contracts.py` + manifest validation | CI pipeline |
-| **Template** | `scripts/new-service.sh` | Service creation |
-| **Alert** | Apprise messenger bot | BLOCK+ severity events |
+| Layer | Mechanism | When It Fires | Severity |
+|-------|-----------|--------------|----------|
+| **Session** | 17 hookify rules | Every file edit/write in Claude Code | BLOCK |
+| **Commit** | Pre-commit hooks (ruff, branch name, commit msg) | Every `git commit` | BLOCK |
+| **PR** | GitHub Actions CI (7 gates) | Every push / PR | BLOCK |
+| **Merge** | Branch protection (GitHub ruleset) | Before merge to main | BLOCK |
+| **Contract** | `tests/verify_contracts.py` (81 tests) | CI pipeline | REJECT |
+| **Frontend** | TypeScript + Vitest + Storybook + Vite build | CI pipeline | BLOCK |
+| **Template** | `scripts/new-service.sh` | Service creation | BLOCK |
+| **Alert** | Apprise messenger bot | BLOCK+ severity events | CRITICAL |
 
 ---
 
@@ -217,6 +218,66 @@ Use tiered model hierarchy based on task complexity:
 
 ---
 
+## Feature Development Workflow
+
+Every feature follows this 10-step workflow. No exceptions.
+
+```
+ 0. Charter   -> Write project charter (objectives, scope, guardrails)
+ 1. Register  -> Get project ID (VEC-NNN) from registry.json
+ 2. Branch    -> git checkout -b VEC-NNN-description main
+ 3. Storybook -> Build UI components in isolation, visual review
+ 4. Tests     -> Write Vitest tests for logic (not UI chrome)
+ 5. Wire      -> Connect to real service data via WebSocket/HTTP
+ 6. PR        -> Push, open PR, CI runs 7 gates automatically
+ 7. Preview   -> Vercel deploys preview URL (future)
+ 8. Review    -> User reviews Storybook + preview URL visually
+ 9. Merge     -> Squash merge to main after all CI gates pass
+```
+
+### CI Gates (All Must Pass for Merge)
+
+| Gate | Tool | Severity |
+|------|------|----------|
+| Branch Name | `validate-branch-name.sh` | BLOCK |
+| Commit Messages | `validate-commit-msg.sh` | BLOCK |
+| Python Lint | `ruff check` + `ruff format --check` | BLOCK |
+| Service Tests | `pytest` per service (matrix) | BLOCK |
+| Root Tests | `pytest` on src/tests/ | BLOCK |
+| Contract Tests | `tests/verify_contracts.py` (81 tests) | REJECT |
+| TypeScript Check | `tsc --noEmit` | BLOCK |
+| Vitest | `vitest run` | BLOCK |
+| Storybook Build | `storybook build` | WARN |
+| Production Build | `vite build` | BLOCK |
+| Docker Build | `docker compose build` | BLOCK |
+
+---
+
+## Frontend Stack (nexus-ui)
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Vite | 6 | Build tool + dev server (instant HMR) |
+| React | 19 | UI framework |
+| TypeScript | strict | Type safety |
+| Tailwind CSS | 4 | Utility-first styling |
+| shadcn/ui | latest | Copy-paste component library |
+| Storybook | 8 | Visual component dev + review |
+| Vitest | latest | Unit/integration tests |
+
+### Frontend Commands
+
+```bash
+cd services/nexus-ui
+npm run dev          # Start Vite dev server (port 3000)
+npm run build        # Production build to dist/
+npm run test         # Run Vitest
+npm run typecheck    # TypeScript check
+npm run storybook    # Storybook dev server (port 6006)
+```
+
+---
+
 ## Quick Start for New Projects
 
 ```bash
@@ -237,7 +298,17 @@ git commit -m "VEC-NNN: description of change"
 git push -u origin VEC-NNN-description
 gh pr create --title "VEC-NNN: title"
 
-# 6. CI runs automatically, merge after all gates pass
+# 6. CI runs 7 gates automatically, merge after all pass
+```
+
+## Quick Start for New Services
+
+```bash
+# Generate service skeleton with all required files
+./scripts/new-service.sh <name> <layer> <upstream-port>
+
+# Example: create an L2 service consuming from rugs-sanitizer
+./scripts/new-service.sh signal-detector L2 9017
 ```
 
 ---
