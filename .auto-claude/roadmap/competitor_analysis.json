@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "reason": "Competitor analysis not enabled by user",
+  "competitors": [],
+  "market_gaps": [],
+  "insights_summary": {
+    "top_pain_points": [],
+    "differentiator_opportunities": [],
+    "market_trends": []
+  },
+  "created_at": "2026-01-03T22:33:46.435760"
+}

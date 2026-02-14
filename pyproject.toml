@@ -32,6 +32,9 @@ dependencies = [
     "pyarrow>=14.0.0",
     "pandas>=2.2.0",
     "sentence-transformers>=2.2.0",
+    # Live backtest mode
+    "flask>=3.0.0",
+    "flask-socketio>=5.3.0",
 ]
 
 [project.optional-dependencies]
@@ -133,6 +136,7 @@ ignore = [
     # "RUF059", # invalid-return-type-annotation - rule not in ruff 0.8
     # Comprehension rules
     "C401",   # unnecessary-generator-set
+    "C408",   # unnecessary-dict-call (dict() is idiomatic in Plotly/visualization code)
     "C416",   # unnecessary-comprehension
     # Upgrade rules
     "UP007",  # non-pep604-annotation-union (X | Y vs Union)
@@ -155,6 +159,7 @@ ignore = [
     "S101",   # assert allowed in tests
     "ARG",    # unused arguments (fixtures)
     "PLR2004", # magic values in tests
+    "RUF006", # asyncio-dangling-task (common pattern in async tests)
 ]
 # winsound import is intentional - checking availability
 "src/ui/audio_cue_player.py" = ["F401"]

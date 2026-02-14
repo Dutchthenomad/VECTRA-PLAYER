@@ -4,12 +4,20 @@ Event Store Service - EventBus integration for Parquet persistence
 Phase 12B, Issue #25
 
 Subscribes to EventBus events and persists them to Parquet storage.
+
+IPC Features (for Flask dashboard):
+- Polls ~/.rugs_data/.recording_control.json for external commands
+- Writes ~/.rugs_data/.recording_status.json with current state
 """
 
+import json
 import logging
 import threading
+import time
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from services.event_bus import EventBus, Events
@@ -18,6 +26,10 @@ from services.event_store.schema import EventEnvelope, EventSource
 from services.event_store.writer import ParquetWriter
 
 logger = logging.getLogger(__name__)
+
+# IPC file locations (in data directory)
+DEFAULT_CONTROL_FILE = Path.home() / "rugs_data" / ".recording_control.json"
+DEFAULT_STATUS_FILE = Path.home() / "rugs_data" / ".recording_status.json"
 
 
 class EventStoreService:
@@ -58,6 +70,7 @@ class EventStoreService:
         self._session_id = session_id or str(uuid.uuid4())
         self._seq = 0
         self._seq_lock = threading.Lock()  # Thread-safe sequence numbers
+        self._state_lock = threading.Lock()  # Protect recording state
 
         self._writer = ParquetWriter(
             paths=self._paths,
@@ -66,6 +79,17 @@ class EventStoreService:
         )
 
         self._started = False
+        self._paused = True  # Start paused by default (no recording until toggled)
+        self._recorded_game_ids: set[str] = set()  # Track unique game_ids for deduplication
+        self._total_events_recorded = 0  # Count of events persisted
+
+        # IPC for Flask dashboard control
+        self._control_file = DEFAULT_CONTROL_FILE
+        self._status_file = DEFAULT_STATUS_FILE
+        self._control_poll_thread: threading.Thread | None = None
+        self._control_poll_interval = 2.0  # seconds
+        self._last_status_write = 0.0
+        self._status_write_interval = 1.0  # seconds
 
         logger.info(f"EventStoreService initialized: session_id={self._session_id}")
 
@@ -76,8 +100,140 @@ class EventStoreService:
 
     @property
     def event_count(self) -> int:
-        """Number of events in current buffer"""
-        return self._writer.buffer_count
+        """Total events recorded this session."""
+        with self._state_lock:
+            return self._total_events_recorded
+
+    @property
+    def is_paused(self) -> bool:
+        """Whether recording is currently paused."""
+        with self._state_lock:
+            return self._paused
+
+    @property
+    def is_recording(self) -> bool:
+        """Whether actively recording events (started and not paused)."""
+        with self._state_lock:
+            return self._started and not self._paused
+
+    @property
+    def recorded_game_ids(self) -> set[str]:
+        """Set of unique game_ids that have been recorded (copy for safety)."""
+        with self._state_lock:
+            return self._recorded_game_ids.copy()
+
+    def pause(self) -> None:
+        """Pause event recording. Events will be dropped until resume() is called."""
+        with self._state_lock:
+            self._paused = True
+        logger.info("Recording PAUSED")
+
+    def resume(self) -> None:
+        """Resume event recording."""
+        with self._state_lock:
+            self._paused = False
+        logger.info("Recording RESUMED")
+
+    def toggle_recording(self) -> bool:
+        """
+        Toggle recording state between paused and recording.
+
+        Returns:
+            bool: New recording state (True if now recording, False if paused)
+        """
+        with self._state_lock:
+            was_paused = self._paused
+        if was_paused:
+            self.resume()
+        else:
+            self.pause()
+        return self.is_recording
+
+    # =========================================================================
+    # IPC: File-based control for Flask dashboard
+    # =========================================================================
+
+    def _start_control_polling(self) -> None:
+        """Start background thread to poll control file for external commands."""
+        if self._control_poll_thread is not None:
+            return
+
+        def poll_loop():
+            logger.info(f"Control polling started: {self._control_file}")
+            while self._started:
+                try:
+                    self._check_control_file()
+                    self._write_status_file()
+                except Exception as e:
+                    logger.debug(f"Control poll error (non-fatal): {e}")
+                time.sleep(self._control_poll_interval)
+            logger.info("Control polling stopped")
+
+        self._control_poll_thread = threading.Thread(
+            target=poll_loop, daemon=True, name="EventStoreControlPoll"
+        )
+        self._control_poll_thread.start()
+
+    def _check_control_file(self) -> None:
+        """Check control file for external commands (from Flask dashboard)."""
+        if not self._control_file.exists():
+            return
+
+        try:
+            with open(self._control_file) as f:
+                control = json.load(f)
+
+            should_record = control.get("recording", False)
+            command_ts = control.get("timestamp", 0)
+
+            # Only act on commands newer than 10 seconds (avoid stale commands)
+            now = time.time()
+            if now - command_ts > 10:
+                return
+
+            current_recording = self.is_recording
+            if should_record and not current_recording:
+                logger.info("External command: START recording (from dashboard)")
+                self.resume()
+            elif not should_record and current_recording:
+                logger.info("External command: STOP recording (from dashboard)")
+                self.pause()
+
+        except json.JSONDecodeError:
+            pass  # Ignore malformed control file
+        except Exception as e:
+            logger.debug(f"Error reading control file: {e}")
+
+    def _write_status_file(self) -> None:
+        """Write current status to file for Flask dashboard to read."""
+        now = time.time()
+        if now - self._last_status_write < self._status_write_interval:
+            return
+
+        try:
+            # Ensure parent directory exists
+            self._status_file.parent.mkdir(parents=True, exist_ok=True)
+
+            with self._state_lock:
+                status = {
+                    "is_recording": self._started and not self._paused,
+                    "event_count": self._total_events_recorded,
+                    "game_count": len(self._recorded_game_ids),
+                    "session_id": self._session_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now,
+                }
+
+            # Atomic write (write to temp, then rename)
+            temp_file = self._status_file.with_suffix(".tmp")
+            with open(temp_file, "w") as f:
+                json.dump(status, f)
+            temp_file.replace(self._status_file)
+
+            self._last_status_write = now
+
+        except Exception as e:
+            logger.debug(f"Error writing status file: {e}")
 
     def start(self) -> None:
         """Start service and subscribe to events"""
@@ -108,12 +264,30 @@ class EventStoreService:
         logger.info("EventStoreService subscribed to BUTTON_PRESS for RL training")
 
         self._started = True
+
+        # Start IPC control polling for Flask dashboard
+        self._start_control_polling()
+
         logger.info("EventStoreService started")
 
     def stop(self) -> None:
         """Stop service and flush remaining events"""
         if not self._started:
             return
+
+        # Mark as stopped (will cause control poll thread to exit)
+        self._started = False
+
+        # Wait for control poll thread to finish
+        if self._control_poll_thread is not None:
+            self._control_poll_thread.join(timeout=5.0)
+            self._control_poll_thread = None
+
+        # Write final status
+        try:
+            self._write_status_file()
+        except Exception:
+            pass
 
         # Unsubscribe from all events
         self._event_bus.unsubscribe(Events.WS_RAW_EVENT, self._on_ws_raw_event)
@@ -128,7 +302,6 @@ class EventStoreService:
         # Flush and close writer
         self._writer.close()
 
-        self._started = False
         logger.info(f"EventStoreService stopped: {self._seq} events processed")
 
     def flush(self) -> list | None:
@@ -199,6 +372,11 @@ class EventStoreService:
 
     def _on_ws_raw_event(self, wrapped: dict[str, Any]) -> None:
         """Handle raw WebSocket event"""
+        # Early return if recording is paused
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # Unwrap event payload from EventBus/BrowserBridge wrappers
             data = self._unwrap_event_payload(wrapped)
@@ -213,10 +391,13 @@ class EventStoreService:
 
             event_data = data.get("data") or {}  # Handle None value explicitly
             source_str = data.get("source", "public_ws")
-            game_id = data.get("game_id") or (event_data.get("gameId") if isinstance(event_data, dict) else None)
+            game_id = data.get("game_id") or (
+                event_data.get("gameId") if isinstance(event_data, dict) else None
+            )
 
             source = EventSource.CDP if source_str == "cdp" else EventSource.PUBLIC_WS
 
+            # Write raw ws_event
             envelope = EventEnvelope.from_ws_event(
                 event_name=event_name,
                 data=event_data,
@@ -225,14 +406,59 @@ class EventStoreService:
                 seq=self._next_seq(),
                 game_id=game_id,
             )
-
             self._writer.write(envelope)
+            with self._state_lock:
+                self._total_events_recorded += 1
+
+            # TRAINING DATA: Extract complete games from gameHistory
+            if event_name == "gameStateUpdate" and isinstance(event_data, dict):
+                game_history = event_data.get("gameHistory", [])
+
+                if game_history:
+                    # Rug event! Capture all complete games (with deduplication)
+                    new_games = []
+                    with self._state_lock:
+                        for game in game_history:
+                            # gameHistory games use "id" field, not "gameId"
+                            gid = game.get("id") or game.get("gameId")
+                            if gid and gid not in self._recorded_game_ids:
+                                new_games.append(game)
+                                self._recorded_game_ids.add(gid)
+
+                    if new_games:
+                        logger.info(
+                            f"Capturing {len(new_games)} NEW complete games from gameHistory"
+                        )
+
+                        for game in new_games:
+                            game_envelope = EventEnvelope.from_complete_game(
+                                game_data=game,
+                                source=source,
+                                session_id=self._session_id,
+                                seq=self._next_seq(),
+                            )
+                            self._writer.write(game_envelope)
+                            with self._state_lock:
+                                self._total_events_recorded += 1
+
+                        # Count sidebets for logging
+                        total_sidebets = sum(len(g.get("globalSidebets", [])) for g in new_games)
+                        total_ticks = sum(len(g.get("prices", [])) for g in new_games)
+                        logger.info(
+                            f"Captured training data: {len(new_games)} games, "
+                            f"{total_sidebets} sidebets, {total_ticks} ticks"
+                        )
 
         except Exception as e:
             logger.error(f"Error handling WS_RAW_EVENT: {e}")
 
     def _on_game_tick(self, wrapped: dict[str, Any]) -> None:
         """Handle game tick event"""
+        # Early return if recording is paused
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -258,12 +484,19 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            with self._state_lock:
+                self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling GAME_TICK: {e}")
 
     def _on_player_update(self, wrapped: dict[str, Any]) -> None:
         """Handle player update event"""
+        # Early return if recording is paused
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -292,24 +525,39 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            with self._state_lock:
+                self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling PLAYER_UPDATE: {e}")
 
     def _on_trade_buy(self, data: dict[str, Any]) -> None:
         """Handle buy trade event"""
+        with self._state_lock:
+            if self._paused:
+                return
         self._handle_trade_action("buy", data)
 
     def _on_trade_sell(self, data: dict[str, Any]) -> None:
         """Handle sell trade event"""
+        with self._state_lock:
+            if self._paused:
+                return
         self._handle_trade_action("sell", data)
 
     def _on_trade_sidebet(self, data: dict[str, Any]) -> None:
         """Handle sidebet trade event"""
+        with self._state_lock:
+            if self._paused:
+                return
         self._handle_trade_action("sidebet", data)
 
     def _on_trade_confirmed(self, wrapped: dict[str, Any]) -> None:
         """Handle trade confirmation event with latency tracking"""
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -326,12 +574,19 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            with self._state_lock:
+                self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling TRADE_CONFIRMED: {e}")
 
     def _handle_trade_action(self, action_type: str, wrapped: dict[str, Any]) -> None:
         """Common handler for trade actions"""
+        # Defensive guard for direct calls (callers already check, but be safe)
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -352,6 +607,8 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
+            with self._state_lock:
+                self._total_events_recorded += 1
 
         except Exception as e:
             logger.error(f"Error handling trade action {action_type}: {e}")
@@ -363,6 +620,11 @@ class EventStoreService:
         ButtonEvents capture human button presses with full game context
         for training reinforcement learning models.
         """
+        # Early return if recording is paused
+        with self._state_lock:
+            if self._paused:
+                return
+
         try:
             # EventBus wraps data: {"name": event.value, "data": actual_data}
             data = wrapped.get("data", wrapped)
@@ -391,7 +653,11 @@ class EventStoreService:
             )
 
             self._writer.write(envelope)
-            logger.debug(f"ButtonEvent stored: {button_id} tick={tick} seq={sequence_id[:8] if sequence_id else 'N/A'}")
+            with self._state_lock:
+                self._total_events_recorded += 1
+            logger.debug(
+                f"ButtonEvent stored: {button_id} tick={tick} seq={sequence_id[:8] if sequence_id else 'N/A'}"
+            )
 
         except Exception as e:
             logger.error(f"Error handling BUTTON_PRESS: {e}")

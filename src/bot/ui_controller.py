@@ -332,7 +332,8 @@ class BotUIController:
             time.sleep(self.clear_pause_ms / 1000.0)
 
             # Calculate optimal button sequence using smart algorithm
-            sequence = self._calculate_optimal_sequence(float(target_amount))
+            # Round to 3 decimal places (rugs.fun UI precision) to avoid float precision issues
+            sequence = self._calculate_optimal_sequence(round(float(target_amount), 3))
 
             # Execute sequence
             # NOTE: click_increment_button already handles 500ms pauses between each click,

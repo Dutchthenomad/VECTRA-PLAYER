@@ -251,6 +251,7 @@ class Application:
                 self.config,
                 browser_bridge=self.browser_bridge,
                 live_state_provider=self.live_state_provider,
+                event_store=self.event_store,
             )
 
             # Auto-load games if directory exists (skip in live mode)
@@ -323,9 +324,9 @@ class Application:
             self.event_bus.stop()
 
             # Shut down UI if shutdown method exists
-            if self.main_window and hasattr(self.main_window, 'shutdown'):
+            if self.main_window and hasattr(self.main_window, "shutdown"):
                 self.main_window.shutdown()
-            elif self.main_window and hasattr(self.main_window, '_unsubscribe_from_events'):
+            elif self.main_window and hasattr(self.main_window, "_unsubscribe_from_events"):
                 # MinimalWindow cleanup: unsubscribe from events
                 self.main_window._unsubscribe_from_events()
 

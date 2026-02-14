@@ -37,7 +37,15 @@ def mock_action_interface():
 @pytest.fixture
 def interceptor(mock_action_interface):
     """Create HumanActionInterceptor with mock interface."""
-    return HumanActionInterceptor(mock_action_interface)
+    interceptor = HumanActionInterceptor(mock_action_interface)
+    yield interceptor
+    # Cleanup: ensure async manager is stopped properly
+    if interceptor._owns_async_manager and interceptor._async_manager:
+        interceptor._async_manager.stop(timeout=2.0)
+    # Give any pending tasks time to complete
+    import time
+
+    time.sleep(0.05)
 
 
 class TestHumanActionInterceptorInit:

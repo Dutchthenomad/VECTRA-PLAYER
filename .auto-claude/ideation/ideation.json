@@ -1,0 +1,715 @@
+{
+  "id": "ideation-20260104-001252",
+  "project_id": "/home/devops/Desktop/VECTRA-PLAYER",
+  "config": {
+    "enabled_types": [
+      "code_improvements",
+      "security_hardening",
+      "documentation_gaps",
+      "performance_optimizations",
+      "code_quality",
+      "ui_ux_improvements"
+    ],
+    "include_roadmap_context": true,
+    "include_kanban_context": true,
+    "max_ideas_per_type": 5
+  },
+  "ideas": [
+    {
+      "id": "ci-001",
+      "type": "code_improvements",
+      "title": "Add Missing EventEnvelope Factory Methods for Sidegame DocTypes",
+      "description": "Add factory methods from_bbc_round(), from_candleflip_round(), and from_short_position() to EventEnvelope class to match the already-defined DocType enum values (BBC_ROUND, CANDLEFLIP_ROUND, SHORT_POSITION).",
+      "rationale": "The EventEnvelope class has factory methods for 6 DocTypes (ws_event, game_tick, player_action, server_state, system_event, button_event) but the DocType enum defines 3 additional types (BBC_ROUND, CANDLEFLIP_ROUND, SHORT_POSITION) that lack corresponding factory methods. The pattern for creating these methods is well-established.",
+      "builds_upon": [
+        "EventEnvelope.from_ws_event factory pattern",
+        "DocType enum definitions"
+      ],
+      "estimated_effort": "small",
+      "affected_files": [
+        "src/services/event_store/schema.py"
+      ],
+      "existing_patterns": [
+        "EventEnvelope.from_button_event() factory method pattern - lines 219-271"
+      ],
+      "implementation_approach": "Copy the from_button_event() method structure 3 times, adjusting DocType and field names for each sidegame type. BBC rounds would include bull/bear/crab bet fields, candleflip would include flip result fields, short_position would include short position tracking fields.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-002",
+      "type": "code_improvements",
+      "title": "Add Strategy Performance Metrics to TradingStrategy Base Class",
+      "description": "Extend TradingStrategy base class to track decision statistics (action counts, win/loss ratio, avg hold time) that strategies can access for self-evaluation and logging.",
+      "rationale": "The TradingStrategy base class only tracks last_action and last_reasoning. The AggressiveStrategy, ConservativeStrategy, and other strategies all make decisions but have no built-in way to track their performance over time. The reset() method already exists for state clearing between games.",
+      "builds_upon": [
+        "TradingStrategy.reset() method",
+        "TradingStrategy._validate_action() pattern"
+      ],
+      "estimated_effort": "small",
+      "affected_files": [
+        "src/bot/strategies/base.py",
+        "src/bot/strategies/aggressive.py",
+        "src/bot/strategies/conservative.py",
+        "src/bot/strategies/foundational.py",
+        "src/bot/strategies/sidebet.py"
+      ],
+      "existing_patterns": [
+        "EventBus._stats tracking pattern (events_published, events_processed, errors)",
+        "LatencySpikeDetector.get_stats() pattern"
+      ],
+      "implementation_approach": "Add a _stats dict to TradingStrategy.__init__() tracking: decisions_made, buys, sells, sidebets, waits. Add a record_decision() helper called from _validate_action(). Add get_stats() method matching EventBus pattern. Update reset() to optionally preserve stats across games.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-003",
+      "type": "code_improvements",
+      "title": "Add Game Session Statistics Query to EventStoreQuery",
+      "description": "Add get_session_stats() and get_player_session_stats() methods to EventStoreQuery that compute aggregate statistics (games played, total P&L, win rate, avg game duration) using DuckDB SQL window functions.",
+      "rationale": "EventStoreQuery has sophisticated SQL query methods with window functions (get_tick_features) but lacks aggregate session-level statistics queries. The LiveStateProvider tracks session stats like count_2x, count_10x which demonstrates the value of these metrics. The iter_episodes() pattern shows how to filter by player_id.",
+      "builds_upon": [
+        "EventStoreQuery.get_tick_features() SQL window function pattern",
+        "EventStoreQuery._parquet_glob() helper",
+        "LiveStateProvider session stats properties"
+      ],
+      "estimated_effort": "medium",
+      "affected_files": [
+        "src/services/event_store/duckdb.py"
+      ],
+      "existing_patterns": [
+        "EventStoreQuery.get_player_actions() - player filtering pattern",
+        "EventStoreQuery.count_events() - aggregate query pattern"
+      ],
+      "implementation_approach": "Add get_session_stats(session_id) method that queries: games_played, total_events, doc_type_counts, date_range. Add get_player_session_stats(player_id) that computes: games_won (position_qty > 0 at game end), total_pnl (sum of cumulative_pnl), avg_hold_ticks. Use CTEs and window functions following get_tick_features pattern.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-004",
+      "type": "code_improvements",
+      "title": "Add LiveStateProvider State History Buffer",
+      "description": "Add a circular buffer to LiveStateProvider that retains the last N state snapshots for debugging, charting, and RL training observation sequences.",
+      "rationale": "LiveStateProvider maintains only current state but many use cases need recent history: UI needs price history for charts, RL training needs observation sequences, debugging needs to see state progression. The LiveRingBuffer class already exists in core/ demonstrating the exact pattern needed.",
+      "builds_upon": [
+        "LiveRingBuffer circular buffer implementation",
+        "LiveStateProvider.get_snapshot() method"
+      ],
+      "estimated_effort": "small",
+      "affected_files": [
+        "src/services/live_state_provider.py"
+      ],
+      "existing_patterns": [
+        "core/live_ring_buffer.py - LiveRingBuffer with maxlen parameter",
+        "LatencySpikeDetector.latencies deque with rolling statistics"
+      ],
+      "implementation_approach": "Add _history: deque[dict] with maxlen=100 to __init__. In _on_player_update and _on_game_tick, after updating state, call _history.append(self.get_snapshot()). Add get_history(n: int) method to return last N snapshots. Add get_price_series(n: int) for chart-friendly format.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-005",
+      "type": "code_improvements",
+      "title": "Add VectorIndexer Query Interface",
+      "description": "Add query_similar() and search_events() methods to VectorIndexer that leverage the existing ChromaDB integration to perform semantic search over indexed events.",
+      "rationale": "VectorIndexer has build_incremental() and build_full() methods that populate ChromaDB but no query interface. The chunker.py already produces chunks with text fields suitable for embedding similarity. The claude-flow RAG pipeline has retrieval/retrieve.py that could be adapted.",
+      "builds_upon": [
+        "VectorIndexer.build_incremental() ChromaDB integration",
+        "services/vector_indexer/chunker.py event chunking"
+      ],
+      "estimated_effort": "medium",
+      "affected_files": [
+        "src/services/vector_indexer/indexer.py"
+      ],
+      "existing_patterns": [
+        "VectorIndexer._ensure_claude_flow_imports() lazy loading pattern",
+        "EventStoreQuery.query() stateless connection pattern"
+      ],
+      "implementation_approach": "Add query_similar(text: str, n: int=10) method that: 1) calls _ensure_claude_flow_imports(), 2) embeds the query text using embed_batch, 3) queries ChromaDB store.query() for similar documents, 4) returns list of (chunk, score) tuples. Add search_events(query: str, doc_type: str=None) that filters by metadata.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "sec-001",
+      "type": "security_hardening",
+      "title": "Secure Chrome DevTools Protocol (CDP) port exposure",
+      "description": "The CDPBrowserManager in src/browser/manager.py exposes Chrome on port 9222 for remote debugging. While necessary for browser automation, this port is accessible to any local process, allowing potential attackers on the same machine to control the browser session, including accessing wallet interactions.",
+      "rationale": "CDP port exposure on localhost allows any local process to connect and control the browser. Since this application manages cryptocurrency wallet operations, an attacker with local access could intercept transactions, steal funds, or manipulate trading decisions.",
+      "category": "configuration",
+      "severity": "high",
+      "affectedFiles": [
+        "src/browser/manager.py",
+        "src/config.py"
+      ],
+      "vulnerability": "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute (analogous - sensitive interface exposed)",
+      "currentRisk": "Local attackers can connect to CDP port 9222 and take control of browser automation sessions with wallet access",
+      "remediation": "1. Add optional authentication/security token for CDP connections. 2. Consider binding CDP to a random high port instead of fixed 9222. 3. Add process-level validation that only the parent VECTRA-PLAYER process can connect. 4. Document the security implications in user-facing docs and CLAUDE.md.",
+      "references": [
+        "https://chromedevtools.github.io/devtools-protocol/",
+        "https://owasp.org/www-community/attacks/Man-in-the-browser_attack"
+      ],
+      "compliance": [
+        "SOC2"
+      ]
+    },
+    {
+      "id": "sec-002",
+      "type": "security_hardening",
+      "title": "Add input validation for JSONL game recordings",
+      "description": "The GameDataProcessor in src/ml/data_processor.py reads JSONL files using json.loads() without validating the structure or bounds of the data. Maliciously crafted game recordings could cause denial of service through memory exhaustion or exploit type confusion vulnerabilities.",
+      "rationale": "JSONL files from external sources (recordings shared between users or downloaded from repositories) could contain malformed or malicious data designed to crash the application or cause unexpected behavior in the ML pipeline.",
+      "category": "input_validation",
+      "severity": "medium",
+      "affectedFiles": [
+        "src/ml/data_processor.py",
+        "src/sources/socketio_parser.py"
+      ],
+      "vulnerability": "CWE-20: Improper Input Validation",
+      "currentRisk": "Processing malicious JSONL files could cause memory exhaustion, crashes, or unexpected ML model training behavior",
+      "remediation": "1. Add schema validation using pydantic or jsonschema for JSONL records. 2. Implement size limits for individual records (e.g., max 1MB per line). 3. Add bounds checking for numeric fields (price, tick, etc.). 4. Consider sandboxing file processing in a separate process with resource limits.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Improper_Data_Validation",
+        "https://cwe.mitre.org/data/definitions/20.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "sec-003",
+      "type": "security_hardening",
+      "title": "Protect sensitive wallet profile directory",
+      "description": "The Chrome profile directory at ~/.gamebot/chrome_profiles/rugs_bot contains sensitive wallet extension data and potentially cached credentials. This directory is created with default permissions and could be read by other local users or compromised processes.",
+      "rationale": "The wallet profile contains Phantom/Solflare extension data which may include encrypted keys, session tokens, and transaction history. If an attacker gains read access, they could potentially extract wallet secrets or session data.",
+      "category": "data_protection",
+      "severity": "high",
+      "affectedFiles": [
+        "src/browser/manager.py",
+        "src/browser/cdp/launcher.py",
+        "src/browser/profiles.py"
+      ],
+      "vulnerability": "CWE-732: Incorrect Permission Assignment for Critical Resource",
+      "currentRisk": "Wallet extension data in profile directory could be read by unauthorized local users or processes",
+      "remediation": "1. Set restrictive permissions (0700) on ~/.gamebot directory and all subdirectories during creation. 2. Use os.chmod() after mkdir to ensure proper permissions. 3. Add integrity checks to detect if profile has been tampered with. 4. Consider encrypting sensitive profile data at rest.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/732.html",
+        "https://owasp.org/www-community/vulnerabilities/Insecure_Storage"
+      ],
+      "compliance": [
+        "SOC2",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "sec-004",
+      "type": "security_hardening",
+      "title": "Sanitize sensitive data in logs",
+      "description": "The logging system in src/services/logger.py and throughout the codebase logs full WebSocket payloads, event data, and browser interaction details. This could inadvertently capture sensitive information such as wallet addresses, transaction details, or user identifiers in log files.",
+      "rationale": "Log files may be shared during debugging, stored insecurely, or accessed by unauthorized personnel. Sensitive trading data, wallet addresses, and potential PII should be redacted or hashed before logging to prevent data leakage.",
+      "category": "data_protection",
+      "severity": "medium",
+      "affectedFiles": [
+        "src/services/logger.py",
+        "src/sources/cdp_websocket_interceptor.py",
+        "src/browser/manager.py"
+      ],
+      "vulnerability": "CWE-532: Insertion of Sensitive Information into Log File",
+      "currentRisk": "Sensitive wallet addresses, transaction data, and user identifiers may be exposed in log files",
+      "remediation": "1. Implement a log sanitizer that redacts wallet addresses (regex for Solana base58 addresses). 2. Truncate or hash sensitive payload data before logging. 3. Add a 'sensitive' flag to log entries that require redaction. 4. Configure log rotation with secure deletion of old logs.",
+      "references": [
+        "https://owasp.org/www-community/vulnerabilities/Information_exposure_through_log_files",
+        "https://cwe.mitre.org/data/definitions/532.html"
+      ],
+      "compliance": [
+        "SOC2",
+        "GDPR",
+        "PCI-DSS"
+      ]
+    },
+    {
+      "id": "sec-005",
+      "type": "security_hardening",
+      "title": "Add pip-audit to CI security pipeline",
+      "description": "The current security.yml workflow includes dependency-review and CodeQL but lacks explicit vulnerability scanning for Python dependencies using pip-audit. Known CVEs in dependencies like websocket-client, playwright, or pyarrow could introduce security vulnerabilities.",
+      "rationale": "Third-party dependencies can contain known vulnerabilities that are actively exploited. While dependency-review catches some issues on PRs, a dedicated pip-audit scan provides more comprehensive Python-specific vulnerability detection and should run on all pushes.",
+      "category": "dependencies",
+      "severity": "medium",
+      "affectedFiles": [
+        ".github/workflows/security.yml",
+        "pyproject.toml"
+      ],
+      "vulnerability": "CWE-1035: OWASP Top Ten 2017 Category A9 - Using Components with Known Vulnerabilities",
+      "currentRisk": "Dependencies may contain known CVEs that are not detected by current CI pipeline",
+      "remediation": "1. Add pip-audit to the security.yml workflow: `pip install pip-audit && pip-audit`. 2. Configure pip-audit to fail on HIGH/CRITICAL severity issues. 3. Add Safety or Snyk as an alternative or complementary scanner. 4. Create a dependabot.yml for automated dependency updates.",
+      "references": [
+        "https://pypi.org/project/pip-audit/",
+        "https://owasp.org/www-project-dependency-check/"
+      ],
+      "compliance": [
+        "SOC2"
+      ]
+    },
+    {
+      "id": "doc-001",
+      "type": "documentation_gaps",
+      "title": "Create missing WEBSOCKET_EVENTS_SPEC.md specification",
+      "description": "The README.md and multiple docs (ONBOARDING.md, DEBUGGING_GUIDE.md, copilot-instructions.md) reference 'docs/specs/WEBSOCKET_EVENTS_SPEC.md' but this file does not exist. The docs/specs/ directory is completely empty. This creates broken documentation links and leaves developers without critical protocol documentation.",
+      "rationale": "This specification is referenced as the primary documentation for WebSocket event schemas, which is the core data flowing through the system. Developers have no authoritative source for understanding event structure, leading to confusion when working with EventStore or building bot strategies.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "docs/specs/WEBSOCKET_EVENTS_SPEC.md (missing)",
+        "README.md (broken link)",
+        "docs/ONBOARDING.md (broken link)",
+        "docs/DEBUGGING_GUIDE.md (broken link)",
+        ".github/copilot-instructions.md (broken link)"
+      ],
+      "currentDocumentation": "Referenced but missing - no docs/specs/ directory exists",
+      "proposedContent": "Create comprehensive WebSocket event specification covering: all event types (playerUpdate, gameTick, newTrade, etc.), payload structures with field descriptions, timing/sequencing expectations, and example payloads. Reference src/services/event_store/schema.py DocType enum and src/models/events/ for source material.",
+      "priority": "high",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-002",
+      "type": "documentation_gaps",
+      "title": "Add environment variable reference documentation",
+      "description": "The project uses 11 environment variables (RUGS_DATA_DIR, RUGS_EMBEDDING_MODEL, RUGS_LEGACY_RECORDERS, RUGS_RECORDINGS_DIR, RUGS_CONFIG_DIR, RUGS_LOG_DIR, RUGS_AUTO_RECORDING, RUGS_AUTO_CONNECT_LIVE_FEED, LOG_LEVEL, CHROME_BINARY, CHROME_PROFILE) but there is no central documentation explaining each variable, their valid values, defaults, and use cases.",
+      "rationale": "Environment variables control critical application behavior including data paths, Chrome browser configuration, logging, and auto-connect features. Without documentation, developers must read config.py source code to understand configuration options, slowing onboarding and leading to misconfiguration.",
+      "category": "readme",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/config.py",
+        "README.md",
+        "docs/ONBOARDING.md",
+        ".env.example (missing)"
+      ],
+      "currentDocumentation": "README mentions RUGS_DATA_DIR in quick start but no comprehensive reference exists",
+      "proposedContent": "Add 'Environment Variables' section to README or create dedicated docs/CONFIGURATION.md covering: variable name, description, valid values/type, default value, required vs optional status, and example usage. Include recommended .env.example file.",
+      "priority": "high",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "doc-003",
+      "type": "documentation_gaps",
+      "title": "Document bot strategy development guide",
+      "description": "The src/bot/strategies/ directory contains 5 trading strategies (aggressive.py, conservative.py, foundational.py, sidebet.py, base.py) but there's no guide explaining how to develop custom strategies. The TradingStrategy base class has minimal documentation about expected inputs (observation dict, info dict) and output format.",
+      "rationale": "Bot/ML development is a key project goal (mentioned in README and CLAUDE.md). Developers wanting to create custom trading strategies must reverse-engineer existing implementations. A development guide would accelerate ML/RL experimentation and contributions.",
+      "category": "examples",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/bot/strategies/base.py",
+        "src/bot/strategies/aggressive.py",
+        "src/bot/strategies/conservative.py",
+        "src/bot/__init__.py"
+      ],
+      "currentDocumentation": "base.py has docstrings for decide() method but lacks comprehensive guidance on observation/info dict structures",
+      "proposedContent": "Create docs/BOT_STRATEGY_GUIDE.md covering: observation dict structure and fields, info dict structure (valid_actions, constraints), action types (BUY, SELL, SIDE, WAIT), decision logic patterns, example custom strategy implementation, testing strategies, and integration with the bot controller.",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-004",
+      "type": "documentation_gaps",
+      "title": "Add EventStore and EventBus API reference",
+      "description": "The EventStore (src/services/event_store/) and EventBus (src/services/event_bus.py) are the backbone of the data architecture but have no API reference documentation. EventStore has 6 modules (writer.py, schema.py, duckdb.py, paths.py, service.py, __init__.py) with public methods that developers need to understand.",
+      "rationale": "CLAUDE.md emphasizes that 'EventStore is canonical' and all event producers publish through EventBus. Without API docs, developers building new event sources or consumers must read source code to understand the interface. This is critical for the 'RAG integration' and 'Protocol Explorer UI' roadmap items.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/services/event_store/writer.py",
+        "src/services/event_store/schema.py",
+        "src/services/event_store/service.py",
+        "src/services/event_bus.py",
+        "src/services/event_store/CONTEXT.md"
+      ],
+      "currentDocumentation": "CONTEXT.md exists but is minimal; class docstrings exist but are incomplete",
+      "proposedContent": "Create API reference covering: EventEnvelope factory methods and fields, EventStore.write() and flush behavior, DuckDB query helpers, EventBus publish/subscribe pattern, Events enum values and when each fires, and integration examples for new event producers.",
+      "priority": "medium",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "doc-005",
+      "type": "documentation_gaps",
+      "title": "Document configuration options in config.py",
+      "description": "src/config.py defines extensive configuration categories (FINANCIAL, GAME_RULES, PLAYBACK, UI, MEMORY) with 50+ settings but there's no user-facing documentation. Developers must read source code to understand what 'sidebet_window_ticks', 'rug_liquidation_price', or 'blocked_phases' mean.",
+      "rationale": "These configuration values directly affect trading behavior, game rules interpretation, and UI rendering. Undocumented settings lead to confusion about application behavior and make it difficult to tune the system for different use cases or debugging scenarios.",
+      "category": "api_docs",
+      "targetAudience": "developers",
+      "affectedAreas": [
+        "src/config.py",
+        "docs/CONFIGURATION.md (missing)"
+      ],
+      "currentDocumentation": "config.py has section comments (e.g., '# ========== Financial Settings ==========') but no descriptions of individual settings",
+      "proposedContent": "Add inline docstrings to each configuration value in config.py, or create docs/CONFIGURATION.md with tables describing: setting name, type, default value, description, and acceptable range/values. Cover FINANCIAL, GAME_RULES, PLAYBACK, UI, MEMORY, and NETWORK sections.",
+      "priority": "low",
+      "estimatedEffort": "low"
+    },
+    {
+      "id": "perf-001",
+      "type": "performance_optimizations",
+      "title": "Cache PyArrow schema in ParquetWriter to avoid repeated construction",
+      "description": "The ParquetWriter._events_to_table() method reconstructs the PyArrow schema on every flush (~100 events). This involves creating 16 field objects and a schema object each time. Moving schema construction to __init__ and reusing it would eliminate this overhead.",
+      "rationale": "Schema construction is deterministic and never changes during writer lifetime. With default buffer_size=100 events and 5s flush intervals, during a 1-hour live session this would eliminate ~720 unnecessary schema constructions.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/services/event_store/writer.py"
+      ],
+      "currentMetric": "Schema constructed on every flush (~100 events batch)",
+      "expectedImprovement": "~1-2ms per flush eliminated, reduced GC pressure from short-lived objects",
+      "implementation": "1. Move pa.schema() construction to __init__()\n2. Store as self._schema instance variable\n3. Reference self._schema in _events_to_table()\n4. Add test verifying schema consistency",
+      "tradeoffs": "Minimal - schema is static, no downsides to caching",
+      "estimatedEffort": "trivial"
+    },
+    {
+      "id": "perf-002",
+      "type": "performance_optimizations",
+      "title": "Use binary search for LiveRingBuffer.get_tick_range() lookups",
+      "description": "The get_tick_range() method uses a linear O(n) list comprehension to filter ticks. Since ticks in the ring buffer are ordered by tick number, binary search could find the range boundaries in O(log n) time.",
+      "rationale": "With max_size=5000 ticks, worst case is scanning all 5000 elements. For ML feature extraction that queries tick ranges frequently, this becomes a bottleneck. Binary search would reduce 5000 comparisons to ~13.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/core/live_ring_buffer.py"
+      ],
+      "currentMetric": "O(n) scan of up to 5000 elements per range query",
+      "expectedImprovement": "O(log n) lookup, ~380x faster for full buffer (5000 elements -> ~13 comparisons)",
+      "implementation": "1. Import bisect module\n2. Create helper methods _find_start_index() and _find_end_index() using bisect\n3. Slice the deque directly using found indices\n4. Return list(islice(self._buffer, start_idx, end_idx+1))",
+      "tradeoffs": "Slightly more complex code, requires ticks to remain sorted (already guaranteed by append-only pattern)",
+      "estimatedEffort": "small"
+    },
+    {
+      "id": "perf-003",
+      "type": "performance_optimizations",
+      "title": "Implement incremental volatility calculation in FeatureExtractor",
+      "description": "calculate_volatility() computes mean absolute percentage changes by iterating through the entire price history on every tick. Using Welford's online algorithm or a running sum would compute volatility incrementally in O(1) per tick.",
+      "rationale": "During live games, feature extraction runs on every tick (~1-2 per second). With 500+ ticks per game and 14-feature extraction, the O(n) volatility calculation dominates. This is critical for real-time bot decision latency.",
+      "category": "runtime",
+      "impact": "high",
+      "affectedAreas": [
+        "src/ml/feature_extractor.py"
+      ],
+      "currentMetric": "O(n) price iteration per tick, ~500 iterations at end of game",
+      "expectedImprovement": "O(1) per tick, consistent 1-3ms feature extraction regardless of game length",
+      "implementation": "1. Add running_sum and running_count instance variables\n2. Update incrementally in extract_features()\n3. For baseline volatility (first 40 ticks), compute once and cache\n4. For current window (last 10 ticks), maintain a sliding window sum\n5. Add reset_for_new_game() to clear state",
+      "tradeoffs": "More complex state management, need to handle edge cases (price=0, insufficient data)",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "perf-004",
+      "type": "performance_optimizations",
+      "title": "Batch JSONL parsing with orjson for 3-5x faster data loading",
+      "description": "GameDataProcessor.process_game_file() uses stdlib json.loads() for each line. orjson is a high-performance JSON library that's 3-10x faster. Combined with reading files in larger chunks, this would significantly speed up ML training data loading.",
+      "rationale": "Processing hundreds of game files for ML training (process_multiple_games) is I/O and JSON-parse bound. With ~200 events per game and 500+ games, that's 100K+ json.loads() calls. orjson's SIMD-optimized parsing would cut this time significantly.",
+      "category": "runtime",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/ml/data_processor.py",
+        "pyproject.toml"
+      ],
+      "currentMetric": "~100K+ json.loads() calls per training run, ~50ms per file",
+      "expectedImprovement": "3-5x faster JSON parsing, ~15ms per file with orjson",
+      "implementation": "1. Add orjson to dependencies in pyproject.toml\n2. Replace json.loads with orjson.loads in process_game_file()\n3. Consider reading entire file and splitting vs line-by-line\n4. Add benchmark comparing json vs orjson performance",
+      "tradeoffs": "Additional dependency (~200KB). orjson returns bytes for strings, may need decode(). Well-maintained and widely used.",
+      "estimatedEffort": "small"
+    },
+    {
+      "id": "perf-005",
+      "type": "performance_optimizations",
+      "title": "Add connection pooling for DuckDB queries with warm cache",
+      "description": "EventStoreQuery creates a fresh DuckDB connection for every query and closes it immediately. While the docs claim ~1ms overhead, maintaining a connection pool would enable query plan caching, metadata caching, and eliminate repeated parquet schema discovery.",
+      "rationale": "During RL training with iter_episodes(), hundreds of queries execute sequentially. Each connection: opens file handles, reads parquet metadata, builds query plan. A warm connection pool would amortize these costs across queries.",
+      "category": "database",
+      "impact": "medium",
+      "affectedAreas": [
+        "src/services/event_store/duckdb.py"
+      ],
+      "currentMetric": "Fresh connection per query, ~1-2ms overhead + cold metadata reads",
+      "expectedImprovement": "~50% reduction in query overhead for repeated queries, better memory utilization",
+      "implementation": "1. Add optional connection_pool_size parameter to __init__()\n2. Use queue.Queue to manage connection pool\n3. Acquire connection at start of query, return to pool after\n4. Add max_idle_time to evict stale connections\n5. Ensure thread-safety with proper locking\n6. Keep existing per-query connection as fallback for simple use cases",
+      "tradeoffs": "Added complexity, need to handle connection cleanup on shutdown, potential for connection leaks if not properly managed",
+      "estimatedEffort": "medium"
+    },
+    {
+      "id": "cq-001",
+      "type": "code_quality",
+      "title": "Split GameState class into domain-focused modules",
+      "description": "The file src/core/game_state.py has grown to 1065 lines and handles multiple distinct responsibilities: core state management, position trading, sidebet management, observer pattern implementation, server reconciliation, and analytics/metrics. This violates single responsibility and makes the code hard to navigate, test individually, and maintain.",
+      "rationale": "Very large monolithic classes increase cognitive load, make testing harder (all tests require full class instantiation), and often lead to merge conflicts. Domain-driven decomposition enables focused unit testing, easier reasoning about behavior, and parallel development.",
+      "category": "large_files",
+      "severity": "major",
+      "affectedFiles": [
+        "src/core/game_state.py"
+      ],
+      "currentState": "Single 1065-line class handling: state access (get/snapshot), position management (open/close/partial), sidebet management, sell percentage, server reconciliation, observer pattern, history/analytics, WebSocket event handling, and validation",
+      "proposedChange": "Split into focused modules:\n- src/core/state/core.py - Core state container and thread-safe access\n- src/core/state/position_manager.py - Position open/close/partial logic\n- src/core/state/sidebet_manager.py - Sidebet placement/resolution\n- src/core/state/reconciliation.py - Server state reconciliation\n- src/core/state/observers.py - Observer pattern implementation\n- src/core/state/analytics.py - Metrics and history tracking\n- src/core/game_state.py - Facade that composes all managers (for backwards compatibility)",
+      "codeExample": "# Current:\nclass GameState:\n    def open_position(...): pass\n    def close_position(...): pass\n    def place_sidebet(...): pass\n    def reconcile_with_server(...): pass\n    def calculate_metrics(...): pass\n    # ... 1000+ more lines\n\n# Proposed:\nclass GameState:\n    def __init__(self):\n        self._position = PositionManager(self._state)\n        self._sidebet = SidebetManager(self._state)\n        self._reconciler = StateReconciler(self._state)\n        self._analytics = AnalyticsTracker(self._state)\n    \n    # Delegate methods\n    def open_position(self, data):\n        return self._position.open(data)",
+      "bestPractice": "Single Responsibility Principle - each module should have one reason to change. Facade pattern maintains backwards compatibility while enabling internal refactoring.",
+      "metrics": {
+        "lineCount": 1065,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "large",
+      "breakingChange": false,
+      "prerequisites": [
+        "Ensure comprehensive test coverage before refactoring (tests exist: test_core/test_game_state.py)",
+        "Create interface contracts for each manager"
+      ]
+    },
+    {
+      "id": "cq-002",
+      "type": "code_quality",
+      "title": "Extract browser button click strategies into shared utility",
+      "description": "Similar button finding and clicking logic is duplicated between src/browser/bridge.py (950 lines) and src/browser/executor.py (937 lines). Both implement multi-strategy selector systems (text matching, CSS selectors, class patterns) with retry logic and visibility checking.",
+      "rationale": "Code duplication leads to bugs when fixes are applied inconsistently and increases maintenance burden. The nearly-identical JavaScript evaluation code for finding buttons is repeated across both files.",
+      "category": "duplication",
+      "severity": "major",
+      "affectedFiles": [
+        "src/browser/bridge.py",
+        "src/browser/executor.py"
+      ],
+      "currentState": "Two 900+ line files each implementing their own:\n- SelectorStrategy class with BUTTON_TEXT_PATTERNS, BUTTON_CSS_SELECTORS, CLASS_PATTERNS\n- Multi-strategy click methods (_try_text_based_click, _try_css_selector_click)\n- Visibility/enabled checking JavaScript\n- Retry with exponential backoff logic",
+      "proposedChange": "Create shared utility:\n- src/browser/dom/click_strategy.py - Unified button finding strategies\n- src/browser/dom/retry.py - Shared retry/backoff logic\n- Refactor bridge.py and executor.py to use shared utilities\n- Keep bridge.py focused on UI\u2192browser coordination\n- Keep executor.py focused on bot\u2192browser execution",
+      "codeExample": "# Current (duplicated in both files):\nclass SelectorStrategy:\n    BUTTON_TEXT_PATTERNS = {...}  # 50+ lines\n    BUTTON_CSS_SELECTORS = {...}  # 80+ lines\n\n# Proposed (shared):\n# src/browser/dom/click_strategy.py\nclass ButtonClickStrategy:\n    def __init__(self, page):\n        self.page = page\n    \n    async def click_button(self, button: str, max_retries: int = 3) -> ClickResult:\n        \"\"\"Unified button click with all strategies and retry.\"\"\"\n        ...\n\n# Both files use:\nfrom browser.dom.click_strategy import ButtonClickStrategy",
+      "bestPractice": "DRY (Don't Repeat Yourself) - extract common logic into reusable utilities. Single source of truth for selector patterns.",
+      "metrics": {
+        "lineCount": 1887,
+        "complexity": null,
+        "duplicateLines": 150,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": false,
+      "prerequisites": [
+        "Identify all shared selector patterns",
+        "Create test fixtures for browser mocking"
+      ]
+    },
+    {
+      "id": "cq-003",
+      "type": "code_quality",
+      "title": "Clean up archived dead code directories",
+      "description": "The codebase contains 41+ Python files in _archived directories that are no longer used but remain in the repository. These include deprecated UI builders, handlers, controllers, and test files that were superseded during the VECTRA-PLAYER refactoring.",
+      "rationale": "Dead code creates confusion about what's current, bloats repository size, and can accidentally be imported or referenced. Per CLAUDE.md, legacy recorders were marked for deletion but some archived code remains.",
+      "category": "dead_code",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/ui/_archived/audio_cue_player.py",
+        "src/ui/_archived/balance_edit_dialog.py",
+        "src/ui/_archived/builders/action_builder.py",
+        "src/ui/_archived/builders/betting_builder.py",
+        "src/ui/_archived/builders/chart_builder.py",
+        "src/ui/_archived/debug_terminal.py",
+        "src/ui/_archived/main_window.py",
+        "src/ui/_archived/controllers/bot_manager.py",
+        "src/ui/_archived/controllers/replay_controller.py",
+        "src/tests/_archived/test_ui/test_builders/*.py",
+        "src/scripts/_archived/debug_bot_session.py"
+      ],
+      "currentState": "41 files across _archived directories:\n- src/ui/_archived/ (25+ files)\n- src/tests/_archived/ (10+ files)\n- src/scripts/_archived/ (2+ files)\n\nThese include complete UI systems, controllers, handlers, and their tests that were deprecated.",
+      "proposedChange": "1. Verify no imports reference _archived modules (grep for patterns)\n2. Move _archived directories to a separate branch or tag for historical reference\n3. Remove _archived directories from main branch\n4. Update .gitignore to prevent accidental recreation\n\nAlternatively: Create a DEPRECATED.md documenting what was archived and why, then delete.",
+      "codeExample": "# Verification command:\ngrep -r \"from.*_archived\\|import.*_archived\" src/\n\n# If no matches, safe to remove:\nrm -rf src/ui/_archived/\nrm -rf src/tests/_archived/\nrm -rf src/scripts/_archived/",
+      "bestPractice": "Keep codebase clean by removing dead code. Use git history or tags for archaeological purposes rather than keeping dead code in main branch.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": false,
+      "prerequisites": [
+        "Verify no active imports from _archived",
+        "Tag current commit for reference before deletion"
+      ]
+    },
+    {
+      "id": "cq-004",
+      "type": "code_quality",
+      "title": "Externalize embedded JavaScript from Python browser modules",
+      "description": "The browser automation modules (bridge.py, executor.py) contain large inline JavaScript strings (~150+ lines) for DOM manipulation, button finding, and visibility checking. These are hard to maintain, lack syntax highlighting, and can't be tested independently.",
+      "rationale": "Inline JavaScript in Python strings loses IDE support (syntax highlighting, linting, formatting), is error-prone to edit, and makes the Python files unnecessarily large. Externalizing enables JS-specific tooling and testing.",
+      "category": "code_smells",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/browser/bridge.py",
+        "src/browser/executor.py"
+      ],
+      "currentState": "Large JavaScript template strings embedded in Python:\n- _try_text_based_click: 70+ lines of JS\n- _force_socketio_reconnect: 50+ lines of JS\n- _get_available_buttons: 10+ lines of JS\n- Various visibility/enabled checking snippets",
+      "proposedChange": "1. Create src/browser/dom/scripts/ directory\n2. Move JavaScript to .js files:\n   - button_finder.js\n   - visibility_checker.js\n   - socketio_reconnect.js\n3. Create JS loader utility that reads and caches scripts\n4. Optionally add ESLint config for JS files",
+      "codeExample": "# Current:\nasync def _try_text_based_click(self, page, button: str):\n    js_code = \"\"\"\n    (patterns) => {\n        const allButtons = Array.from(...);\n        // 70+ more lines of JS\n    }\n    \"\"\"\n    result = await page.evaluate(js_code, patterns)\n\n# Proposed:\n# src/browser/dom/scripts/button_finder.js\nexport function findAndClickButton(patterns) {\n    const allButtons = Array.from(...);\n    // ... with proper JS tooling support\n}\n\n# src/browser/dom/js_loader.py\nclass JSLoader:\n    _cache = {}\n    \n    @classmethod\n    def load(cls, script_name: str) -> str:\n        if script_name not in cls._cache:\n            path = Path(__file__).parent / 'scripts' / f'{script_name}.js'\n            cls._cache[script_name] = path.read_text()\n        return cls._cache[script_name]",
+      "bestPractice": "Separation of concerns - keep JavaScript in JS files for proper tooling. Single source of truth for DOM manipulation logic.",
+      "metrics": {
+        "lineCount": null,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "small",
+      "breakingChange": false,
+      "prerequisites": []
+    },
+    {
+      "id": "cq-005",
+      "type": "code_quality",
+      "title": "Organize config.py into structured sections with validation",
+      "description": "The src/config.py file at 554 lines contains flat configuration with mixed concerns: paths, feature flags, timeouts, memory limits, UI settings, and environment variable loading. While functional, it lacks structure and runtime validation.",
+      "rationale": "Large flat config files become hard to navigate and prone to inconsistent usage. Structured configuration enables IDE autocomplete, type checking, validation at startup, and clear documentation of available options.",
+      "category": "structure",
+      "severity": "minor",
+      "affectedFiles": [
+        "src/config.py"
+      ],
+      "currentState": "Single config module with:\n- Environment variable parsing\n- Path configuration\n- Feature flags (RUGS_LEGACY_RECORDERS, etc.)\n- Memory limits (MEMORY dict)\n- UI settings\n- Chrome/browser configuration\n- All accessed via config.SETTING_NAME pattern",
+      "proposedChange": "Restructure into dataclass-based config sections:\n- src/config/paths.py - All path configuration\n- src/config/features.py - Feature flags\n- src/config/memory.py - Memory/buffer limits\n- src/config/browser.py - Chrome/CDP settings\n- src/config/__init__.py - Load and validate all configs\n\nUse pydantic or dataclasses with validation.",
+      "codeExample": "# Current:\nconfig.MEMORY.get('max_state_history', 1000)\nconfig.CHROME_PROFILE\nconfig.RUGS_DATA_DIR\n\n# Proposed:\n@dataclass\nclass MemoryConfig:\n    max_state_history: int = 1000\n    max_transaction_log: int = 1000\n    max_closed_positions: int = 500\n\n@dataclass\nclass BrowserConfig:\n    chrome_profile: str = 'rugs_bot'\n    chrome_binary: str | None = None\n    cdp_port: int = 9222\n\n@dataclass\nclass Config:\n    memory: MemoryConfig\n    browser: BrowserConfig\n    paths: PathsConfig\n    features: FeaturesConfig\n\nconfig = Config.from_env()  # Loads and validates\n\n# Usage:\nconfig.memory.max_state_history\nconfig.browser.chrome_profile",
+      "bestPractice": "Structured configuration with validation catches errors at startup rather than runtime. Dataclass-based configs enable IDE support and type checking.",
+      "metrics": {
+        "lineCount": 554,
+        "complexity": null,
+        "duplicateLines": null,
+        "testCoverage": null
+      },
+      "estimatedEffort": "medium",
+      "breakingChange": true,
+      "prerequisites": [
+        "Audit all config.X usages across codebase",
+        "Create migration guide for new config access patterns"
+      ]
+    },
+    {
+      "id": "uiux-001",
+      "type": "ui_ux_improvements",
+      "title": "Add Keyboard Shortcuts to MinimalWindow",
+      "description": "Implement keyboard shortcuts for trading actions (B=Buy, S=Sell, D=Sidebet) and utility functions in MinimalWindow, which currently has no keyboard bindings unlike the archived MainWindow.",
+      "rationale": "The archived MainWindow had comprehensive keyboard shortcuts (B/S/D for trading, Space for playback, H for help). MinimalWindow lacks all of these, forcing users to use mouse-only interaction. For a trading application where speed matters, keyboard shortcuts are essential for reducing latency between decision and action.",
+      "category": "usability",
+      "affected_components": [
+        "src/ui/minimal_window.py"
+      ],
+      "screenshots": [],
+      "current_state": "MinimalWindow has no keyboard bindings. All trading actions require mouse clicks on buttons. The archived keyboard_shortcuts.py mixin shows B/S/D/Space/H shortcuts existed but are not implemented in the current minimal UI.",
+      "proposed_change": "Add _setup_keyboard_shortcuts() method to MinimalWindow that binds: B/b for BUY, S/s for SELL, D/d for SIDEBET, 1-4 for percentage buttons (10%/25%/50%/100%), H/h for help dialog showing shortcuts, Escape to clear bet entry. Use self.root.bind() pattern from archived code.",
+      "user_benefit": "Traders can execute actions 50-100ms faster with keyboard shortcuts vs mouse. In high-frequency trading scenarios, this latency reduction can mean the difference between profitable and unprofitable trades.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:30:00.000000Z"
+    },
+    {
+      "id": "uiux-002",
+      "type": "ui_ux_improvements",
+      "title": "Enhanced Connection Status with Text Labels",
+      "description": "Replace the single colored dot connection indicator with a more descriptive status display showing connection state text alongside the indicator dot.",
+      "rationale": "The current connection indicator is just a Unicode circle character (\\u25cf) that changes color between gray and green. This provides minimal information - users can't distinguish between 'never connected', 'disconnected', 'connecting', or 'error' states. The CONNECT button also just toggles between CONNECT/CONNECTED text.",
+      "category": "usability",
+      "affected_components": [
+        "src/ui/minimal_window.py"
+      ],
+      "screenshots": [],
+      "current_state": "Connection status uses self.connection_label with text='\\u25cf' (filled circle) that changes fg color between GRAY_COLOR and GREEN_COLOR. States like CONNECTING, ERROR, or RECONNECTING from BridgeStatus enum are not visually distinct.",
+      "proposed_change": "Update update_connection() to accept a status string parameter instead of boolean. Add status text label next to the dot that shows: 'Disconnected' (gray), 'Connecting...' (yellow, animated), 'Connected' (green), 'Error' (red), 'Reconnecting...' (yellow). Map BridgeStatus enum values from browser/bridge.py to these visual states.",
+      "user_benefit": "Users can immediately understand the connection state without guessing what the color means. Critical for debugging connection issues and knowing when the system is ready for trading.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:31:00.000000Z"
+    },
+    {
+      "id": "uiux-003",
+      "type": "ui_ux_improvements",
+      "title": "Add Tooltips to Trading Buttons",
+      "description": "Add hover tooltips to all buttons explaining their function, especially the action buttons (BUY/SELL/SIDEBET) and utility buttons (1/2, X2, MAX) which may not be immediately clear to new users.",
+      "rationale": "The UI has multiple button types (percentage, increment, utility, action) with terse labels like '1/2', 'X2', 'MAX'. New users may not understand what these do. Tooltips provide contextual help without cluttering the compact interface.",
+      "category": "usability",
+      "affected_components": [
+        "src/ui/minimal_window.py"
+      ],
+      "screenshots": [],
+      "current_state": "No tooltips exist on any buttons. Button labels are minimal: 'BUY', 'SELL', 'SIDEBET', '+0.001', '1/2', 'X2', 'MAX', 'X'. Users must learn through trial or documentation.",
+      "proposed_change": "Create a ToolTip class using tk.Toplevel that appears on button hover after 500ms delay. Add tooltips: BUY='Open position at current price (keyboard: B)', SELL='Close position at selected percentage (keyboard: S)', SIDEBET='Bet on rug occurring within 40 ticks (keyboard: D)', 1/2='Halve current bet amount', X2='Double current bet amount', MAX='Set bet to full balance', X='Clear bet amount to zero'.",
+      "user_benefit": "New users can learn the interface without documentation. Tooltips showing keyboard shortcuts help users discover faster input methods. Reduces onboarding friction.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:32:00.000000Z"
+    },
+    {
+      "id": "uiux-004",
+      "type": "ui_ux_improvements",
+      "title": "Visual Feedback for Button Actions",
+      "description": "Add visual feedback when action buttons are clicked - brief animation/flash to confirm the action was registered and sent to the server.",
+      "rationale": "Currently buttons only have activebackground color change during click. There's no visual confirmation that an action was sent to the server. In fast-paced trading, users may rapidly click wondering if their action registered, leading to multiple unintended trades.",
+      "category": "interaction",
+      "affected_components": [
+        "src/ui/minimal_window.py",
+        "src/ui/controllers/trading_controller.py"
+      ],
+      "screenshots": [],
+      "current_state": "Buttons have activebackground color (e.g., BUY has activebackground='#00cc55') that shows during click, but immediately reverts. No lasting feedback that action was processed. TradingController logs 'BUY sent to server' but no UI indication.",
+      "proposed_change": "Add _flash_button(button, color, duration_ms=200) method that temporarily changes button background to a highlight color then reverts. Call this in _on_buy_clicked(), _on_sell_clicked(), _on_sidebet_clicked() after delegating to TradingController. Use yellow flash for 'pending' state. Could also briefly disable button during server round-trip to prevent double-clicks.",
+      "user_benefit": "Users get immediate visual confirmation their action was registered. Reduces anxiety about whether clicks worked. Prevents accidental double-clicks that could result in unintended trades.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:33:00.000000Z"
+    },
+    {
+      "id": "uiux-005",
+      "type": "ui_ux_improvements",
+      "title": "Bet Entry Validation with Visual Feedback",
+      "description": "Add real-time validation to the bet entry field with visual feedback for invalid inputs (negative numbers, exceeding balance, below minimum bet).",
+      "rationale": "The bet entry field accepts any text input. Validation only happens when get_bet_amount() is called in TradingController, showing toast errors. Users should see immediately if their entered amount is invalid before attempting a trade.",
+      "category": "usability",
+      "affected_components": [
+        "src/ui/minimal_window.py",
+        "src/ui/controllers/trading_controller.py"
+      ],
+      "screenshots": [],
+      "current_state": "bet_entry is a plain tk.Entry with initial value '0.000'. No input validation occurs during typing. TradingController.get_bet_amount() validates min_bet (0.001), max_bet (1.0), and balance checks, showing toast errors only when trade is attempted.",
+      "proposed_change": "Bind bet_entry to <KeyRelease> event to validate on each keystroke. Add validation states: normal (white bg), warning (yellow bg for amount > balance), error (red bg for invalid format). Show validation message below entry field. Optionally disable BUY button when bet is invalid to prevent wasted clicks.",
+      "user_benefit": "Users see immediately if their bet amount is valid without attempting a trade. Prevents frustration of entering amount, clicking BUY, and getting error toast. Faster iteration on setting correct bet amounts.",
+      "status": "draft",
+      "created_at": "2026-01-04T00:34:00.000000Z"
+    }
+  ],
+  "project_context": {
+    "existing_features": [],
+    "tech_stack": [
+      "Python"
+    ],
+    "target_audience": "Crypto traders on rugs.fun who want automated trading bots and game replay analysis",
+    "planned_features": [
+      "GUI Thread Safety Improvements",
+      "Protocol Explorer UI (Phase 12E)",
+      "Multi-Game Session Support",
+      "Multi-Wallet Support",
+      "High-Frequency Trading Optimization",
+      "MyPy Strict Type Checking",
+      "Strategy Sharing and Community",
+      "Legacy Recorder Cleanup",
+      "Sidegame Integration (BBC, Candleflip)",
+      "RAG Search UI for Trading History",
+      "Specification: Automated Development Environment Path Migration",
+      "Strategy Backtesting Engine",
+      "Ruff Linting Compliance",
+      "Production Deployment Pipeline",
+      "Performance Monitoring Dashboard",
+      "Shorting Integration",
+      "REST API for External Integrations",
+      "Pathlib Migration",
+      "Pipeline D: Training Data Implementation"
+    ]
+  },
+  "summary": {
+    "total_ideas": 30,
+    "by_type": {
+      "code_improvements": 5,
+      "security_hardening": 5,
+      "documentation_gaps": 5,
+      "performance_optimizations": 5,
+      "code_quality": 5,
+      "ui_ux_improvements": 5
+    },
+    "by_status": {
+      "draft": 30
+    }
+  },
+  "generated_at": "2026-01-04T00:12:52.549783",
+  "updated_at": "2026-01-04T00:12:52.549828"
+}

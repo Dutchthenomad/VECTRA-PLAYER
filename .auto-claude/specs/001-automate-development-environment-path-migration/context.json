@@ -1,0 +1,50 @@
+{
+  "task_description": "Create a fully automated migration script to update all hardcoded paths from /home/nomad to /home/devops across the VECTRA-PLAYER codebase. Script must handle 63 references across 22 files, create safety backups, verify directory structure, update environment configuration, and provide verification checks. Includes rollback capability and comprehensive logging.",
+  "scoped_services": ["main"],
+  "files_to_modify": [
+    "scripts/migrate_paths.py",
+    "CLAUDE.md",
+    "scripts/capture_gamehistory.py",
+    "docs/ML_RL_SYSTEM_OVERVIEW_AND_RESEARCH_PROMPT.md",
+    ".claude/scratchpad.md",
+    "docs/plans/GLOBAL-DEVELOPMENT-PLAN.md",
+    "setup_pyright_lsp.sh",
+    "docs/reports/TRADING-ARCHITECTURE-REFACTOR-AND-UI-SIMPLIFICATION-HANDOFF-2025-12-28.md",
+    "docs/plans/PIPELINE-D-VALIDATION-PROMPT.md",
+    "docs/plans/2025-12-28-pipeline-d-training-data-implementation.md",
+    "scripts/FLOW-CHARTS/observation-space-design.md",
+    "docs/DEVELOPMENT-PLAN-DASHBOARD.html",
+    "docs/DEBUGGING_GUIDE.md",
+    "start_debugging.sh",
+    "docs/CROSS_REPO_COORDINATION.md",
+    "scripts/vectra_index.py",
+    ".github/copilot-instructions.md",
+    "src/bot/code-audit-bot-folder",
+    "scripts/schema_inventory.py",
+    "docs/rag/socket_kb.jsonl",
+    "docs/CI_CD_GUIDE.md",
+    ".github/workflows/guardrails.yml",
+    "src/verify_tests.sh"
+  ],
+  "files_to_reference": [
+    "src/config.py",
+    "scripts/vectra_index.py",
+    "src/tests/test_core/test_validators.py"
+  ],
+  "patterns": {
+    "path_handling": "Use pathlib.Path for all path operations (see src/config.py get_data_config() method)",
+    "cli_pattern": "Use argparse for command-line interface with boolean flags (see scripts/vectra_index.py main() function)",
+    "test_pattern": "Use class-based pytest with descriptive test names (see src/tests/test_core/test_validators.py)",
+    "logging_pattern": "Use Python logging module with both file and console handlers",
+    "backup_pattern": "Use shutil.copy2 to preserve file metadata, create timestamped backup directories"
+  },
+  "existing_implementations": {
+    "description": "Found CLI pattern in scripts/vectra_index.py with argparse and Path manipulation. Config.py shows environment-based path configuration using Path.home() and environment variables.",
+    "relevant_files": [
+      "scripts/vectra_index.py",
+      "src/config.py",
+      "src/tests/test_core/test_validators.py"
+    ]
+  },
+  "created_at": "2026-01-03T22:32:49.873483"
+}

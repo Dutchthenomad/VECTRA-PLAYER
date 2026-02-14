@@ -23,10 +23,15 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from bot.execution_bridge import BotExecutionBridge
     from core.game_state import GameState
+    from recording_ui.services.live_backtest_service import LiveBacktestService
+    from services.event_store.service import EventStoreService
     from ui.controllers.trading_controller import TradingController
 
 from services.event_bus import EventBus, Events
+from ui.controllers.recording_controller import RecordingController
+from ui.widgets.toggle_switch import RecordingToggle
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,7 @@ class MinimalWindow:
         trading_controller: "TradingController | None" = None,
         browser_bridge: Any = None,
         live_state_provider: Any = None,
+        event_store: "EventStoreService | None" = None,
     ):
         """
         Initialize MinimalWindow.
@@ -71,6 +77,7 @@ class MinimalWindow:
             trading_controller: Optional TradingController for ButtonEvent emission
             browser_bridge: Optional BrowserBridge for browser clicks
             live_state_provider: Optional LiveStateProvider for live game context
+            event_store: Optional EventStoreService for recording control
         """
         self.root = root
         self.game_state = game_state
@@ -78,6 +85,8 @@ class MinimalWindow:
         self.config = config
         self.browser_bridge = browser_bridge
         self.live_state_provider = live_state_provider
+        self.event_store = event_store
+        self.logger = logging.getLogger(__name__)
 
         # Configure root window
         self.root.title("VECTRA-PLAYER - Minimal UI")
@@ -99,6 +108,15 @@ class MinimalWindow:
         self.balance_label: tk.Label | None = None
         self.bet_entry: tk.Entry | None = None
         self.percentage_buttons: dict[float, dict] = {}
+        self.recording_toggle: RecordingToggle | None = None
+        self._rec_update_timer: str | None = None
+        self.recording_controller: RecordingController | None = None
+
+        # Bot execution state (Phase 2)
+        self.execute_toggle: tk.Button | None = None
+        self._execution_enabled: bool = False
+        self._execution_bridge: BotExecutionBridge | None = None
+        self._live_backtest_service: LiveBacktestService | None = None
 
         # Build UI first (before TradingController, as it needs bet_entry)
         self._create_ui()
@@ -108,6 +126,13 @@ class MinimalWindow:
         self.trading_controller = trading_controller
         if self.trading_controller is None and self.bet_entry is not None:
             self._create_trading_controller()
+
+        # Recording controller for 1-click recording toggle (Task 4)
+        if self.event_store is not None:
+            self.recording_controller = RecordingController(
+                event_store=self.event_store,
+                event_bus=self.event_bus,
+            )
 
         # Subscribe to EventBus events for status updates (Task 3)
         self._subscribe_to_events()
@@ -170,6 +195,19 @@ class MinimalWindow:
         )
         self.phase_label.pack(side=tk.LEFT, padx=(0, 20))
 
+        # Recording toggle (before connection indicator) - only if event_store provided
+        if self.event_store is not None:
+            # Recording toggle with built-in status label
+            self.recording_toggle = RecordingToggle(
+                row1,
+                command=self._on_rec_toggled,
+                bg=BG_COLOR,
+            )
+            self.recording_toggle.pack(side=tk.RIGHT, padx=(5, 10))
+
+            # Timer ID for periodic status updates
+            self._rec_update_timer: str | None = None
+
         # CONNECTION (indicator dot + CONNECT button on right)
         connection_frame = tk.Frame(row1, bg=BG_COLOR)
         connection_frame.pack(side=tk.RIGHT)
@@ -194,6 +232,20 @@ class MinimalWindow:
             command=self._on_connect_clicked,
         )
         self.connect_button.pack(side=tk.LEFT)
+
+        # EXECUTE toggle (Phase 2 - bot execution)
+        self.execute_toggle = tk.Button(
+            connection_frame,
+            text="EXECUTE: OFF",
+            bg="#cc3333",  # Red = disabled
+            fg="white",
+            font=("Arial", 9, "bold"),
+            relief=tk.RAISED,
+            bd=2,
+            padx=10,
+            command=self._on_execute_toggled,
+        )
+        self.execute_toggle.pack(side=tk.LEFT, padx=(10, 0))
 
         # Row 2: USER, BALANCE
         row2 = tk.Frame(status_frame, bg=BG_COLOR)
@@ -472,7 +524,14 @@ class MinimalWindow:
         self.event_bus.subscribe(Events.WS_CONNECTED, self._on_ws_connected, weak=False)
         self.event_bus.subscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected, weak=False)
         self.event_bus.subscribe(Events.PLAYER_UPDATE, self._on_player_update, weak=False)
-        logger.debug("MinimalWindow subscribed to EventBus events")
+
+        # Recording state changes (Task 4)
+        self.event_bus.subscribe(
+            Events.RECORDING_TOGGLED,
+            self._on_recording_toggled,
+            weak=False,
+        )
+        self.logger.debug("MinimalWindow subscribed to EventBus events")
 
     def _unsubscribe_from_events(self):
         """Unsubscribe from all EventBus events (for cleanup)."""
@@ -481,9 +540,10 @@ class MinimalWindow:
             self.event_bus.unsubscribe(Events.WS_CONNECTED, self._on_ws_connected)
             self.event_bus.unsubscribe(Events.WS_DISCONNECTED, self._on_ws_disconnected)
             self.event_bus.unsubscribe(Events.PLAYER_UPDATE, self._on_player_update)
-            logger.debug("MinimalWindow unsubscribed from EventBus events")
+            self.event_bus.unsubscribe(Events.RECORDING_TOGGLED, self._on_recording_toggled)
+            self.logger.debug("MinimalWindow unsubscribed from EventBus events")
         except Exception as e:
-            logger.warning(f"Error unsubscribing from events: {e}")
+            self.logger.warning(f"Error unsubscribing from events: {e}")
 
     @staticmethod
     def _detect_phase(event_data: dict) -> str:
@@ -669,8 +729,86 @@ class MinimalWindow:
         from browser.bridge import BridgeStatus
 
         connected = status == BridgeStatus.CONNECTED
-        logger.debug(f"Browser status changed: {status.value} -> connected={connected}")
+        self.logger.debug(f"Browser status changed: {status.value} -> connected={connected}")
         self.root.after(0, lambda: self.update_connection(connected))
+
+    # =========================================================================
+    # RECORDING CONTROL (Task 4: 1-click recording toggle)
+    # =========================================================================
+
+    def _on_rec_toggled(self) -> bool:
+        """Handle recording toggle - called by RecordingToggle widget."""
+        if not self.recording_controller:
+            self.logger.warning("Recording controller not available")
+            return False
+
+        is_recording = self.recording_controller.toggle()
+
+        # Start/stop status updates
+        if is_recording:
+            self._start_rec_status_updates()
+        else:
+            self._stop_rec_status_updates()
+            if self.recording_toggle:
+                self.recording_toggle.update_status(0)
+
+        return is_recording
+
+    def update_recording_state(self, is_recording: bool) -> None:
+        """Update recording toggle visual state (for external sync via EventBus)."""
+        if self.recording_toggle is None:
+            return
+
+        self.recording_toggle.set_state(is_recording)
+
+        if is_recording:
+            self._start_rec_status_updates()
+        else:
+            self._stop_rec_status_updates()
+            self.recording_toggle.update_status(0)
+
+    def _start_rec_status_updates(self) -> None:
+        """Start periodic updates of recording status label."""
+        self._update_rec_status()
+
+    def _stop_rec_status_updates(self) -> None:
+        """Stop periodic updates of recording status label."""
+        if self._rec_update_timer:
+            self.root.after_cancel(self._rec_update_timer)
+            self._rec_update_timer = None
+
+    def _update_rec_status(self) -> None:
+        """Update the recording status display with event count and game_id."""
+        if not self.recording_toggle or not self.recording_controller:
+            return
+
+        try:
+            # Get current status from controller
+            status = self.recording_controller.get_status()
+            event_count = status.get("event_count", 0)
+
+            # Get current game_id from LiveStateProvider
+            game_id = None
+            if self.live_state_provider:
+                game_id = self.live_state_provider.game_id
+
+            # Update toggle's status display
+            self.recording_toggle.update_status(event_count, game_id)
+
+            # Schedule next update if still recording
+            if self.recording_controller.is_recording:
+                self._rec_update_timer = self.root.after(1000, self._update_rec_status)
+
+        except Exception as e:
+            self.logger.debug(f"Error updating rec status: {e}")
+
+    def _on_recording_toggled(self, data: dict) -> None:
+        """Handle recording state change from EventBus."""
+        try:
+            is_recording = data.get("is_recording", False)
+            self.root.after(0, lambda: self.update_recording_state(is_recording))
+        except Exception as e:
+            self.logger.error(f"Error handling RECORDING_TOGGLED: {e}")
 
     # =========================================================================
     # BUTTON CALLBACKS (Wired to TradingController - Task 2)
@@ -854,6 +992,83 @@ class MinimalWindow:
     def get_sell_percentage(self) -> float:
         """Get current sell percentage."""
         return self.current_sell_percentage
+
+    # =========================================================================
+    # BOT EXECUTION CONTROL (Phase 2)
+    # =========================================================================
+
+    def set_execution_bridge(
+        self,
+        execution_bridge: "BotExecutionBridge",
+        live_backtest_service: "LiveBacktestService | None" = None,
+    ) -> None:
+        """
+        Wire execution bridge for bot trading.
+
+        Args:
+            execution_bridge: BotExecutionBridge instance for button clicks
+            live_backtest_service: Optional LiveBacktestService for real execution mode
+        """
+        self._execution_bridge = execution_bridge
+        self._live_backtest_service = live_backtest_service
+
+        # Wire to LiveBacktestService if provided
+        if live_backtest_service:
+            live_backtest_service.set_execution_bridge(execution_bridge)
+
+        logger.info("Execution bridge wired to MinimalWindow")
+
+    def _on_execute_toggled(self) -> None:
+        """
+        Handle EXECUTE toggle button click.
+
+        Enables/disables real execution mode for bot trading.
+        WARNING: When enabled, bot decisions will place real bets!
+        """
+        self._execution_enabled = not self._execution_enabled
+
+        if self._execution_enabled:
+            # Enable execution
+            if self._execution_bridge is None:
+                logger.warning("Cannot enable execution: no execution bridge set")
+                self._execution_enabled = False
+                return
+
+            # Check browser connection
+            if self.browser_bridge and not self.browser_bridge.is_connected():
+                logger.warning("Cannot enable execution: browser not connected")
+                self._execution_enabled = False
+                if self.execute_toggle:
+                    self.execute_toggle.config(text="EXECUTE: NO BROWSER", bg="#cc3333")
+                return
+
+            # Enable in bridge and service
+            self._execution_bridge.enable()
+            if self._live_backtest_service:
+                self._live_backtest_service.enable_real_execution()
+
+            # Update toggle appearance
+            if self.execute_toggle:
+                self.execute_toggle.config(text="EXECUTE: ON", bg="#00cc55")
+
+            logger.warning("EXECUTE mode ENABLED - Bot will place real bets!")
+        else:
+            # Disable execution
+            if self._execution_bridge:
+                self._execution_bridge.disable()
+            if self._live_backtest_service:
+                self._live_backtest_service.disable_real_execution()
+
+            # Update toggle appearance
+            if self.execute_toggle:
+                self.execute_toggle.config(text="EXECUTE: OFF", bg="#cc3333")
+
+            logger.info("EXECUTE mode disabled")
+
+    @property
+    def execution_enabled(self) -> bool:
+        """Check if execution mode is enabled."""
+        return self._execution_enabled
 
 
 class _NullBrowserBridge:

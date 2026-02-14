@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VECTRA Recording Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <h1 class="logo">VECTRA Recording Dashboard</h1>
+            <nav class="header-nav">
+                <a href="/" class="nav-tab {% if request.endpoint == 'dashboard' %}active{% endif %}">Recording</a>
+                <a href="/stats" class="nav-tab {% if request.endpoint == 'stats' %}active{% endif %}">Stats</a>
+                <a href="/models" class="nav-tab {% if request.endpoint == 'models' %}active{% endif %}">Models</a>
+                <a href="/explorer" class="nav-tab {% if request.endpoint == 'explorer' %}active{% endif %}">Explorer</a>
+                <a href="/backtest" class="nav-tab {% if request.endpoint == 'backtest' %}active{% endif %}">Backtest</a>
+                <a href="/profiles" class="nav-tab {% if request.endpoint == 'profiles' %}active{% endif %}">Profiles</a>
+            </nav>
+            <div class="header-status" id="connection-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <main class="main">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            <span>VECTRA-PLAYER Recording System</span>
+            <span id="last-update">Last update: --</span>
+        </footer>
+    </div>
+
+    <!-- Global connection status indicator -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusDot = document.querySelector('#connection-status .status-dot');
+        const statusText = document.querySelector('#connection-status .status-text');
+
+        async function checkConnection() {
+            try {
+                const res = await fetch('/api/status');
+                if (res.ok) {
+                    if (statusDot) statusDot.classList.add('connected');
+                    if (statusText) statusText.textContent = 'Connected';
+                    return true;
+                }
+            } catch (err) {
+                // Ignore errors
+            }
+            if (statusDot) statusDot.classList.remove('connected');
+            if (statusText) statusText.textContent = 'Disconnected';
+            return false;
+        }
+
+        // Initial check and poll every 5 seconds
+        checkConnection();
+        setInterval(checkConnection, 5000);
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

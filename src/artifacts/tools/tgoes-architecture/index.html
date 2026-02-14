@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TGOES - Architecture Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* Catppuccin Mocha Theme */
+        :root {
+            --ctp-rosewater: #f5e0dc;
+            --ctp-flamingo: #f2cdcd;
+            --ctp-pink: #f5c2e7;
+            --ctp-mauve: #cba6f7;
+            --ctp-red: #f38ba8;
+            --ctp-maroon: #eba0ac;
+            --ctp-peach: #fab387;
+            --ctp-yellow: #f9e2af;
+            --ctp-green: #a6e3a1;
+            --ctp-teal: #94e2d5;
+            --ctp-sky: #89dceb;
+            --ctp-sapphire: #74c7ec;
+            --ctp-blue: #89b4fa;
+            --ctp-lavender: #b4befe;
+            --ctp-text: #cdd6f4;
+            --ctp-subtext1: #bac2de;
+            --ctp-subtext0: #a6adc8;
+            --ctp-overlay2: #9399b2;
+            --ctp-overlay1: #7f849c;
+            --ctp-overlay0: #6c7086;
+            --ctp-surface2: #585b70;
+            --ctp-surface1: #45475a;
+            --ctp-surface0: #313244;
+            --ctp-base: #1e1e2e;
+            --ctp-mantle: #181825;
+            --ctp-crust: #11111b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: var(--ctp-base);
+            color: var(--ctp-text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--ctp-mantle);
+            border-bottom: 1px solid var(--ctp-surface0);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--ctp-mauve);
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--ctp-subtext0);
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge-python { background: var(--ctp-blue); color: var(--ctp-crust); }
+        .badge-js { background: var(--ctp-yellow); color: var(--ctp-crust); }
+        .badge-d3 { background: var(--ctp-peach); color: var(--ctp-crust); }
+        .badge-flask { background: var(--ctp-green); color: var(--ctp-crust); }
+
+        nav {
+            background: var(--ctp-surface0);
+            padding: 0.75rem 2rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        nav button {
+            background: var(--ctp-surface1);
+            color: var(--ctp-text);
+            border: 1px solid var(--ctp-surface2);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        nav button:hover {
+            background: var(--ctp-surface2);
+            border-color: var(--ctp-mauve);
+        }
+
+        nav button.active {
+            background: var(--ctp-mauve);
+            color: var(--ctp-crust);
+            border-color: var(--ctp-mauve);
+        }
+
+        main {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .diagram-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .diagram-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        .section-header h2 {
+            color: var(--ctp-lavender);
+            font-size: 1.25rem;
+        }
+
+        .section-header .description {
+            color: var(--ctp-subtext0);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        .mermaid-container {
+            background: var(--ctp-mantle);
+            border: 1px solid var(--ctp-surface1);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Mermaid theme overrides */
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .info-card {
+            background: var(--ctp-surface0);
+            border: 1px solid var(--ctp-surface1);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+        }
+
+        .info-card h3 {
+            color: var(--ctp-peach);
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-card h3::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ctp-peach);
+        }
+
+        .info-card ul {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .info-card li {
+            padding: 0.35rem 0;
+            color: var(--ctp-subtext1);
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        .info-card li:last-child {
+            border-bottom: none;
+        }
+
+        .info-card code {
+            background: var(--ctp-surface1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--ctp-green);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        th {
+            background: var(--ctp-surface0);
+            color: var(--ctp-mauve);
+            font-weight: 600;
+        }
+
+        tr:hover td {
+            background: var(--ctp-surface0);
+        }
+
+        td code {
+            background: var(--ctp-surface1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            color: var(--ctp-teal);
+        }
+
+        .file-tree {
+            background: var(--ctp-mantle);
+            border: 1px solid var(--ctp-surface1);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            overflow-x: auto;
+            color: var(--ctp-subtext1);
+        }
+
+        .file-tree .folder {
+            color: var(--ctp-blue);
+        }
+
+        .file-tree .file {
+            color: var(--ctp-green);
+        }
+
+        .file-tree .comment {
+            color: var(--ctp-overlay0);
+        }
+
+        footer {
+            background: var(--ctp-mantle);
+            border-top: 1px solid var(--ctp-surface0);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            color: var(--ctp-overlay1);
+            font-size: 0.85rem;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: var(--ctp-sapphire);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TGOES - Theoretical Gameplay Optimization Engine Suite</h1>
+        <p>Architecture Documentation | VECTRA-PLAYER</p>
+        <div>
+            <span class="badge badge-python">Python Engine</span>
+            <span class="badge badge-js">JS Artifacts</span>
+            <span class="badge badge-d3">D3.js Viz</span>
+            <span class="badge badge-flask">Flask API</span>
+        </div>
+    </header>
+
+    <nav id="nav">
+        <button class="active" data-section="overview">Overview</button>
+        <button data-section="current-state">Current Architecture</button>
+        <button data-section="bayesian">Bayesian Forecaster</button>
+        <button data-section="regime">Regime Detection</button>
+        <button data-section="dataflow">Data Flow</button>
+        <button data-section="unified">Unified Proposal</button>
+        <button data-section="files">File Reference</button>
+    </nav>
+
+    <main>
+        <!-- Overview Section -->
+        <section id="overview" class="diagram-section active">
+            <div class="section-header">
+                <div>
+                    <h2>System Overview</h2>
+                    <p class="description">Four separate implementations currently exist for theoretical gameplay optimization</p>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>PRNG CRAK Python Engine</h3>
+                    <ul>
+                        <li><code>bayesian_forecaster.py</code> - Kalman filter fusion</li>
+                        <li><code>equilibrium_tracker.py</code> - EWMA + regime detection</li>
+                        <li><code>ctf_engine.py</code> - CTF competition predictor</li>
+                        <li><code>game_simulator.py</code> - Deterministic PRNG sim</li>
+                        <li><code>prediction_recorder.py</code> - SQLite persistence</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3>JS Prediction Artifact</h3>
+                    <ul>
+                        <li><code>main.js</code> - WebSocket client + orchestration</li>
+                        <li><code>bayesian-forecaster.js</code> - JS port of Bayesian</li>
+                        <li><code>equilibrium-tracker.js</code> - EWMA + regime</li>
+                        <li><code>stochastic-oscillator.js</code> - Adaptive AR(1-5)</li>
+                        <li><code>dynamic-weighter.js</code> - Confidence modulation</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3>Recording UI Explorer</h3>
+                    <ul>
+                        <li><code>runMonteCarloComparison()</code> - 8 strategies</li>
+                        <li><code>runSimulation()</code> - Bankroll backtest</li>
+                        <li>Kelly / Martingale sizing</li>
+                        <li>Equity curve visualization</li>
+                        <li>VaR, CVaR, Sortino metrics</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3>Explorer V2 Dashboard</h3>
+                    <ul>
+                        <li>Timeline scatter (dc.js)</li>
+                        <li>Sequential analysis with meta-zone</li>
+                        <li>Seed heatmap (D3.js)</li>
+                        <li>2,835 known game outcomes</li>
+                        <li>Hour-of-day analysis</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <h3 style="color: var(--ctp-lavender); margin: 2rem 0 1rem;">Certainty Zone Thresholds</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bankroll</th>
+                            <th>Max Sequence</th>
+                            <th>Required Prob</th>
+                            <th>Success Rate</th>
+                            <th>Tier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>0.127 SOL</td><td>7 steps</td><td>50%</td><td>99.22%</td><td>MICRO</td></tr>
+                        <tr><td>0.255 SOL</td><td>8 steps</td><td>45%</td><td>99.61%</td><td>SMALL</td></tr>
+                        <tr><td>0.511 SOL</td><td>9 steps</td><td>40%</td><td>99.80%</td><td>MEDIUM</td></tr>
+                        <tr><td>1.023 SOL</td><td>10 steps</td><td>35%</td><td>99.90%</td><td>MEDIUM</td></tr>
+                        <tr><td>2.047 SOL</td><td>11 steps</td><td>30%</td><td>99.95%</td><td>LARGE</td></tr>
+                        <tr><td>4.095 SOL</td><td>12 steps</td><td>25%</td><td>99.98%</td><td>LARGE</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Current State Architecture -->
+        <section id="current-state" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>Current State Architecture</h2>
+                    <p class="description">Four separate systems with overlapping functionality</p>
+                </div>
+            </div>
+
+            <div class="mermaid-container">
+                <pre class="mermaid">
+graph TB
+    subgraph PRNG["PRNG CRAK (Python)"]
+        PC_BF["bayesian_forecaster.py<br/>Kalman Filter Fusion"]
+        PC_ET["equilibrium_tracker.py<br/>EWMA + Regime Detection"]
+        PC_CTF["ctf_engine.py<br/>CTF Competition Engine"]
+        PC_GS["game_simulator.py<br/>Deterministic PRNG Sim"]
+        PC_PO["parameter_optimizer/<br/>Differential Evolution"]
+        PC_PR["prediction_recorder.py<br/>SQLite Persistence"]
+
+        PC_ET --> PC_BF
+        PC_BF --> PC_CTF
+        PC_GS --> PC_CTF
+    end
+
+    subgraph JSArt["JS Prediction Artifact"]
+        JA_BF["bayesian-forecaster.js"]
+        JA_ET["equilibrium-tracker.js"]
+        JA_SO["stochastic-oscillator.js"]
+        JA_DW["dynamic-weighter.js"]
+        JA_M["main.js<br/>WebSocket Client"]
+
+        JA_ET --> JA_BF
+        JA_SO --> JA_BF
+        JA_DW --> JA_BF
+        JA_BF --> JA_M
+    end
+
+    subgraph RecUI["Recording UI Explorer (JS)"]
+        RU_MC["Monte Carlo<br/>8 Strategy Comparison"]
+        RU_BS["Bankroll Sim<br/>Kelly/Martingale"]
+        RU_SA["Strategy Analysis<br/>Win Rate Tables"]
+        RU_EQ["Equity Curve<br/>Chart.js Viz"]
+
+        RU_BS --> RU_EQ
+        RU_MC --> RU_EQ
+    end
+
+    subgraph ExpV2["Explorer V2 (D3.js)"]
+        EV_TL["Timeline Chart<br/>dc.js Scatter"]
+        EV_SQ["Sequential Analysis<br/>Meta-Algorithm Zone"]
+        EV_HM["Seed Heatmap<br/>Byte Position"]
+        EV_DT["Data Table<br/>2,835 Games"]
+    end
+
+    DB[("games.json<br/>2,835 Known Outcomes")]
+    WS["Foundation Service<br/>ws://localhost:9000"]
+
+    DB --> PC_CTF
+    DB --> EV_TL
+    WS --> JA_M
+                </pre>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>Duplication Issues</h3>
+                    <ul>
+                        <li>Bayesian forecaster in Python AND JS</li>
+                        <li>Equilibrium tracker in Python AND JS</li>
+                        <li>Monte Carlo in explorer.js (1,473 lines)</li>
+                        <li>No shared data contracts</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h3>Integration Gaps</h3>
+                    <ul>
+                        <li>JS artifact not connected to Flask API</li>
+                        <li>Monte Carlo doesn't use prediction engine</li>
+                        <li>Explorer V2 is standalone</li>
+                        <li>No unified strategy interface</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bayesian Forecaster -->
+        <section id="bayesian" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>Bayesian Forecaster Algorithm</h2>
+                    <p class="description">Kalman filter fusion with 4-component weighted prediction</p>
+                </div>
+            </div>
+
+            <div class="mermaid-container">
+                <pre class="mermaid">
+flowchart LR
+    subgraph Input["Input"]
+        PREV["Previous Game<br/>final, peak, duration"]
+    end
+
+    subgraph Weights["Component Weights"]
+        MR["Mean Reversion<br/>40%"]
+        AR["AR Oscillation<br/>30%"]
+        PE["Peak Effect<br/>20%"]
+        DE["Duration Effect<br/>10%"]
+    end
+
+    subgraph State["State Estimation"]
+        KF1["Kalman Filter<br/>Final Price"]
+        KF2["Kalman Filter<br/>Peak"]
+        KF3["Kalman Filter<br/>Duration"]
+    end
+
+    subgraph Output["Output"]
+        PRED["GamePrediction<br/>final, peak, duration<br/>+ 95% CI"]
+    end
+
+    PREV --> MR
+    PREV --> AR
+    PREV --> PE
+    PREV --> DE
+
+    MR --> KF1
+    AR --> KF1
+    PE --> KF2
+    DE --> KF3
+
+    KF1 --> PRED
+    KF2 --> PRED
+    KF3 --> PRED
+                </pre>
+            </div>
+
+            <div class="table-container">
+                <h3 style="color: var(--ctp-lavender); margin: 2rem 0 1rem;">CTF Validation Results</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Current Value</th>
+                            <th>CTF Target</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>P91 Peak Error</td>
+                            <td>238.5%</td>
+                            <td>&le;9%</td>
+                            <td style="color: var(--ctp-red);">FAIL</td>
+                        </tr>
+                        <tr>
+                            <td>P91 Duration Error</td>
+                            <td>1027.8%</td>
+                            <td>&le;9%</td>
+                            <td style="color: var(--ctp-red);">FAIL</td>
+                        </tr>
+                        <tr>
+                            <td>Root Cause</td>
+                            <td colspan="3">Algorithm mismatch - server uses different PRNG</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Regime Detection -->
+        <section id="regime" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>Regime Detection State Machine</h2>
+                    <p class="description">EWMA-based market regime classification</p>
+                </div>
+            </div>
+
+            <div class="mermaid-container">
+                <pre class="mermaid">
+stateDiagram-v2
+    [*] --> NORMAL
+
+    NORMAL --> SUPPRESSED: z_score < -1.5 sigma
+    NORMAL --> INFLATED: z_score > +1.5 sigma
+    NORMAL --> VOLATILE: recent_std > 2 sigma
+
+    SUPPRESSED --> NORMAL: Recovery to mean
+    INFLATED --> NORMAL: Correction to mean
+    VOLATILE --> NORMAL: Variance settles
+
+    SUPPRESSED --> SUPPRESSED: Continued crash
+    INFLATED --> INFLATED: Continued run
+    VOLATILE --> VOLATILE: High variance persists
+                </pre>
+            </div>
+
+            <div class="table-container">
+                <h3 style="color: var(--ctp-lavender); margin: 2rem 0 1rem;">Regime Weight Matrix</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Regime</th>
+                            <th>Final Weight</th>
+                            <th>Peak Weight</th>
+                            <th>Duration Weight</th>
+                            <th>Interpretation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>NORMAL</td><td>0.85</td><td>0.68</td><td>0.84</td><td>Standard confidence</td></tr>
+                        <tr><td>SUPPRESSED</td><td>0.91</td><td>0.65</td><td>0.87</td><td>Expect recovery</td></tr>
+                        <tr><td>INFLATED</td><td>0.88</td><td>0.62</td><td>0.82</td><td>Expect correction</td></tr>
+                        <tr><td>VOLATILE</td><td>0.62</td><td>0.45</td><td>0.61</td><td>High uncertainty</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Data Flow -->
+        <section id="dataflow" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>Data Flow Sequence</h2>
+                    <p class="description">Real-time prediction pipeline from WebSocket to UI</p>
+                </div>
+            </div>
+
+            <div class="mermaid-container">
+                <pre class="mermaid">
+sequenceDiagram
+    participant WS as Foundation Service
+    participant M as main.js
+    participant BF as BayesianForecaster
+    participant ET as EquilibriumTracker
+    participant SO as StochasticOscillator
+    participant DW as DynamicWeighter
+    participant UI as HTML UI
+
+    WS->>M: game.tick (normalized event)
+    M->>ET: updateOnline(price, peak, duration)
+    ET-->>M: regime, equilibrium
+    M->>SO: updateOnline(price, peak, duration)
+    SO-->>M: arPrediction
+    M->>DW: getWeights()
+    DW-->>M: confidence weights
+    M->>BF: forecastNextGame(prevGame)
+    BF-->>M: Prediction (final, peak, duration)
+    M->>UI: Render predictions + confidence bars
+                </pre>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>Foundation Service Events</h3>
+                    <ul>
+                        <li><code>game.tick</code> - Price/tick stream</li>
+                        <li><code>player.state</code> - Balance/position</li>
+                        <li><code>connection.authenticated</code> - Auth confirm</li>
+                        <li><code>sidebet.placed</code> - Sidebet event</li>
+                        <li><code>sidebet.result</code> - Sidebet outcome</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h3>Prediction Output</h3>
+                    <ul>
+                        <li>Final price estimate + 95% CI</li>
+                        <li>Peak multiplier prediction</li>
+                        <li>Game duration prediction</li>
+                        <li>Current regime classification</li>
+                        <li>Overall confidence score</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Unified Architecture Proposal -->
+        <section id="unified" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>Unified Architecture Proposal</h2>
+                    <p class="description">Python backend with composable strategies and real-time predictions</p>
+                </div>
+            </div>
+
+            <div class="mermaid-container">
+                <pre class="mermaid">
+graph TB
+    subgraph Sources["Data Sources"]
+        WS["Foundation Service<br/>ws://localhost:9000"]
+        DB[("Parquet Files<br/>~/rugs_data")]
+        GAMES[("games.json<br/>Known Outcomes")]
+    end
+
+    subgraph Core["TGOES Core (Python)"]
+        PE["ProbabilityEngine<br/>Unified calculations"]
+        PRE["PredictionEngine<br/>Merge PRNG CRAK + Artifact"]
+        SE["SimulationEngine<br/>Merge Monte Carlo"]
+        SM["StrategyManager<br/>8 presets + configurable"]
+        RM["RiskManager<br/>Stop-loss, certainty zones"]
+    end
+
+    subgraph API["API Layer"]
+        FAPI["Flask /api/optimization/*"]
+        WSB["WebSocket Broadcaster<br/>Real-time predictions"]
+    end
+
+    subgraph Frontend["Frontend"]
+        EX["Explorer Tab<br/>Existing UI"]
+        ART["HTML Artifacts<br/>Standalone tools"]
+    end
+
+    WS --> PRE
+    DB --> SE
+    GAMES --> PRE
+
+    PRE --> PE
+    PE --> SM
+    SM --> SE
+    SM --> RM
+
+    SE --> FAPI
+    PRE --> WSB
+
+    FAPI --> EX
+    WSB --> ART
+                </pre>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>Core Components</h3>
+                    <ul>
+                        <li><strong>ProbabilityEngine</strong> - Unified calculations</li>
+                        <li><strong>PredictionEngine</strong> - Merge PRNG CRAK + Artifact</li>
+                        <li><strong>SimulationEngine</strong> - Merge Monte Carlo</li>
+                        <li><strong>StrategyManager</strong> - 8 presets + configurable</li>
+                        <li><strong>RiskManager</strong> - Stop-loss, certainty zones</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h3>Design Principles</h3>
+                    <ul>
+                        <li>Python as primary computation layer</li>
+                        <li>JS for visualization only</li>
+                        <li>Composable strategies</li>
+                        <li>Prediction-informed decisions</li>
+                        <li>Backward compatibility</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- File Reference -->
+        <section id="files" class="diagram-section">
+            <div class="section-header">
+                <div>
+                    <h2>File Paths Quick Reference</h2>
+                    <p class="description">Complete file inventory across all systems</p>
+                </div>
+            </div>
+
+            <div class="file-tree"><span class="comment"># Python Prediction Engine (PRNG CRAK)</span>
+<span class="folder">src/rugs_recordings/PRNG CRAK/prediction_engine/</span>
+├── __init__.py
+├── <span class="file">equilibrium_tracker.py</span>    <span class="comment"># MarketRegime, EquilibriumTracker</span>
+├── <span class="file">bayesian_forecaster.py</span>    <span class="comment"># KalmanFilter, BayesianForecaster</span>
+├── <span class="file">ctf_engine.py</span>             <span class="comment"># CTFWinningEngine</span>
+├── <span class="file">game_simulator.py</span>         <span class="comment"># Deterministic PRNG sim</span>
+├── <span class="file">fast_seedrandom.py</span>        <span class="comment"># Python seedrandom</span>
+└── <span class="file">prediction_recorder.py</span>    <span class="comment"># SQLite persistence</span>
+
+<span class="comment"># JS Prediction Artifact</span>
+<span class="folder">src/artifacts/tools/prediction-engine/</span>
+├── index.html
+├── <span class="file">main.js</span>
+└── <span class="folder">components/</span>
+    ├── <span class="file">bayesian-forecaster.js</span>
+    ├── <span class="file">equilibrium-tracker.js</span>
+    ├── <span class="file">stochastic-oscillator.js</span>
+    └── <span class="file">dynamic-weighter.js</span>
+
+<span class="comment"># Recording UI Explorer</span>
+<span class="folder">src/recording_ui/</span>
+├── <span class="folder">templates/</span><span class="file">explorer.html</span>   <span class="comment"># Monte Carlo, Bankroll Sim</span>
+└── <span class="folder">static/js/</span><span class="file">explorer.js</span>     <span class="comment"># 1,473 lines</span>
+
+<span class="comment"># Explorer V2 Dashboard</span>
+<span class="folder">src/rugs_recordings/PRNG CRAK/explorer_v2/</span>
+├── index.html
+├── predictor.html
+├── <span class="folder">data/</span><span class="file">games.json</span>           <span class="comment"># 2,835 known games</span>
+└── <span class="folder">js/</span>
+    ├── <span class="file">main.js</span>
+    ├── <span class="file">charts.js</span>
+    ├── <span class="file">data.js</span>
+    ├── <span class="file">dimensions.js</span>
+    └── <span class="file">stats.js</span>
+
+<span class="comment"># Knowledge Base</span>
+<span class="folder">docs/rag/knowledge/rugipedia/archive/Q_files_2025-12-27/review data/</span>
+├── <span class="file">side_bet_mechanics_v2.md</span>
+├── <span class="file">bankroll_management.md</span>
+├── <span class="file">probability_framework.md</span>
+└── <span class="file">bayesian-models.md</span></div>
+
+            <div class="table-container">
+                <h3 style="color: var(--ctp-lavender); margin: 2rem 0 1rem;">8 Monte Carlo Strategies</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Description</th>
+                            <th>Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Fixed Bet</td><td>0.001 SOL each</td><td>Low</td></tr>
+                        <tr><td>Progressive (2x Martingale)</td><td>0.001, 0.002, 0.004, 0.008</td><td>Medium</td></tr>
+                        <tr><td>Conservative</td><td>0.001 per bet, max 2 bets</td><td>Very Low</td></tr>
+                        <tr><td>Safe Zone</td><td>Entry tick &ge;100 only</td><td>Very Low</td></tr>
+                        <tr><td>Zone Based</td><td>Entry tick 60-100</td><td>Medium</td></tr>
+                        <tr><td>Adaptive Timing</td><td>Adjusts based on recent outcomes</td><td>Medium</td></tr>
+                        <tr><td>Controlled Martingale</td><td>2x with cap at 0.016</td><td>Medium</td></tr>
+                        <tr><td>Volatility Arbitrage</td><td>High confidence zones only</td><td>High</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>TGOES Architecture Documentation | VECTRA-PLAYER | <a href="https://github.com/Dutchthenomad/VECTRA-PLAYER">GitHub</a></p>
+        <p>Generated 2026-01-19 | Plan ID: jazzy-mixing-lantern</p>
+    </footer>
+
+    <script>
+        // Initialize Mermaid with dark theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#cba6f7',
+                primaryTextColor: '#cdd6f4',
+                primaryBorderColor: '#585b70',
+                lineColor: '#89b4fa',
+                secondaryColor: '#45475a',
+                tertiaryColor: '#313244',
+                background: '#1e1e2e',
+                mainBkg: '#313244',
+                secondBkg: '#45475a',
+                border1: '#585b70',
+                border2: '#6c7086',
+                arrowheadColor: '#89b4fa',
+                fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                fontSize: '14px',
+                textColor: '#cdd6f4',
+                nodeTextColor: '#cdd6f4',
+                labelTextColor: '#cdd6f4'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35
+            }
+        });
+
+        // Navigation handling
+        document.getElementById('nav').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                // Update active button
+                document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Show corresponding section
+                const sectionId = e.target.dataset.section;
+                document.querySelectorAll('.diagram-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.getElementById(sectionId).classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>

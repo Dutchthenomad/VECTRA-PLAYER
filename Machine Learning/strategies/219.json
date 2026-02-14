@@ -1,0 +1,23 @@
+{
+  "name": "219",
+  "initial_balance": 0.26,
+  "params": {
+    "entry_tick": 219,
+    "num_bets": 4,
+    "bet_sizes": [
+      0.001,
+      0.001,
+      0.001,
+      0.001
+    ],
+    "use_kelly_sizing": true,
+    "kelly_fraction": 0.25,
+    "use_dynamic_sizing": true,
+    "high_confidence_threshold": 60,
+    "high_confidence_multiplier": 3,
+    "reduce_on_drawdown": true,
+    "max_drawdown_pct": 0.5,
+    "take_profit_target": 1.8
+  },
+  "created": "2026-01-19T09:58:14Z"
+}

@@ -1,0 +1,49 @@
+{
+  "existing_features": [],
+  "tech_stack": [
+    "Python"
+  ],
+  "target_audience": "Crypto traders on rugs.fun who want automated trading bots and game replay analysis",
+  "planned_features": [
+    "GUI Thread Safety Improvements",
+    "Protocol Explorer UI (Phase 12E)",
+    "Multi-Game Session Support",
+    "Multi-Wallet Support",
+    "High-Frequency Trading Optimization",
+    "MyPy Strict Type Checking",
+    "Strategy Sharing and Community",
+    "Legacy Recorder Cleanup",
+    "Sidegame Integration (BBC, Candleflip)",
+    "RAG Search UI for Trading History",
+    "Specification: Automated Development Environment Path Migration",
+    "Strategy Backtesting Engine",
+    "Ruff Linting Compliance",
+    "Production Deployment Pipeline",
+    "Performance Monitoring Dashboard",
+    "Shorting Integration",
+    "REST API for External Integrations",
+    "Pathlib Migration",
+    "Pipeline D: Training Data Implementation"
+  ],
+  "graph_hints": {
+    "code_improvements": [],
+    "security_hardening": [],
+    "documentation_gaps": [],
+    "performance_optimizations": [],
+    "code_quality": []
+  },
+  "config": {
+    "enabled_types": [
+      "code_improvements",
+      "security_hardening",
+      "documentation_gaps",
+      "performance_optimizations",
+      "code_quality",
+      "ui_ux_improvements"
+    ],
+    "include_roadmap_context": true,
+    "include_kanban_context": true,
+    "max_ideas_per_type": 5
+  },
+  "created_at": "2026-01-04T00:09:51.728224"
+}

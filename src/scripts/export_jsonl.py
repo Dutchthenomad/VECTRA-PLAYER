@@ -37,16 +37,20 @@ def export_to_jsonl(
     output_dir.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect()
 
-    # Build WHERE clause
+    # Query Parquet files with parameterized filters to prevent SQL injection
+    parquet_path = str(parquet_dir / "**" / "*.parquet")
+
+    # Build query with placeholders for safe parameter binding
     conditions = []
+    params = []
     if session_id:
-        conditions.append(f"session_id = '{session_id}'")
+        conditions.append("session_id = ?")
+        params.append(session_id)
     if doc_type:
-        conditions.append(f"doc_type = '{doc_type}'")
+        conditions.append("doc_type = ?")
+        params.append(doc_type)
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    # Query Parquet files
-    parquet_path = str(parquet_dir / "**" / "*.parquet")
     query = f"""
         SELECT * FROM read_parquet('{parquet_path}', hive_partitioning=true, union_by_name=true)
         {where_clause}
@@ -54,7 +58,7 @@ def export_to_jsonl(
     """
 
     try:
-        result = conn.execute(query).df()
+        result = conn.execute(query, params).df()
     except Exception as e:
         print(f"Error querying Parquet: {e}", file=sys.stderr)
         return []

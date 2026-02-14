@@ -21,9 +21,6 @@ _LAZY_EXPORTS = {
     "StateVerifier": ("services.state_verifier", "StateVerifier"),
     "BALANCE_TOLERANCE": ("services.state_verifier", "BALANCE_TOLERANCE"),
     "POSITION_TOLERANCE": ("services.state_verifier", "POSITION_TOLERANCE"),
-    # Recording state machine
-    "RecordingState": ("services.recording_state_machine", "RecordingState"),
-    "RecordingStateMachine": ("services.recording_state_machine", "RecordingStateMachine"),
     # Phase 12C: Server-authoritative state in live mode
     "LiveStateProvider": ("services.live_state_provider", "LiveStateProvider"),
 }

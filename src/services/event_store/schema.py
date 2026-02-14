@@ -24,6 +24,7 @@ class DocType(str, Enum):
     SHORT_POSITION = "short_position"  # Short position snapshots
     SERVER_STATE = "server_state"  # Server-authoritative snapshots
     SYSTEM_EVENT = "system_event"  # Connection/disconnect/errors
+    COMPLETE_GAME = "complete_game"  # Complete game from gameHistory (ML training)
 
 
 class EventSource(str, Enum):
@@ -268,6 +269,46 @@ class EventEnvelope:
             button_category=button_category,
             sequence_id=sequence_id,
             sequence_position=sequence_position,
+        )
+
+    @classmethod
+    def from_complete_game(
+        cls,
+        game_data: dict[str, Any],
+        source: EventSource,
+        session_id: str,
+        seq: int,
+    ) -> "EventEnvelope":
+        """
+        Create envelope from complete game (from gameHistory array).
+
+        Captures the ENTIRE game object with all fields preserved in raw_json:
+        - globalSidebets: All player sidebets with outcomes
+        - prices: Full tick-by-tick price array
+        - peakMultiplier: Peak price reached
+        - provablyFair: Server seed data
+        - And ALL other fields for future analysis
+
+        Args:
+            game_data: Complete game object from gameHistory array
+            source: Event source (CDP or PUBLIC_WS)
+            session_id: Recording session UUID
+            seq: Sequence number
+
+        Returns:
+            EventEnvelope with entire game preserved in raw_json
+        """
+        game_id = game_data.get("id")
+
+        return cls(
+            ts=datetime.utcnow(),
+            source=source,
+            doc_type=DocType.COMPLETE_GAME,
+            session_id=session_id,
+            seq=seq,
+            direction=Direction.RECEIVED,
+            raw_json=json.dumps(game_data, default=str),  # Preserve EVERYTHING
+            game_id=game_id,
         )
 
     def to_dict(self) -> dict[str, Any]:

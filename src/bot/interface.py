@@ -173,10 +173,10 @@ class BotInterface:
                     ticks_since = snap.tick - last_resolved
                     if ticks_since > sidebet_cooldown:
                         can_sidebet = True
-                        valid_actions.append("SIDE")
+                        valid_actions.append("SIDEBET")
                 else:
                     can_sidebet = True
-                    valid_actions.append("SIDE")
+                    valid_actions.append("SIDEBET")
 
         return {
             "valid_actions": valid_actions,

@@ -1,0 +1,74 @@
+{
+  "code_improvements": [
+    {
+      "id": "ci-001",
+      "type": "code_improvements",
+      "title": "Add Missing EventEnvelope Factory Methods for Sidegame DocTypes",
+      "description": "Add factory methods from_bbc_round(), from_candleflip_round(), and from_short_position() to EventEnvelope class to match the already-defined DocType enum values (BBC_ROUND, CANDLEFLIP_ROUND, SHORT_POSITION).",
+      "rationale": "The EventEnvelope class has factory methods for 6 DocTypes (ws_event, game_tick, player_action, server_state, system_event, button_event) but the DocType enum defines 3 additional types (BBC_ROUND, CANDLEFLIP_ROUND, SHORT_POSITION) that lack corresponding factory methods. The pattern for creating these methods is well-established.",
+      "builds_upon": ["EventEnvelope.from_ws_event factory pattern", "DocType enum definitions"],
+      "estimated_effort": "small",
+      "affected_files": ["src/services/event_store/schema.py"],
+      "existing_patterns": ["EventEnvelope.from_button_event() factory method pattern - lines 219-271"],
+      "implementation_approach": "Copy the from_button_event() method structure 3 times, adjusting DocType and field names for each sidegame type. BBC rounds would include bull/bear/crab bet fields, candleflip would include flip result fields, short_position would include short position tracking fields.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-002",
+      "type": "code_improvements",
+      "title": "Add Strategy Performance Metrics to TradingStrategy Base Class",
+      "description": "Extend TradingStrategy base class to track decision statistics (action counts, win/loss ratio, avg hold time) that strategies can access for self-evaluation and logging.",
+      "rationale": "The TradingStrategy base class only tracks last_action and last_reasoning. The AggressiveStrategy, ConservativeStrategy, and other strategies all make decisions but have no built-in way to track their performance over time. The reset() method already exists for state clearing between games.",
+      "builds_upon": ["TradingStrategy.reset() method", "TradingStrategy._validate_action() pattern"],
+      "estimated_effort": "small",
+      "affected_files": ["src/bot/strategies/base.py", "src/bot/strategies/aggressive.py", "src/bot/strategies/conservative.py", "src/bot/strategies/foundational.py", "src/bot/strategies/sidebet.py"],
+      "existing_patterns": ["EventBus._stats tracking pattern (events_published, events_processed, errors)", "LatencySpikeDetector.get_stats() pattern"],
+      "implementation_approach": "Add a _stats dict to TradingStrategy.__init__() tracking: decisions_made, buys, sells, sidebets, waits. Add a record_decision() helper called from _validate_action(). Add get_stats() method matching EventBus pattern. Update reset() to optionally preserve stats across games.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-003",
+      "type": "code_improvements",
+      "title": "Add Game Session Statistics Query to EventStoreQuery",
+      "description": "Add get_session_stats() and get_player_session_stats() methods to EventStoreQuery that compute aggregate statistics (games played, total P&L, win rate, avg game duration) using DuckDB SQL window functions.",
+      "rationale": "EventStoreQuery has sophisticated SQL query methods with window functions (get_tick_features) but lacks aggregate session-level statistics queries. The LiveStateProvider tracks session stats like count_2x, count_10x which demonstrates the value of these metrics. The iter_episodes() pattern shows how to filter by player_id.",
+      "builds_upon": ["EventStoreQuery.get_tick_features() SQL window function pattern", "EventStoreQuery._parquet_glob() helper", "LiveStateProvider session stats properties"],
+      "estimated_effort": "medium",
+      "affected_files": ["src/services/event_store/duckdb.py"],
+      "existing_patterns": ["EventStoreQuery.get_player_actions() - player filtering pattern", "EventStoreQuery.count_events() - aggregate query pattern"],
+      "implementation_approach": "Add get_session_stats(session_id) method that queries: games_played, total_events, doc_type_counts, date_range. Add get_player_session_stats(player_id) that computes: games_won (position_qty > 0 at game end), total_pnl (sum of cumulative_pnl), avg_hold_ticks. Use CTEs and window functions following get_tick_features pattern.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-004",
+      "type": "code_improvements",
+      "title": "Add LiveStateProvider State History Buffer",
+      "description": "Add a circular buffer to LiveStateProvider that retains the last N state snapshots for debugging, charting, and RL training observation sequences.",
+      "rationale": "LiveStateProvider maintains only current state but many use cases need recent history: UI needs price history for charts, RL training needs observation sequences, debugging needs to see state progression. The LiveRingBuffer class already exists in core/ demonstrating the exact pattern needed.",
+      "builds_upon": ["LiveRingBuffer circular buffer implementation", "LiveStateProvider.get_snapshot() method"],
+      "estimated_effort": "small",
+      "affected_files": ["src/services/live_state_provider.py"],
+      "existing_patterns": ["core/live_ring_buffer.py - LiveRingBuffer with maxlen parameter", "LatencySpikeDetector.latencies deque with rolling statistics"],
+      "implementation_approach": "Add _history: deque[dict] with maxlen=100 to __init__. In _on_player_update and _on_game_tick, after updating state, call _history.append(self.get_snapshot()). Add get_history(n: int) method to return last N snapshots. Add get_price_series(n: int) for chart-friendly format.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    },
+    {
+      "id": "ci-005",
+      "type": "code_improvements",
+      "title": "Add VectorIndexer Query Interface",
+      "description": "Add query_similar() and search_events() methods to VectorIndexer that leverage the existing ChromaDB integration to perform semantic search over indexed events.",
+      "rationale": "VectorIndexer has build_incremental() and build_full() methods that populate ChromaDB but no query interface. The chunker.py already produces chunks with text fields suitable for embedding similarity. The claude-flow RAG pipeline has retrieval/retrieve.py that could be adapted.",
+      "builds_upon": ["VectorIndexer.build_incremental() ChromaDB integration", "services/vector_indexer/chunker.py event chunking"],
+      "estimated_effort": "medium",
+      "affected_files": ["src/services/vector_indexer/indexer.py"],
+      "existing_patterns": ["VectorIndexer._ensure_claude_flow_imports() lazy loading pattern", "EventStoreQuery.query() stateless connection pattern"],
+      "implementation_approach": "Add query_similar(text: str, n: int=10) method that: 1) calls _ensure_claude_flow_imports(), 2) embeds the query text using embed_batch, 3) queries ChromaDB store.query() for similar documents, 4) returns list of (chunk, score) tuples. Add search_events(query: str, doc_type: str=None) that filters by metadata.",
+      "status": "draft",
+      "created_at": "2026-01-03T21:56:00Z"
+    }
+  ]
+}

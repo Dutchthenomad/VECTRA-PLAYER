@@ -185,9 +185,13 @@ class Config:
     }
 
     # ========== Browser Automation ==========
+    # Profile options:
+    #   - "rugs_bot": Dedicated profile at ~/.gamebot/chrome_profiles/rugs_bot (isolated)
+    #   - "default": Use system Chrome Default profile at ~/.config/google-chrome
+    # Set via CHROME_PROFILE env var or edit here
     BROWSER = {
         "chrome_binary": os.getenv("CHROME_BINARY", ""),
-        "profile_name": os.getenv("CHROME_PROFILE", "rugs_bot"),
+        "profile_name": os.getenv("CHROME_PROFILE", "rugs_bot"),  # Dedicated profile for trading
         # AUDIT FIX: Use safe parsing to prevent import-time crash on invalid CDP_PORT
         "cdp_port": _safe_int_env("CDP_PORT", 9222, 1, 65535),
     }

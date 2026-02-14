@@ -1,0 +1,655 @@
+{
+  "id": "roadmap-2026-01-03T22-35-00Z",
+  "project_name": "VECTRA-PLAYER",
+  "version": "1.0",
+  "vision": "Unified game replay and live trading platform with DuckDB/Parquet storage and VectorDB semantic search for rugs.fun",
+  "target_audience": {
+    "primary": "Crypto traders on rugs.fun who want automated trading bots and game replay analysis",
+    "secondary": [
+      "ML/RL researchers training trading models",
+      "Data scientists analyzing trading patterns and market behavior",
+      "Developers building trading automation tools"
+    ]
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Foundation Completion",
+      "description": "Complete the core foundation work including training pipeline, Protocol Explorer UI, and technical debt cleanup to establish a solid base for advanced features",
+      "order": 1,
+      "status": "planned",
+      "features": [
+        "feature-1",
+        "feature-2",
+        "feature-3",
+        "feature-4",
+        "feature-5"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-1-1",
+          "title": "Training Pipeline Complete",
+          "description": "Pipeline D fully implemented - RL models can be trained on captured Parquet data",
+          "features": [
+            "feature-1"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-1-2",
+          "title": "Protocol Explorer UI Live",
+          "description": "Phase 12E complete - users can explore WebSocket protocol events visually",
+          "features": [
+            "feature-2"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-1-3",
+          "title": "Technical Debt Cleared",
+          "description": "Legacy recorders removed, linting clean, foundation solid",
+          "features": [
+            "feature-3",
+            "feature-4",
+            "feature-5"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "User Experience Enhancement",
+      "description": "Improve the user experience with better search capabilities, performance monitoring, and production-ready deployment",
+      "order": 2,
+      "status": "planned",
+      "features": [
+        "feature-6",
+        "feature-7",
+        "feature-8",
+        "feature-9",
+        "feature-10"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-2-1",
+          "title": "RAG Search Operational",
+          "description": "Users can search trading history using natural language queries",
+          "features": [
+            "feature-6"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-2-2",
+          "title": "Performance Dashboard Live",
+          "description": "Real-time monitoring of bot performance and latency metrics",
+          "features": [
+            "feature-7",
+            "feature-8"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-2-3",
+          "title": "Production Ready",
+          "description": "Full deployment pipeline with Docker, monitoring, and rollback capability",
+          "features": [
+            "feature-9",
+            "feature-10"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Advanced Trading Features",
+      "description": "Expand trading capabilities with shorting support, multi-game sessions, and advanced bot strategies",
+      "order": 3,
+      "status": "planned",
+      "features": [
+        "feature-11",
+        "feature-12",
+        "feature-13",
+        "feature-14"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-3-1",
+          "title": "Shorting Integration Complete",
+          "description": "Full support for short positions with proper protocol integration",
+          "features": [
+            "feature-11"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-3-2",
+          "title": "Multi-Game Support",
+          "description": "Monitor and trade across multiple rugs.fun games simultaneously",
+          "features": [
+            "feature-12",
+            "feature-13"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-3-3",
+          "title": "Advanced Bot Strategies",
+          "description": "Sophisticated trading strategies with backtesting support",
+          "features": [
+            "feature-14"
+          ],
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Scale and Ecosystem",
+      "description": "Future vision features for scaling the platform and building an ecosystem",
+      "order": 4,
+      "status": "planned",
+      "features": [
+        "feature-15",
+        "feature-16",
+        "feature-17",
+        "feature-18"
+      ],
+      "milestones": [
+        {
+          "id": "milestone-4-1",
+          "title": "High-Frequency Optimization",
+          "description": "Sub-millisecond trade execution for competitive advantage",
+          "features": [
+            "feature-15"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-4-2",
+          "title": "External API",
+          "description": "REST/WebSocket API for third-party integrations",
+          "features": [
+            "feature-16",
+            "feature-17"
+          ],
+          "status": "planned"
+        },
+        {
+          "id": "milestone-4-3",
+          "title": "Community Features",
+          "description": "Strategy sharing and social trading capabilities",
+          "features": [
+            "feature-18"
+          ],
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "feature-1",
+      "title": "Pipeline D: Training Data Implementation",
+      "description": "Complete the training data pipeline to transform Parquet event data into RL-ready training batches. This enables machine learning models to train on historical trading data with proper observation/action/reward structures.",
+      "rationale": "Core blocker for RL model training - users cannot train bots without a working data pipeline. This directly addresses the pain point of 'Difficulty collecting high-quality training data for RL models'.",
+      "priority": "must",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "planned",
+      "acceptance_criteria": [
+        "Observation schema extracts 36 features from Parquet events",
+        "Transitions (obs, action, reward, next_obs, done) are correctly generated",
+        "Batch loader provides training-ready data to RL frameworks",
+        "Integration tests verify pipeline with real captured data",
+        "Documentation explains feature engineering choices"
+      ],
+      "user_stories": [
+        "As an ML researcher, I want to load captured trading sessions as training data so that I can train RL models on historical patterns",
+        "As a data scientist, I want consistent feature extraction so that model training is reproducible"
+      ],
+      "linked_spec_id": "002-pipeline-d-training-data-implementation",
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-2",
+      "title": "Protocol Explorer UI (Phase 12E)",
+      "description": "Visual interface for exploring WebSocket protocol events, showing event types, payloads, and timing. Enables users to understand the rugs.fun protocol without reading raw JSON.",
+      "rationale": "Users need visibility into the protocol to debug bot behavior and understand game mechanics. Currently protocol understanding requires reading raw Parquet/JSON files.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "planned",
+      "acceptance_criteria": [
+        "Event timeline shows captured WebSocket events chronologically",
+        "Event detail pane displays parsed payload with field explanations",
+        "Filter by event type (playerUpdate, newTrade, priceUpdate, etc.)",
+        "Search events by payload content",
+        "Export filtered events for analysis"
+      ],
+      "user_stories": [
+        "As a developer, I want to visualize WebSocket events so that I can understand how the rugs.fun protocol works",
+        "As a trader, I want to see what events my trades generate so that I can verify bot behavior"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-3",
+      "title": "Legacy Recorder Cleanup",
+      "description": "Remove deprecated recorder files (demo_recorder.py, recorder_sink.py, unified_recorder.py, raw_capture_recorder.py) that have been replaced by EventStore. Eliminates confusion and reduces maintenance burden.",
+      "rationale": "Technical debt from REPLAYER fork - these files are marked for deletion in issue #137. Their presence causes confusion about which system is canonical.",
+      "priority": "must",
+      "complexity": "low",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [],
+      "status": "planned",
+      "acceptance_criteria": [
+        "All legacy recorder files are deleted",
+        "No imports reference legacy recorders",
+        "All tests pass after removal",
+        "CLAUDE.md updated to reflect completion"
+      ],
+      "user_stories": [
+        "As a developer, I want a single canonical recording system so that I don't have to guess which one to use"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-4",
+      "title": "Ruff Linting Compliance",
+      "description": "Address temporarily ignored Ruff rules (B904, N806, N803, etc.) and bring codebase to full linting compliance. Improves code quality and catches bugs early.",
+      "rationale": "Technical debt noted in CLAUDE.md - relaxed linting during migration should be tightened now that core features are stable.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "All Ruff ignore rules removed from pyproject.toml",
+        "Zero Ruff violations on CI",
+        "Naming conventions follow PEP8",
+        "Exception chaining uses 'from' syntax"
+      ],
+      "user_stories": [
+        "As a developer, I want consistent code style so that reviews focus on logic not formatting"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-5",
+      "title": "MyPy Strict Type Checking",
+      "description": "Re-enable strict MyPy settings that were relaxed during migration. Add type hints where missing and ensure type safety across the codebase.",
+      "rationale": "Type checking catches bugs before runtime - relaxed settings should be restored now that the architecture is stable.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-1",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "MyPy runs in strict mode with no errors",
+        "All public APIs have type hints",
+        "Generic types properly parameterized",
+        "CI enforces type checking on all PRs"
+      ],
+      "user_stories": [
+        "As a developer, I want type-safe code so that IDE autocomplete works and runtime errors are prevented"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-6",
+      "title": "RAG Search UI for Trading History",
+      "description": "Natural language search interface over trading history using ChromaDB. Users can ask questions like 'Show me all profitable trades from last week' and get relevant results.",
+      "rationale": "Addresses the pain point 'Lack of semantic search across trading event history'. ChromaDB integration exists but lacks user-facing search UI.",
+      "priority": "must",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-2"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Search input accepts natural language queries",
+        "Results show relevant events with relevance scores",
+        "Click-through to event details in Protocol Explorer",
+        "Search history saved for quick re-queries",
+        "Response time under 2 seconds for typical queries"
+      ],
+      "user_stories": [
+        "As a trader, I want to search my trading history with natural language so that I can quickly find relevant patterns",
+        "As a data scientist, I want semantic search so that I can explore data without writing SQL"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-7",
+      "title": "GUI Thread Safety Improvements",
+      "description": "Ensure all UI updates happen on the main thread, eliminating race conditions and crashes during high-frequency event processing.",
+      "rationale": "Known gap from Phase 3 work - high-frequency trading puts stress on GUI updates. Thread-safe patterns prevent freezes and crashes.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "high",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-2"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "All EventBus callbacks schedule UI updates via after()",
+        "No tkinter calls from background threads",
+        "Stress test with 100 events/second shows no freezes",
+        "Thread safety verified with helgrind or similar"
+      ],
+      "user_stories": [
+        "As a trader, I want the UI to remain responsive during high-frequency trading so that I can monitor positions"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-8",
+      "title": "Performance Monitoring Dashboard",
+      "description": "Real-time dashboard showing key metrics: latency chain, events/second, Parquet write performance, and bot execution timing.",
+      "rationale": "Performance visibility is critical for bot optimization. The latency tracking chain exists but needs visualization.",
+      "priority": "should",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-7"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Dashboard shows send_latency, confirm_latency, total_latency",
+        "Events per second counter with rolling average",
+        "Parquet write queue depth visible",
+        "Alert when latency exceeds thresholds",
+        "Historical latency chart"
+      ],
+      "user_stories": [
+        "As a trader, I want to see my bot's latency so that I can optimize for faster execution",
+        "As a developer, I want performance metrics so that I can identify bottlenecks"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-9",
+      "title": "Production Deployment Pipeline",
+      "description": "Complete deployment automation with Docker containerization, environment configuration, and rollback capability.",
+      "rationale": "Known gap - no production deployment pipeline exists. Users must manually configure environments.",
+      "priority": "should",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-4",
+        "feature-5"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Dockerfile builds complete application",
+        "docker-compose for local development",
+        "Environment variables documented and validated",
+        "One-command deployment to production",
+        "Rollback to previous version in under 5 minutes"
+      ],
+      "user_stories": [
+        "As a developer, I want one-command deployment so that releases are consistent",
+        "As an operator, I want rollback capability so that I can recover from bad deployments"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-10",
+      "title": "Pathlib Migration",
+      "description": "Replace os.path usage with pathlib throughout the codebase for more Pythonic path handling and cross-platform compatibility.",
+      "rationale": "Technical debt noted in CLAUDE.md - os.path is legacy, pathlib is the modern approach.",
+      "priority": "could",
+      "complexity": "low",
+      "impact": "low",
+      "phase_id": "phase-2",
+      "dependencies": [
+        "feature-3"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "No imports of os.path remain",
+        "All file paths use pathlib.Path",
+        "Path concatenation uses / operator",
+        "Tests verify cross-platform compatibility"
+      ],
+      "user_stories": [
+        "As a developer, I want consistent path handling so that code works on all platforms"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-11",
+      "title": "Shorting Integration",
+      "description": "Full support for short positions including protocol event capture, position tracking, and bot execution. Currently deferred due to no protocol data captured.",
+      "rationale": "Known gap - shorting is a key rugs.fun feature but protocol integration was deferred. Enables profit in bear markets.",
+      "priority": "should",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-2"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "short_position events captured from WebSocket",
+        "Short position tracking in LiveStateProvider",
+        "Bot can open and close short positions",
+        "PnL calculation includes short positions",
+        "UI shows current short positions"
+      ],
+      "user_stories": [
+        "As a trader, I want to short tokens so that I can profit in bear markets",
+        "As an RL researcher, I want short position data so that I can train models for all market conditions"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-12",
+      "title": "Multi-Game Session Support",
+      "description": "Monitor and trade across multiple rugs.fun games simultaneously, with independent state tracking and event capture for each.",
+      "rationale": "Power users want to trade multiple games - currently limited to single game focus. Expands trading opportunities.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-7"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Multiple game sessions tracked independently",
+        "Game switcher UI for focus changes",
+        "Events tagged with game_id for separation",
+        "Bot can manage positions across games",
+        "Aggregated PnL across all games"
+      ],
+      "user_stories": [
+        "As a trader, I want to trade multiple games simultaneously so that I can diversify risk",
+        "As a power user, I want to monitor many games so that I can spot opportunities"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-13",
+      "title": "Sidegame Integration (BBC, Candleflip)",
+      "description": "Support for rugs.fun sidegames: Bull/Bear/Crab and Candleflip. Currently placeholders exist in schema.",
+      "rationale": "Sidegames are part of rugs.fun but not yet integrated. Expands the platform's value proposition.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-2"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "BBC events captured and stored",
+        "Candleflip events captured and stored",
+        "UI shows sidegame status and results",
+        "Bot can participate in sidegames",
+        "Sidegame PnL tracked separately"
+      ],
+      "user_stories": [
+        "As a trader, I want to play sidegames so that I can earn additional rewards",
+        "As a data scientist, I want sidegame data so that I can analyze player behavior"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-14",
+      "title": "Strategy Backtesting Engine",
+      "description": "Run trading strategies against historical Parquet data to evaluate performance before deploying to live trading.",
+      "rationale": "Bot development requires testing strategies without risking capital. Backtesting enables rapid iteration.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "high",
+      "phase_id": "phase-3",
+      "dependencies": [
+        "feature-1"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Load historical data as backtest session",
+        "Execute strategy logic against historical events",
+        "Calculate simulated PnL and metrics",
+        "Comparison report between strategies",
+        "Visualization of entry/exit points"
+      ],
+      "user_stories": [
+        "As a trader, I want to backtest strategies so that I can evaluate them without risking money",
+        "As an ML researcher, I want to compare model versions so that I can select the best performer"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-15",
+      "title": "High-Frequency Trading Optimization",
+      "description": "Performance optimizations for sub-millisecond trade execution including memory pooling, zero-copy messaging, and optimized event processing.",
+      "rationale": "Known gap - performance optimization for HFT deferred. Competitive advantage requires fastest execution.",
+      "priority": "could",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-7",
+        "feature-8"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Trade execution under 1ms from decision to CDP action",
+        "Event processing handles 1000+ events/second",
+        "Memory allocation minimized during hot paths",
+        "CPU profiling shows no obvious bottlenecks",
+        "Latency percentiles documented (p50, p95, p99)"
+      ],
+      "user_stories": [
+        "As a competitive trader, I want the fastest execution so that I can front-run other bots"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-16",
+      "title": "REST API for External Integrations",
+      "description": "HTTP API exposing VECTRA-PLAYER data and controls for integration with external tools, dashboards, and automation systems.",
+      "rationale": "Power users want to integrate with other systems - portfolio trackers, alert systems, custom UIs. API enables ecosystem.",
+      "priority": "could",
+      "complexity": "medium",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-9"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "OpenAPI/Swagger documentation",
+        "Endpoints for current state, positions, history",
+        "Authentication for secure access",
+        "Rate limiting to prevent abuse",
+        "Webhook support for event notifications"
+      ],
+      "user_stories": [
+        "As a developer, I want an API so that I can build custom integrations",
+        "As a trader, I want webhooks so that I can receive alerts on my phone"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-17",
+      "title": "Multi-Wallet Support",
+      "description": "Support for multiple Phantom wallet profiles, enabling trading from different wallets and portfolio isolation.",
+      "rationale": "Advanced users manage multiple wallets for risk isolation and strategy separation. Currently limited to rugs_bot profile.",
+      "priority": "wont",
+      "complexity": "high",
+      "impact": "low",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-9"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Multiple Chrome profiles supported",
+        "Wallet switcher in UI",
+        "Independent position tracking per wallet",
+        "Aggregated portfolio view across wallets",
+        "Profile-specific bot configurations"
+      ],
+      "user_stories": [
+        "As a trader, I want multiple wallets so that I can isolate risk between strategies"
+      ],
+      "competitor_insight_ids": []
+    },
+    {
+      "id": "feature-18",
+      "title": "Strategy Sharing and Community",
+      "description": "Platform for sharing trading strategies and RL models with other VECTRA-PLAYER users. Community features for collaboration.",
+      "rationale": "Future vision - build an ecosystem around VECTRA-PLAYER. Not planned for foreseeable future.",
+      "priority": "wont",
+      "complexity": "high",
+      "impact": "medium",
+      "phase_id": "phase-4",
+      "dependencies": [
+        "feature-14",
+        "feature-16"
+      ],
+      "status": "under_review",
+      "acceptance_criteria": [
+        "Strategy export/import format defined",
+        "Strategy marketplace UI",
+        "User reputation system",
+        "Strategy performance leaderboard",
+        "Community forum integration"
+      ],
+      "user_stories": [
+        "As a trader, I want to share my successful strategies so that I can build reputation",
+        "As a beginner, I want to learn from others so that I can improve my trading"
+      ],
+      "competitor_insight_ids": []
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-01-03T22:35:00Z",
+    "updated_at": "2026-01-04T06:18:16.703Z",
+    "generated_by": "roadmap_features agent",
+    "prioritization_framework": "MoSCoW",
+    "competitor_analysis_used": false
+  }
+}

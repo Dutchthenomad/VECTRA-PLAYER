@@ -1,9 +1,9 @@
 # VECTRA-PLAYER Global Development Plan
 
-**Date:** 2025-12-28 (Updated - MinimalWindow Complete)
+**Date:** 2026-01-17 (Updated - Foundation Service + Artifact Framework)
 **Status:** CANONICAL - Master Plan (supersedes ALL individual phase docs)
 **Purpose:** Unified, gated development roadmap integrating foundation audit + bot training pipeline
-**Tests:** 1138 passing (MinimalWindow migration complete)
+**Tests:** 1138+ passing
 
 ---
 
@@ -106,6 +106,9 @@ This document merges them into a single, properly-gated plan where foundation wo
 | **POLISH** | | | |
 | Audit 6 | Gated Development Validation | ⏳ PENDING | Pipeline D |
 | Audit 7 | UI Redesign Prep | ⏳ PENDING | Audit 6 |
+| **INFRASTRUCTURE** | | | |
+| Foundation | WebSocket Broadcaster + HTTP Monitor | ✅ COMPLETE (2026-01-17) | None |
+| Artifacts | HTML Tool Framework | ✅ COMPLETE (2026-01-17) | Foundation |
 
 **Legend:** ✅ Complete | 🔄 Partial | ⚠️ Ready for verification | ⏳ Pending/Blocked
 
@@ -125,6 +128,70 @@ This document merges them into a single, properly-gated plan where foundation wo
 - H5: `BrowserBridge.on_status_change` callback wired in `minimal_window.py`
 
 **Verification:** CDP connects, buttons emit events, 1565 events captured to Parquet
+
+### Foundation Service (2026-01-17) ✅ COMPLETE
+
+**What Was Done:**
+- Added Foundation Service from `feature/typescript-frontend-api` branch
+- WebSocket broadcaster on port 9000 for HTML tools
+- Monitoring HTTP server on port 9001
+- Event normalization (rugs.fun → unified event types)
+
+**Files Added:**
+```
+src/foundation/
+├── __init__.py
+├── config.py           # FoundationConfig with env vars
+├── connection.py       # ConnectionState machine
+├── normalizer.py       # Event normalization
+├── broadcaster.py      # WebSocket server (port 9000)
+├── service.py          # FoundationService orchestrator
+├── http_server.py      # Monitoring UI (port 9001)
+├── runner.py           # CLI runner
+└── launcher.py         # Full startup with Chrome/CDP
+```
+
+**Event Types (Normalized):**
+| Event Type | Source Event | Purpose |
+|------------|--------------|---------|
+| `game.tick` | `gameStateUpdate` | Price/tick updates |
+| `player.state` | `playerUpdate` | Balance, position |
+| `connection.authenticated` | `usernameStatus` | Auth status |
+| `player.trade` | `standard/newTrade` | Trade events |
+| `sidebet.placed` | `currentSidebet` | Sidebet events |
+
+### HTML Artifact Framework (2026-01-17) ✅ COMPLETE
+
+**What Was Done:**
+- Created modular HTML tool framework
+- Shared infrastructure (WebSocket client, styles, templates)
+- Two tools: Seed Bruteforce + Prediction Engine
+- Tab-based Orchestrator wrapper
+
+**Directory Structure:**
+```
+src/artifacts/
+├── shared/
+│   ├── foundation-ws-client.js   # WebSocket client
+│   └── vectra-styles.css         # Catppuccin theme
+├── templates/
+│   ├── artifact-template.html    # Base template
+│   └── artifact-template.js      # JS skeleton
+├── tools/
+│   ├── seed-bruteforce/          # PRNG seed analysis
+│   └── prediction-engine/        # Bayesian price predictor
+│       └── components/
+│           ├── equilibrium-tracker.js
+│           ├── dynamic-weighter.js
+│           ├── stochastic-oscillator.js
+│           └── bayesian-forecaster.js
+└── orchestrator/                 # Tab wrapper
+    ├── index.html
+    ├── orchestrator.js
+    └── registry.json
+```
+
+**Verification:** All files created, committed to main branch
 
 ---
 
@@ -348,6 +415,8 @@ Current Parquet inventory:
 
 | Document | Purpose |
 |----------|---------|
+| `2026-01-17-consolidation-plan.md` | Foundation + Artifacts implementation plan |
+| `2025-12-28-pipeline-d-training-data-implementation.md` | Training pipeline implementation |
 | `2025-12-27-first-principles-codebase-audit.md` | Detailed audit phase specifications |
 | `2025-12-26-revised-bot-training-pipeline.md` | Detailed pipeline phase specifications |
 | `2025-12-27-cdp-websocket-bug-hunt.md` | Bug hunt history and resolutions |

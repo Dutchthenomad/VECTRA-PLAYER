@@ -866,6 +866,162 @@ class TestMinimalWindowPhaseDetection:
         assert result == "COOLDOWN"
 
 
+class TestRecordingToggle:
+    """Test recording toggle functionality (Task 4: 1-click recording toggle)."""
+
+    @pytest.fixture
+    def minimal_window_with_event_store(self, tk_root):
+        """Create MinimalWindow with mock EventStore for testing recording toggle."""
+        from services.event_bus import EventBus
+        from ui.minimal_window import MinimalWindow
+
+        # Create real EventBus (started)
+        event_bus = EventBus()
+        event_bus.start()
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.side_effect = lambda key, default=None: {
+            "current_tick": 0,
+            "current_price": Decimal("1.0"),
+            "game_id": "game-000",
+            "current_phase": "UNKNOWN",
+            "balance": Decimal("0.0"),
+            "position_qty": Decimal("0"),
+        }.get(key, default)
+        mock_game_state.set_sell_percentage.return_value = True
+
+        mock_config = MagicMock()
+        mock_config.FINANCIAL = {"min_bet": Decimal("0.001"), "max_bet": Decimal("100")}
+
+        # Create mock EventStore
+        mock_event_store = MagicMock()
+        mock_event_store.is_recording = False
+        mock_event_store.is_paused = True
+        mock_event_store.event_count = 0
+        mock_event_store.recorded_game_ids = set()
+
+        # toggle_recording returns new state
+        def toggle_recording():
+            mock_event_store.is_recording = not mock_event_store.is_recording
+            mock_event_store.is_paused = not mock_event_store.is_recording
+            return mock_event_store.is_recording
+
+        mock_event_store.toggle_recording.side_effect = toggle_recording
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=event_bus,
+            config=mock_config,
+            event_store=mock_event_store,
+        )
+
+        yield window, event_bus, mock_event_store
+
+        # Cleanup
+        window._unsubscribe_from_events()
+        event_bus.stop()
+
+    def test_recording_toggle_exists(self, minimal_window_with_event_store):
+        """Recording toggle should exist when event_store is provided."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert hasattr(window, "recording_toggle")
+        assert window.recording_toggle is not None
+
+    def test_recording_toggle_initial_state_off(self, minimal_window_with_event_store):
+        """Recording toggle should be OFF initially (not recording)."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert window.recording_toggle.is_recording is False
+
+    def test_recording_toggle_click_toggles_recording(self, minimal_window_with_event_store):
+        """Clicking recording toggle should toggle recording state."""
+        window, _event_bus, mock_event_store = minimal_window_with_event_store
+
+        # Initially not recording
+        assert mock_event_store.is_recording is False
+
+        # Toggle recording
+        window._on_rec_toggled()
+        window.root.update()
+
+        # Should be recording now
+        assert mock_event_store.toggle_recording.called
+
+    def test_recording_toggle_turns_on_when_recording(self, minimal_window_with_event_store):
+        """Recording toggle should show ON state when recording is active."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # Update visual state to recording
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        assert window.recording_toggle.is_recording is True
+
+    def test_recording_toggle_turns_off_when_stopped(self, minimal_window_with_event_store):
+        """Recording toggle should show OFF state when recording is stopped."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # First turn on
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        # Then turn off
+        window.update_recording_state(is_recording=False)
+        window.root.update()
+
+        assert window.recording_toggle.is_recording is False
+
+    def test_recording_toggle_subscribes_to_recording_toggled(
+        self, minimal_window_with_event_store
+    ):
+        """MinimalWindow should subscribe to RECORDING_TOGGLED event."""
+        from services.event_bus import Events
+
+        _window, event_bus, _mock_event_store = minimal_window_with_event_store
+        assert event_bus.has_subscribers(Events.RECORDING_TOGGLED)
+
+    def test_recording_toggled_event_updates_toggle(self, minimal_window_with_event_store):
+        """RECORDING_TOGGLED event handler should update recording toggle visual state.
+
+        Note: We test the handler directly because root.after() doesn't work
+        from non-main threads in tests. The subscription is verified separately.
+        """
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+
+        # Simulate what the event handler does (call update directly)
+        window.update_recording_state(is_recording=True)
+        window.root.update()
+
+        assert window.recording_toggle.is_recording is True
+
+    def test_recording_controller_created_with_event_store(self, minimal_window_with_event_store):
+        """RecordingController should be created when event_store is provided."""
+        window, _event_bus, _mock_event_store = minimal_window_with_event_store
+        assert hasattr(window, "recording_controller")
+        assert window.recording_controller is not None
+
+    def test_no_recording_toggle_without_event_store(self, tk_root):
+        """No recording toggle should exist when event_store is not provided."""
+        from ui.minimal_window import MinimalWindow
+
+        mock_game_state = MagicMock()
+        mock_game_state.get.return_value = Decimal("1.0")
+        mock_event_bus = MagicMock()
+        mock_config = MagicMock()
+
+        window = MinimalWindow(
+            root=tk_root,
+            game_state=mock_game_state,
+            event_bus=mock_event_bus,
+            config=mock_config,
+            # No event_store provided
+        )
+
+        # recording_toggle should be None when no event_store
+        assert window.recording_toggle is None
+        assert window.recording_controller is None
+
+
 # Fixture for Tk root (shared with conftest.py)
 @pytest.fixture
 def tk_root():

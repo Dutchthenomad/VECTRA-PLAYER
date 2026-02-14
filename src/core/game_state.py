@@ -909,14 +909,18 @@ class GameState:
         }
         """
         try:
+            data = wrapped.get("data", wrapped)
+            if not isinstance(data, dict):
+                return
+
             # CDPWebSocketInterceptor puts event name at TOP level
             # (not wrapped inside "data")
-            event_name = wrapped.get("event")
+            event_name = data.get("event")
             if event_name != "gameStateUpdate":
                 return
 
             # The actual game data is in wrapped["data"]
-            event_data = wrapped.get("data", {})
+            event_data = data.get("data", {})
             if not isinstance(event_data, dict):
                 return
 

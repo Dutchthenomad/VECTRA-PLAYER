@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Status Panel -->
+    <div class="status-grid">
+        <!-- Recording Toggle -->
+        <div class="status-item toggle-container">
+            <button id="toggle-btn" class="toggle-btn toggle-off" onclick="toggleRecording()">
+                <span class="toggle-icon"></span>
+                <span class="toggle-label">OFF</span>
+            </button>
+            <div class="uptime" id="uptime">00:00:00</div>
+        </div>
+
+        <!-- Session Metrics (THIS SESSION - deduplicated by gameId) -->
+        <div class="status-item metric session-metric">
+            <span class="metric-value" id="session-game-count">0</span>
+            <span class="metric-label">Games (Session)</span>
+        </div>
+
+        <div class="status-item metric session-metric">
+            <span class="metric-value" id="session-event-count">0</span>
+            <span class="metric-label">Events (Session)</span>
+        </div>
+
+        <!-- Total Stats (ALL TIME) -->
+        <div class="status-item metric total-metric">
+            <span class="metric-value" id="total-game-count">0</span>
+            <span class="metric-label">Total Games</span>
+        </div>
+
+        <div class="status-item metric total-metric">
+            <span class="metric-value" id="storage-size">0.0 MB</span>
+            <span class="metric-label">Storage</span>
+        </div>
+    </div>
+</section>
+
+<!-- Game Explorer -->
+<section class="panel games-panel">
+    <div class="panel-header">
+        <h2>Session Games (Deduplicated by gameId)</h2>
+        <button class="refresh-btn" onclick="refreshGames()">Refresh</button>
+    </div>
+
+    <div class="table-container">
+        <table class="games-table" id="games-table">
+            <thead>
+                <tr>
+                    <th>Game ID</th>
+                    <th>Time</th>
+                    <th>Peak</th>
+                    <th>Ticks</th>
+                    <th>Sidebets</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="games-tbody">
+                <tr class="loading-row">
+                    <td colspan="6">Loading games...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Game Detail Modal -->
+<div id="game-modal" class="modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="modal-title">Game Details</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Price Chart -->
+            <div class="chart-container">
+                <canvas id="price-chart"></canvas>
+            </div>
+
+            <!-- Game Info -->
+            <div class="game-info" id="game-info">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

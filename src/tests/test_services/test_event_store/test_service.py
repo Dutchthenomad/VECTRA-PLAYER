@@ -74,6 +74,7 @@ class TestEventStoreServiceLifecycle:
         """start() subscribes to EventBus events"""
         service = EventStoreService(event_bus, paths)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Verify subscription by publishing and checking buffer
         # Match BrowserBridge format: {"data": cdp_event}
@@ -91,6 +92,7 @@ class TestEventStoreServiceLifecycle:
         """stop() unsubscribes from EventBus"""
         service = EventStoreService(event_bus, paths)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
         service.stop()
 
         # Publish event after stop - should not be received
@@ -127,6 +129,7 @@ class TestWebSocketEventHandling:
         """WS_RAW_EVENT is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.WS_RAW_EVENT,
@@ -150,6 +153,7 @@ class TestWebSocketEventHandling:
         """WS event fields are preserved in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Match BrowserBridge format: {"data": cdp_event}
         # BrowserBridge wraps CDP events in {"data": event}
@@ -181,6 +185,7 @@ class TestWebSocketEventHandling:
         """WS_RAW_EVENT with null data field is handled gracefully (regression test)"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Some events like "ping" have data: null
         event_bus.publish(
@@ -209,6 +214,7 @@ class TestGameTickHandling:
         """GAME_TICK is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.GAME_TICK,
@@ -231,6 +237,7 @@ class TestGameTickHandling:
         """Game tick fields are preserved"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.GAME_TICK,
@@ -261,6 +268,7 @@ class TestPlayerUpdateHandling:
         """PLAYER_UPDATE is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.PLAYER_UPDATE,
@@ -288,6 +296,7 @@ class TestTradeActionHandling:
         """TRADE_BUY is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.TRADE_BUY,
@@ -314,6 +323,7 @@ class TestTradeActionHandling:
         """TRADE_SELL is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.TRADE_SELL,
@@ -337,6 +347,7 @@ class TestTradeActionHandling:
         """TRADE_SIDEBET is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.TRADE_SIDEBET,
@@ -364,6 +375,7 @@ class TestSequenceNumbers:
         """Events get incrementing sequence numbers"""
         service = EventStoreService(event_bus, paths, buffer_size=5)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Publish multiple events
         for i in range(3):
@@ -395,6 +407,7 @@ class TestFlush:
         """Manual flush writes buffered events"""
         service = EventStoreService(event_bus, paths, buffer_size=100)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Match BrowserBridge format: {"data": cdp_event}
         event_bus.publish(Events.WS_RAW_EVENT, {"data": {"event": "test", "data": {}}})
@@ -406,7 +419,8 @@ class TestFlush:
         assert service.event_count == 1
 
         service.flush()
-        assert service.event_count == 0
+        # event_count tracks total events recorded, not buffer count
+        assert service.event_count == 1
 
         parquet_files = list(temp_data_dir.rglob("*.parquet"))
         assert len(parquet_files) >= 1

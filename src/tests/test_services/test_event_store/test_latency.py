@@ -51,6 +51,7 @@ class TestTradeConfirmedEvent:
         """TRADE_CONFIRMED is stored in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.TRADE_CONFIRMED,
@@ -77,6 +78,7 @@ class TestTradeConfirmedEvent:
         """Trade confirmed fields are preserved in Parquet"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_bus.publish(
             Events.TRADE_CONFIRMED,
@@ -112,6 +114,7 @@ class TestTradeConfirmedEvent:
 
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         event_data = {
             "gameId": "game-123",
@@ -146,6 +149,7 @@ class TestTradeConfirmedEvent:
         """Multiple TRADE_CONFIRMED events are stored correctly"""
         service = EventStoreService(event_bus, paths, buffer_size=5)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Publish multiple trade confirmations with different latencies
         latencies = [100, 150, 200]
@@ -184,6 +188,7 @@ class TestTradeConfirmedEvent:
         """Trade confirmed works with minimal required fields"""
         service = EventStoreService(event_bus, paths, buffer_size=1)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Minimal data - only latency and action_id
         event_bus.publish(
@@ -215,6 +220,7 @@ class TestTradeConfirmedSubscription:
         """start() subscribes to TRADE_CONFIRMED event"""
         service = EventStoreService(event_bus, paths, buffer_size=10)
         service.start()
+        service.resume()  # Enable recording (starts paused by default)
 
         # Verify subscription by publishing and checking buffer
         event_bus.publish(
@@ -233,6 +239,7 @@ class TestTradeConfirmedSubscription:
         """stop() unsubscribes from TRADE_CONFIRMED"""
         service = EventStoreService(event_bus, paths, buffer_size=10)
         service.start()
+        service.resume()  # Enable recording first (starts paused by default)
         service.stop()
 
         # Publish event after stop - should not be received
