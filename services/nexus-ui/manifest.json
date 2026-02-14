@@ -1,0 +1,13 @@
+{
+  "name": "nexus-ui",
+  "version": "1.0.0",
+  "layer": "L4",
+  "port": 3000,
+  "upstream": null,
+  "feeds": [],
+  "health": "/",
+  "stats": null,
+  "events_consumed": [],
+  "events_produced": [],
+  "description": "React frontend dashboard — service monitoring, trading controls, analytics"
+}

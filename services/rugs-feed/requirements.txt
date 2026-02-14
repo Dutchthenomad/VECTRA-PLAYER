@@ -1,18 +1,21 @@
+# Rugs Feed Service - Pinned Dependencies
+# Last pinned: 2026-02-14 (VEC-001)
+
 # WebSocket Client
-python-socketio[asyncio_client]>=5.11.0
-aiohttp>=3.9.0
-websocket-client>=1.7.0
+python-socketio[asyncio_client]==5.16.0
+aiohttp==3.13.3
+websocket-client==1.9.0
 
 # API Framework
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
 
 # Data Storage
-aiosqlite>=0.20.0
+aiosqlite==0.22.1
 
 # Configuration
-pyyaml>=6.0
-python-dotenv>=1.0.0
+pyyaml==6.0.3
+python-dotenv==1.2.1
 
 # Utilities
-pytz>=2024.1
+pytz==2025.2

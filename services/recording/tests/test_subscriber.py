@@ -75,11 +75,10 @@ class MockFoundationClient:
 
 # Import the modules we're testing
 import sys
-from pathlib import Path as P
 
 # Add src to path for imports
-sys.path.insert(0, str(P(__file__).parent.parent / "src"))
-sys.path.insert(0, str(P(__file__).parent.parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 # Patch foundation imports before importing subscriber
 with patch.dict(

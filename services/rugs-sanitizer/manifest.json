@@ -1,23 +1,13 @@
 {
   "name": "rugs-sanitizer",
   "version": "1.0.0",
-  "description": "WebSocket feed sanitization service — typed, categorized, phase-annotated data",
-  "type": "docker_service",
+  "layer": "L1",
   "port": 9017,
-  "dependencies": [
-    "rugs-feed"
-  ],
-  "events_consumed": [
-    "gameStateUpdate",
-    "standard/newTrade"
-  ],
-  "channels_produced": [
-    "/feed/game",
-    "/feed/stats",
-    "/feed/trades",
-    "/feed/history",
-    "/feed/all"
-  ],
-  "health_endpoint": "/health",
-  "rosetta_stone_version": "0.2.0"
+  "upstream": "ws://rugs-feed:9016/feed/raw",
+  "feeds": ["feed/game", "feed/stats", "feed/trades", "feed/history", "feed/all"],
+  "health": "/health",
+  "stats": "/stats",
+  "events_consumed": ["raw.game_state", "raw.trade"],
+  "events_produced": ["game.tick", "game.end", "trade.executed", "stats.update"],
+  "description": "WebSocket feed sanitization — typed, categorized, phase-annotated data"
 }

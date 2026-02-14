@@ -8,7 +8,7 @@ Every field has explicit type, default, and validation rules.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     """Game phase derived from gameStateUpdate fields.
 
     Detection priority (Rosetta Stone Section 1.2):
@@ -37,7 +37,7 @@ class Phase(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class TradeType(str, Enum):
+class TradeType(StrEnum):
     """Trade action type from standard/newTrade."""
 
     BUY = "buy"
@@ -46,7 +46,7 @@ class TradeType(str, Enum):
     SHORT_CLOSE = "short_close"
 
 
-class Channel(str, Enum):
+class Channel(StrEnum):
     """Output broadcast channels."""
 
     GAME = "game"

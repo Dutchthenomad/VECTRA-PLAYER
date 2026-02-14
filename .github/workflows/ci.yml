@@ -14,23 +14,105 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pytest:
-    name: CI / pytest
+  # ── Gate 1: Branch Name Validation ──────────────────────────────────
+  validate-branch:
+    name: CI / validate-branch
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
 
+      - name: Validate branch name
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ ^VEC-[0-9]+-[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+            echo "Branch name valid: $BRANCH"
+          else
+            echo "::error::Branch name '$BRANCH' does not follow VEC-NNN-description pattern"
+            echo "Required: VEC-NNN-description (e.g., VEC-001-pin-dependencies)"
+            exit 1
+          fi
+
+      - name: Validate commit messages
+        run: |
+          COMMITS=$(git log --format="%s" origin/${{ github.base_ref }}..${{ github.event.pull_request.head.sha }} 2>/dev/null || true)
+          if [ -z "$COMMITS" ]; then
+            echo "No commits to validate (or could not determine range)"
+            exit 0
+          fi
+          FAILED=0
+          while IFS= read -r msg; do
+            if [[ "$msg" =~ ^(Merge |Revert |VEC-[0-9]+:) ]]; then
+              echo "OK: $msg"
+            else
+              echo "::error::Commit message does not start with VEC-NNN: prefix: '$msg'"
+              FAILED=1
+            fi
+          done <<< "$COMMITS"
+          exit $FAILED
+
+  # ── Gate 2: Lint ────────────────────────────────────────────────────
+  lint:
+    name: CI / lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check (services)
+        run: ruff check services/ governance/
+
+      - name: Ruff format check (services)
+        run: ruff format --check services/ governance/
+
+  # ── Gate 3: Service Tests (Matrix) ──────────────────────────────────
+  test-services:
+    name: CI / test-${{ matrix.service }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
-
+        service: [rugs-feed, rugs-sanitizer, recording, optimization]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install service dependencies
+        working-directory: services/${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-timeout httpx
+
+      - name: Run service tests
+        working-directory: services/${{ matrix.service }}
+        run: |
+          python -m pytest tests/ -v --tb=short --timeout=60
+
+  # ── Gate 4: Root Tests (Legacy) ─────────────────────────────────────
+  test-root:
+    name: CI / test-root
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
           cache: pip
 
       - name: Install system dependencies
@@ -43,16 +125,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run tests
+      - name: Run root tests
         working-directory: src
         run: |
-          xvfb-run python -m pytest tests/ -q --disable-warnings --maxfail=5 \
-            --cov=. --cov-report=xml --cov-report=term-missing \
-            --timeout=60
+          xvfb-run python -m pytest tests/ -q --disable-warnings --maxfail=5 --timeout=60
 
-      - name: Upload coverage.xml
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-${{ matrix.python-version }}
-          path: src/coverage.xml
+  # ── Gate 5: Docker Build ────────────────────────────────────────────
+  docker:
+    name: CI / docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build rugs-feed
+        run: docker build -t vectra/rugs-feed:test services/rugs-feed/
+
+      - name: Build rugs-sanitizer
+        run: docker build -t vectra/rugs-sanitizer:test services/rugs-sanitizer/
+
+      - name: Build recording
+        run: docker build -t vectra/recording:test services/recording/
+
+      - name: Build nexus-ui
+        run: docker build -t vectra/nexus-ui:test services/nexus-ui/

@@ -11,7 +11,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 
 import websockets
 import websockets.exceptions
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_UPSTREAM_URL = "ws://localhost:9016/feed"
 
 
-class UpstreamState(str, Enum):
+class UpstreamState(StrEnum):
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
