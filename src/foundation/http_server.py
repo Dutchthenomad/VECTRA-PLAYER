@@ -402,13 +402,17 @@ class FoundationHTTPServer:
     async def _handle_artifact(self, request: web.Request) -> web.Response:
         """GET /artifacts/{name}/ - Serve artifact index.html."""
         name = request.match_info["name"]
-        artifact_path = self.artifacts_dir / name / "index.html"
+        artifact_path = (self.artifacts_dir / name / "index.html").resolve()
+
+        # Security: ensure resolved path is within artifacts directory
+        if not str(artifact_path).startswith(str(self.artifacts_dir.resolve())):
+            return web.Response(text="Invalid path", status=400)
 
         if artifact_path.exists():
             return web.FileResponse(artifact_path)
         else:
             return web.Response(
-                text=f"<html><body><h1>Artifact Not Found</h1><p>No artifact named '{name}'</p></body></html>",
+                text="<html><body><h1>Artifact Not Found</h1></body></html>",
                 content_type="text/html",
                 status=404,
             )
@@ -418,11 +422,11 @@ class FoundationHTTPServer:
         name = request.match_info["name"]
         filename = request.match_info["file"]
 
-        # Security: prevent path traversal
-        if ".." in filename or filename.startswith("/"):
-            return web.Response(text="Invalid path", status=400)
+        file_path = (self.artifacts_dir / name / filename).resolve()
 
-        file_path = self.artifacts_dir / name / filename
+        # Security: ensure resolved path is within artifacts directory
+        if not str(file_path).startswith(str(self.artifacts_dir.resolve())):
+            return web.Response(text="Invalid path", status=400)
 
         if file_path.exists() and file_path.is_file():
             return web.FileResponse(file_path)

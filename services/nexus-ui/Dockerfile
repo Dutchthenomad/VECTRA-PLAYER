@@ -8,9 +8,7 @@ RUN npm install
 COPY tsconfig.json vite.config.ts ./
 COPY src/ src/
 
-# Gemini API key is optional — build with empty default
-ARG GEMINI_API_KEY=""
-RUN echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > .env.local && npm run build
+RUN npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

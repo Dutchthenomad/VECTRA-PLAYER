@@ -155,6 +155,13 @@
             lastEventCountTime = now;
         }, 1000);
 
+        // HTML escape to prevent XSS from service data
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
         // Fetch and render services
         async function loadServices() {
             try {
@@ -174,17 +181,17 @@
 
         function renderServices(services) {
             servicesListEl.innerHTML = services.map(svc =>
-                '<div class="service-item" data-name="' + svc.name + '">' +
+                '<div class="service-item" data-name="' + esc(svc.name) + '">' +
                     '<div class="service-info">' +
-                        '<span class="service-status-dot ' + svc.status + '"></span>' +
-                        '<span class="service-name">' + svc.name + '</span>' +
-                        '<span class="service-port">[port ' + svc.port + ']</span>' +
-                        '<span class="service-status-text">' + svc.status.toUpperCase() + '</span>' +
+                        '<span class="service-status-dot ' + esc(svc.status) + '"></span>' +
+                        '<span class="service-name">' + esc(svc.name) + '</span>' +
+                        '<span class="service-port">[port ' + esc(String(svc.port)) + ']</span>' +
+                        '<span class="service-status-text">' + esc(svc.status.toUpperCase()) + '</span>' +
                     '</div>' +
                     '<div class="service-actions">' +
                         (svc.status === 'stopped' || svc.status === 'error'
-                            ? '<button class="btn btn-success btn-sm" onclick="startService(\'' + svc.name + '\')">START</button>'
-                            : '<button class="btn btn-danger btn-sm" onclick="stopService(\'' + svc.name + '\')">STOP</button>'
+                            ? '<button class="btn btn-success btn-sm" onclick="startService(\'' + esc(svc.name) + '\')">START</button>'
+                            : '<button class="btn btn-danger btn-sm" onclick="stopService(\'' + esc(svc.name) + '\')">STOP</button>'
                         ) +
                     '</div>' +
                 '</div>'

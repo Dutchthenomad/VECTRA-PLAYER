@@ -168,7 +168,7 @@ class RugsFeedClient:
         @self._sio.event
         async def connect_error(data):
             self._reconnect_attempts += 1
-            logger.error(f"Connection error (attempt {self._reconnect_attempts}): {data}")
+            logger.error(f"Connection error (attempt {self._reconnect_attempts})")
 
         # Register event handlers
         for event_name, handler in self._handlers.items():
@@ -284,7 +284,7 @@ class RugsFeedClient:
             event_type="usernameStatus",
             data=data,
         )
-        logger.info(f"Identity confirmed: {data.get('username', 'unknown')}")
+        logger.info("Identity confirmed")
         self._emit_event(event)
 
     async def _handle_player_update(self, *args) -> None:

@@ -279,11 +279,20 @@
 
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        entry.innerHTML = `
-            <span class="timestamp">${formatTime(new Date(event.ts))}</span>
-            <span class="type">${event.type}</span>
-            <span class="data">${formatLogData(event.data)}</span>
-        `;
+
+        const tsSpan = document.createElement('span');
+        tsSpan.className = 'timestamp';
+        tsSpan.textContent = formatTime(new Date(event.ts));
+
+        const typeSpan = document.createElement('span');
+        typeSpan.className = 'type';
+        typeSpan.textContent = event.type;
+
+        const dataSpan = document.createElement('span');
+        dataSpan.className = 'data';
+        dataSpan.textContent = formatLogData(event.data);
+
+        entry.append(tsSpan, typeSpan, dataSpan);
 
         elements.eventLog.appendChild(entry);
 
@@ -343,11 +352,20 @@
         // Add to discovery log
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        entry.innerHTML = `
-            <span class="timestamp">${formatTime(new Date())}</span>
-            <span class="type">${event.type}</span>
-            <span class="data">${JSON.stringify(event.data)}</span>
-        `;
+
+        const tsSpan = document.createElement('span');
+        tsSpan.className = 'timestamp';
+        tsSpan.textContent = formatTime(new Date());
+
+        const typeSpan = document.createElement('span');
+        typeSpan.className = 'type';
+        typeSpan.textContent = event.type;
+
+        const dataSpan = document.createElement('span');
+        dataSpan.className = 'data';
+        dataSpan.textContent = JSON.stringify(event.data);
+
+        entry.append(tsSpan, typeSpan, dataSpan);
 
         elements.discoveryLog.appendChild(entry);
 

@@ -22,8 +22,10 @@
  *   FoundationState.subscribe('game.tick', (data) => console.log(data.price));
  */
 
-// Import FoundationState for automatic state updates
-import { FoundationState } from './foundation-state.js';
+// FoundationState is loaded via a prior <script> tag or ES module import.
+// When loaded as a classic script, FoundationState is a global from foundation-state.js.
+// When loaded as an ES module, the caller imports it separately.
+// We reference the global directly to support both loading modes.
 
 class FoundationWSClient {
     /**
@@ -318,10 +320,15 @@ class FoundationWSClient {
     }
 }
 
-// Export for ES module usage
+// Expose as global for classic <script> tag usage
+if (typeof window !== 'undefined') {
+    window.FoundationWSClient = FoundationWSClient;
+}
+
+// Export for ES module usage (requires <script type="module">)
 export { FoundationWSClient };
 
-// Also support CommonJS
+// Support CommonJS
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { FoundationWSClient };
 }

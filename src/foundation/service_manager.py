@@ -340,12 +340,13 @@ class ServiceManager:
             logger.info(f"Starting {name}: {cmd} in {working_path}")
 
             # Start subprocess
+            # Use DEVNULL to avoid stdout pipe deadlock (output not consumed)
             process = subprocess.Popen(
                 cmd,
                 cwd=working_path,
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 start_new_session=True,  # Separate process group
             )
 
@@ -441,13 +442,15 @@ class ServiceManager:
         url = f"http://localhost:{service.port}{service.health_endpoint}"
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(
                     url, timeout=aiohttp.ClientTimeout(total=self.HEALTH_CHECK_TIMEOUT)
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return data.get("status") == "healthy"
+                ) as resp,
+            ):
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data.get("status") == "healthy"
         except Exception:
             pass
 
