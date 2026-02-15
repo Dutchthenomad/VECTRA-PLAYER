@@ -18,7 +18,7 @@ pyyaml==6.0.3
 pydantic==2.12.5
 
 # Required transitively by foundation package
-aiohttp==3.12.12
+aiohttp==3.13.3
 
 # Testing (dev only)
 pytest==8.4.2
