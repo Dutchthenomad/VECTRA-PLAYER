@@ -71,6 +71,65 @@ See: `docs/CHROME_PROFILE_SETUP.md` for details.
 
 ---
 
+## ⚠️ CRITICAL: Module Extension Rules (MANDATORY)
+
+**READ BEFORE ADDING ANY NEW MODULE:** `docs/specs/MODULE-EXTENSION-SPEC.md`
+
+This specification defines the **ONLY** acceptable patterns for extending VECTRA-BOILERPLATE. Deviations are BLOCKED by hookify rules.
+
+### Module Types (No Others Allowed)
+
+| Type | Location | Required Pattern |
+|------|----------|------------------|
+| **HTML Artifact** | `src/artifacts/tools/<name>/` | Import `vectra-styles.css` + use `FoundationWSClient` |
+| **Python Subscriber** | `src/subscribers/<name>/` | Inherit `BaseSubscriber` |
+| **Docker Service** | `services/<name>/` | Docker Compose + health endpoint |
+
+### FORBIDDEN Patterns (Hookify BLOCKS these)
+
+- ❌ `new WebSocket()` in HTML - Use `FoundationWSClient`
+- ❌ `import websocket` in Python - Use `BaseSubscriber`
+- ❌ Direct CDP interception - Foundation handles this
+- ❌ Recording logic in Foundation - Use separate subscriber
+- ❌ Subscribers outside `src/subscribers/`
+- ❌ Artifacts outside `src/artifacts/tools/`
+
+### Required Files Per Module
+
+Every module MUST have:
+- `manifest.json` with name, version, dependencies, events_consumed
+- Unit tests in `tests/` subdirectory
+- Health endpoint (Docker services)
+
+**These rules are enforced by `.claude/hookify.*.local.md` rules and CI/CD validation.**
+
+---
+
+## ⚠️ CRITICAL: Port Allocation (SACRED)
+
+**READ BEFORE USING ANY PORT:** `docs/specs/PORT-ALLOCATION-SPEC.md`
+
+| Port | Service | Status |
+|------|---------|--------|
+| **9000** | Foundation WebSocket | **SACRED - NEVER USE FOR ANYTHING ELSE** |
+| **9001** | Foundation HTTP | **SACRED - NEVER USE FOR ANYTHING ELSE** |
+| 9010 | Recording Service | Reserved |
+| 9011-9019 | Subscriber Services | Available |
+| 9222 | Chrome CDP | Fixed by Chrome |
+
+**Before starting services:**
+```bash
+python scripts/validate_ports.py
+```
+
+**If port conflict:**
+```bash
+lsof -i :9000  # Find who's using it
+python scripts/validate_ports.py --fix  # Kill conflicting process
+```
+
+---
+
 ## Unified Control Panel (January 2026)
 
 **One-command startup replaces separate Tkinter UI:**

@@ -1,0 +1,23 @@
+{
+  "name": "20850p",
+  "initial_balance": 0.1,
+  "params": {
+    "entry_tick": 208,
+    "num_bets": 4,
+    "bet_sizes": [
+      0.003,
+      0.003,
+      0.003,
+      0.003
+    ],
+    "use_kelly_sizing": false,
+    "kelly_fraction": 0.25,
+    "use_dynamic_sizing": true,
+    "high_confidence_threshold": 51,
+    "high_confidence_multiplier": 2.5,
+    "reduce_on_drawdown": true,
+    "max_drawdown_pct": 0.5,
+    "take_profit_target": 1.5
+  },
+  "created": "2026-01-12T00:21:04Z"
+}

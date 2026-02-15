@@ -1,0 +1,26 @@
+# Recording Service - Pinned Dependencies
+# Last pinned: 2026-02-14 (VEC-001)
+
+# Web framework
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+
+# WebSocket client
+websockets==12.0
+
+# Data storage
+pyarrow==15.0.2
+
+# Configuration
+pyyaml==6.0.3
+
+# Type hints and validation
+pydantic==2.12.5
+
+# Required transitively by foundation package
+aiohttp==3.12.12
+
+# Testing (dev only)
+pytest==8.4.2
+pytest-asyncio==0.26.0
+httpx==0.28.1

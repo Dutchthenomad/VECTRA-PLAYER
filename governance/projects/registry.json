@@ -1,0 +1,20 @@
+{
+  "next_id": 2,
+  "projects": {
+    "VEC-001": {
+      "title": "Engineering Governance & DevOps Foundation",
+      "status": "active",
+      "charter": "governance/charters/VEC-001-engineering-governance.md",
+      "created": "2026-02-14",
+      "scope": [
+        "governance/",
+        ".github/workflows/",
+        ".pre-commit-config.yaml",
+        ".claude/hookify.*",
+        "scripts/validate-*.sh",
+        "services/*/requirements.txt",
+        "services/*/.dockerignore"
+      ]
+    }
+  }
+}

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Trading + Bot - VECTRA</title>
+
+    <!-- REQUIRED: Shared styles -->
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <!-- LOCAL: Extension styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="minimal-trading" id="app">
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+            <!-- Row 1: Game Status -->
+            <div class="status-row">
+                <div class="status-left">
+                    <div class="status-item">
+                        <span class="status-label">TICK:</span>
+                        <span class="status-value" id="tick-value">0000</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">PRICE:</span>
+                        <span class="status-value" id="price-value">0000.00</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">PHASE:</span>
+                        <span class="status-value status-phase" id="phase-value">UNKNOWN</span>
+                    </div>
+                </div>
+                <div class="status-right">
+                    <div class="connection-status">
+                        <span class="status-label">CONNECTION:</span>
+                        <span class="connection-dot" id="connection-dot" role="status" aria-live="polite">&#9679;</span>
+                        <button class="connect-btn" id="connect-btn">CONNECT</button>
+                    </div>
+                    <button class="execute-toggle" id="execute-toggle">EXECUTE: OFF</button>
+                </div>
+            </div>
+
+            <!-- Row 2: User Info -->
+            <div class="status-row">
+                <div class="user-info">
+                    <span class="status-label">USER:</span>
+                    <span class="status-value" id="user-value">---</span>
+                </div>
+                <div class="balance-info">
+                    <span class="status-label">BALANCE:</span>
+                    <span class="balance-value" id="balance-value">00.000 SOL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEPARATOR -->
+        <div class="separator"></div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <!-- Left: Percentage Buttons -->
+            <div class="pct-frame">
+                <button class="pct-btn" data-value="0.1">10%</button>
+                <button class="pct-btn" data-value="0.25">25%</button>
+                <button class="pct-btn" data-value="0.5">50%</button>
+                <button class="pct-btn selected" data-value="1.0">100%</button>
+            </div>
+
+            <!-- Center: Bet Controls -->
+            <div class="center-frame">
+                <!-- Increment Row -->
+                <div class="inc-row">
+                    <div class="inc-buttons">
+                        <button class="inc-btn" data-amount="0.001">+0.001</button>
+                        <button class="inc-btn" data-amount="0.01">+0.01</button>
+                        <button class="inc-btn" data-amount="0.1">+0.1</button>
+                        <button class="inc-btn" data-amount="1">+1</button>
+                    </div>
+                    <div class="spacer"></div>
+                    <div class="util-buttons">
+                        <button class="util-btn" id="btn-half">1/2</button>
+                        <button class="util-btn" id="btn-double">X2</button>
+                        <button class="util-btn" id="btn-max">MAX</button>
+                    </div>
+                </div>
+
+                <!-- Bet Entry Row -->
+                <div class="bet-row">
+                    <span class="bet-label">BET AMOUNT</span>
+                    <button class="clear-btn" id="btn-clear">X</button>
+                    <input type="text" class="bet-input" id="bet-entry" value="0.000" aria-label="Bet amount in SOL">
+                    <span class="bet-unit">SOL</span>
+                </div>
+            </div>
+
+            <!-- Right: Action Buttons -->
+            <div class="action-frame">
+                <button class="action-btn buy-btn" id="btn-buy">BUY</button>
+                <button class="action-btn sidebet-btn" id="btn-sidebet">SIDEBET</button>
+                <button class="action-btn sell-btn" id="btn-sell">SELL</button>
+            </div>
+        </div>
+
+        <!-- SEPARATOR -->
+        <div class="separator"></div>
+
+        <!-- BOT CONTROL PANEL -->
+        <div class="bot-panel" id="bot-panel">
+            <!-- Bot Status & Controls -->
+            <div class="bot-header">
+                <div class="bot-toggle-section">
+                    <div class="bot-status-indicator">
+                        <span class="bot-dot" id="bot-dot">●</span>
+                        <span class="bot-status-text" id="bot-status-text">OFF</span>
+                    </div>
+                    <button class="bot-toggle-btn" id="bot-toggle">START BOT</button>
+                </div>
+                <div class="bot-strategy-info">
+                    <div class="strategy-row">
+                        <span class="label">Strategy:</span>
+                        <select class="strategy-select" id="strategy-select">
+                            <option value="beta-strat-03">beta-strat-03</option>
+                            <option value="beta-strat-01">beta-strat-01</option>
+                            <option value="beta-2">beta-2</option>
+                        </select>
+                    </div>
+                    <div class="strategy-params" id="strategy-params">
+                        Entry: <span id="param-entry">219</span> |
+                        Max bets: <span id="param-max-bets">4</span> |
+                        Bet: <span id="param-bet-size">0.0027</span> SOL
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="bot-stats-row">
+                <!-- Session Stats -->
+                <div class="bot-section stats-section">
+                    <div class="section-title">SESSION STATS</div>
+                    <div class="stats-grid">
+                        <span>Games: <strong id="stat-games">0</strong></span>
+                        <span>Bets: <strong id="stat-bets">0</strong></span>
+                        <span>W/L: <strong id="stat-wins">0</strong>/<strong id="stat-losses">0</strong></span>
+                        <span>Rate: <strong id="stat-rate">0%</strong></span>
+                        <span>Wagered: <strong id="stat-wagered">0.000</strong></span>
+                        <span>PnL: <strong id="stat-pnl" class="pnl-neutral">+0.000</strong></span>
+                    </div>
+                </div>
+
+                <!-- Current Game -->
+                <div class="bot-section game-section">
+                    <div class="section-title">CURRENT GAME</div>
+                    <div class="stats-grid">
+                        <span>Bets: <strong id="game-bets">0</strong>/<strong id="game-max">4</strong></span>
+                        <span>Last: <strong id="game-last-tick">---</strong></span>
+                        <span>Next: <strong id="game-next-tick">---</strong></span>
+                        <span>Status: <strong id="game-status" class="status-waiting">IDLE</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision Log -->
+            <div class="bot-section log-section">
+                <div class="section-header">
+                    <span class="section-title">DECISION LOG</span>
+                    <button class="clear-log-btn" id="clear-log">CLEAR</button>
+                </div>
+                <div class="decision-log" id="decision-log">
+                    <div class="log-entry log-placeholder">Bot not started...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REQUIRED: Foundation WebSocket client -->
+    <script type="module">
+        import { FoundationWSClient } from '../../shared/foundation-ws-client.js';
+        import { MinimalTradingApp } from './app.js';
+
+        const client = new FoundationWSClient();
+        const app = new MinimalTradingApp(client);
+        app.init();
+
+        // Expose for debugging
+        window.tradingApp = app;
+    </script>
+</body>
+</html>

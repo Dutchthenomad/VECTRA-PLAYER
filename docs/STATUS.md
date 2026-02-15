@@ -1,6 +1,6 @@
 # VECTRA-PLAYER Project Status
 
-**Last Updated:** 2026-01-17
+**Last Updated:** 2026-01-25
 **Status:** Active Development
 **Schema Version:** 2.0.0
 
@@ -57,14 +57,24 @@ VECTRA-PLAYER is a unified data architecture for rugs.fun, providing:
 | Dashboard Templates | Production | - |
 | Static JS/CSS | Production | - |
 
-### Foundation Service (feature branch - READY TO MERGE)
+### Foundation Service (main branch - ACTIVE)
 
 | Component | Status | Port |
 |-----------|--------|------|
-| WebSocket Broadcaster | Complete | 9000 |
-| HTTP Monitor | Complete | 9001 |
-| Event Normalizer | Complete | - |
-| Launcher | Complete | - |
+| WebSocket Broadcaster | Production | 9000 |
+| HTTP Server + Control Panel | Production | 9001 |
+| Event Normalizer | Production | - |
+| Launcher | Production | - |
+| Service Manager | Production | - |
+| **Trade API** | **NEW** | 9001 |
+
+### HTML Artifacts (main branch - ACTIVE)
+
+| Artifact | Status | Description |
+|----------|--------|-------------|
+| minimal-trading | Production | Trade buttons + live game state |
+| recording-control | Production | Recording service control panel |
+| Shared Client | Production | `foundation-ws-client.js` |
 
 ### PRNG Analysis Tools (main branch)
 
@@ -99,10 +109,11 @@ VECTRA-PLAYER is a unified data architecture for rugs.fun, providing:
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **Foundation Merge** | WebSocket broadcaster | Ready to merge |
-| **Consolidation** | Documentation update | In progress |
+| **Trade API** | Browser automation via Foundation | ✅ Complete (2026-01-25) |
+| **Minimal Trading UI** | Trading buttons artifact | ✅ Complete (2026-01-25) |
+| **Recording Control** | Recording service panel | ✅ Bug fixes complete (2026-01-25) |
 | Pipeline D | Training data pipeline | Ready to start |
-| HTML Artifacts | Prediction engine, seed bruteforce | Planning |
+| HTML Artifacts | Prediction engine, seed bruteforce | Pending |
 
 ### Pending
 
@@ -182,13 +193,11 @@ rugs-expert agent confirmed **no empirical data exists** for shorting:
 
 ## Next Actions (Priority Order)
 
-1. **Merge Foundation Service branch to main**
-2. **Update CLAUDE.md with Foundation Service documentation**
-3. **Build HTML artifact framework**
-   - foundation-ws-client.js
-   - Seed bruteforce tool
-   - Prediction engine
-   - Orchestrator wrapper
+1. **Test Trade API end-to-end** (`./vectra start` + click buttons)
+2. **Build Prediction Engine artifact** (port Bayesian forecaster)
+3. **Build Seed Bruteforce artifact** (port PRNG analysis)
+4. **Build Orchestrator** (tab wrapper for artifacts)
+5. **Start Pipeline D** (training data generation)
 
 ---
 
@@ -196,14 +205,16 @@ rugs-expert agent confirmed **no empirical data exists** for shorting:
 
 | Date | Event | Description |
 |------|-------|-------------|
+| 2026-01-25 | **Trade API** | `/api/trade/*` endpoints for browser automation |
+| 2026-01-25 | **Minimal Trading** | Full button mapping artifact complete |
+| 2026-01-25 | **Recording Control** | Bug fixes (16 issues resolved) |
+| 2026-01-20 | Recording Service | Subscriber boilerplate complete |
+| 2026-01-18 | Foundation | Service Manager + HTTP API |
 | 2026-01-17 | Consolidation | STATUS.md, ARCHITECTURE.md updated |
 | 2026-01-15 | Design | TypeScript Frontend API plan created |
 | 2026-01-03 | Priority 1 | Migration stabilization complete |
-| 2026-01-02 | Config | Chrome `rugs_bot` profile configured as default |
 | 2025-12-28 | Milestone | MinimalWindow implementation complete |
-| 2025-12-26 | Issues | #138-140 closed (toast, paths, legacy cleanup) |
 | 2025-12-25 | Phase 6 | BotActionInterface COMPLETE - 166 tests |
-| 2025-12-24 | Decision | Shorting deferred - no empirical data |
 
 ---
 
@@ -215,4 +226,4 @@ If a status, audit, plan, or summary doc is replaced by this file or
 
 ---
 
-*Last updated: 2026-01-17*
+*Last updated: 2026-01-25*

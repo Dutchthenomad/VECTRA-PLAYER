@@ -1,0 +1,26 @@
+services:
+  nexus-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      v2-explorer:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  v2-explorer:
+    build:
+      context: ../../tools/v2-explorer
+      dockerfile: Dockerfile
+    container_name: v2-explorer
+    expose:
+      - "9040"
+    volumes:
+      - ../../notebooks:/app/notebooks:ro
+      - ~/rugs_data:/root/rugs_data:ro
+    restart: unless-stopped

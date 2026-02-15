@@ -1,0 +1,9 @@
+service:
+  name: test-svc
+  port: 9021
+  log_level: INFO
+
+upstream:
+  url: ws://localhost:9017/feed
+  reconnect_delay: 2.0
+  max_reconnect_delay: 30.0

@@ -1,0 +1,13 @@
+{
+  "name": "optimization",
+  "version": "1.0.0",
+  "layer": "L2",
+  "port": 9020,
+  "upstream": "ws://localhost:9000/feed",
+  "feeds": [],
+  "health": "/health",
+  "stats": "/stats",
+  "events_consumed": ["game.tick"],
+  "events_produced": [],
+  "description": "Statistical optimization — survival analysis, Bayesian signals, Kelly sizing, Monte Carlo"
+}

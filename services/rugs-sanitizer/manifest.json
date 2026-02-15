@@ -1,0 +1,13 @@
+{
+  "name": "rugs-sanitizer",
+  "version": "1.0.0",
+  "layer": "L1",
+  "port": 9017,
+  "upstream": "ws://rugs-feed:9016/feed/raw",
+  "feeds": ["feed/game", "feed/stats", "feed/trades", "feed/history", "feed/all"],
+  "health": "/health",
+  "stats": "/stats",
+  "events_consumed": ["raw.game_state", "raw.trade"],
+  "events_produced": ["game.tick", "game.end", "trade.executed", "stats.update"],
+  "description": "WebSocket feed sanitization — typed, categorized, phase-annotated data"
+}

@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rugs Sanitizer Monitor</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-panel: #12121a;
+            --bg-panel-header: #1a1a25;
+            --border: #2a2a3a;
+            --text: #c8c8d0;
+            --text-dim: #666680;
+            --text-bright: #e8e8f0;
+            --cyan: #00d4ff;
+            --green: #00ff88;
+            --red: #ff4466;
+            --yellow: #ffcc00;
+            --magenta: #ff44ff;
+            --blue: #4488ff;
+            --orange: #ff8800;
+            --purple: #aa66ff;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            --sidebar-width: 260px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            height: 40px;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left .logo { font-size: 20px; color: var(--cyan); }
+        .header-left h1 { font-size: 14px; color: var(--text-bright); letter-spacing: 2px; }
+        .header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+        .conn-indicator { display: flex; align-items: center; gap: 8px; }
+        .conn-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--red);
+            transition: background 0.3s;
+        }
+        .conn-dot.connected { background: var(--green); }
+        .conn-dot.connecting { background: var(--yellow); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .stat-inline { color: var(--text-dim); }
+        .stat-inline span { color: var(--cyan); }
+
+        /* Global pause */
+        .global-pause {
+            padding: 3px 10px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-dim);
+            transition: all 0.15s;
+        }
+        .global-pause:hover { border-color: var(--cyan); color: var(--text-bright); }
+        .global-pause.paused {
+            background: var(--red);
+            color: #fff;
+            border-color: var(--red);
+            animation: pulse-slow 1.5s infinite;
+        }
+        @keyframes pulse-slow { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .buffered-badge {
+            display: none;
+            background: var(--orange);
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+        }
+        .buffered-badge.visible { display: inline; }
+
+        /* Main layout: sidebar + feed area */
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar::-webkit-scrollbar { width: 5px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg); }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Sidebar sections */
+        .sidebar-section { border-bottom: 1px solid var(--border); }
+        .sidebar-section:last-child { border-bottom: none; }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: var(--bg-panel-header);
+            cursor: pointer;
+            user-select: none;
+            font-size: 11px;
+            letter-spacing: 2px;
+            transition: background 0.15s;
+        }
+        .sidebar-header:hover { background: #222230; }
+        .sidebar-header .arrow {
+            font-size: 10px;
+            color: var(--text-dim);
+            transition: transform 0.15s;
+        }
+        .sidebar-header.collapsed .arrow { transform: rotate(-90deg); }
+        .sidebar-header.green { color: var(--green); }
+        .sidebar-header.cyan { color: var(--cyan); }
+        .sidebar-header.magenta { color: var(--magenta); }
+
+        .sidebar-body { padding: 4px 10px; }
+        .sidebar-body.collapsed { display: none; }
+
+        /* Stat rows (sidebar) */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
+        }
+        .stat-row label { color: var(--text-dim); font-size: 11px; }
+        .value-box { color: var(--text-bright); text-align: right; font-size: 11px; }
+        .value-box.phase-active { color: var(--green); }
+        .value-box.phase-rugged { color: var(--red); }
+        .value-box.phase-presale { color: var(--yellow); }
+        .value-box.phase-cooldown { color: var(--blue); }
+        .value-box.phase-unknown { color: var(--text-dim); }
+
+        /* Multiplier grid */
+        .mult-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 12px;
+        }
+
+        /* Hash/tooltip */
+        .hash-value { cursor: help; }
+        .hash-value:hover { color: var(--cyan); }
+
+        /* Per-channel client breakdown */
+        .client-breakdown {
+            font-size: 10px;
+            color: var(--text-dim);
+            padding: 2px 0 0 0;
+        }
+        .client-breakdown span { color: var(--text); }
+
+        /* Feed area */
+        .feed-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            padding: 7px 18px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-dim);
+            transition: all 0.15s;
+            letter-spacing: 1px;
+        }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active {
+            color: var(--cyan);
+            border-bottom-color: var(--cyan);
+        }
+
+        /* Toolbar (per-tab controls) */
+        .toolbar {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            background: var(--bg-panel-header);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .toolbar.active { display: flex; }
+        .control-select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            border-radius: 3px;
+        }
+        .control-btn {
+            background: var(--bg);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .control-btn:hover { color: var(--text-bright); border-color: var(--cyan); }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-dim);
+            cursor: pointer;
+        }
+        .toggle-label input[type=checkbox] { accent-color: var(--cyan); }
+
+        /* Feed content container */
+        .feed-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Log containers */
+        .log-container {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 4px 8px;
+            font-size: 11px;
+            display: none;
+        }
+        .log-container.active { display: block; }
+        .log-container::-webkit-scrollbar { width: 6px; }
+        .log-container::-webkit-scrollbar-track { background: var(--bg); }
+        .log-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Paused overlay */
+        .feed-content.paused .log-container { opacity: 0.5; }
+        .pause-overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--orange);
+            color: var(--orange);
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .feed-content.paused .pause-overlay { display: block; }
+
+        /* Trade entries */
+        .trade-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .trade-time { color: var(--text-dim); min-width: 80px; }
+        .trade-user { color: var(--cyan); min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .trade-type { min-width: 40px; font-weight: bold; }
+        .trade-type.buy { color: var(--green); }
+        .trade-type.sell { color: var(--red); }
+        .trade-price { color: var(--text-bright); min-width: 70px; }
+        .trade-amount { color: var(--text-dim); min-width: 60px; }
+        .badge {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-forced { background: var(--red); color: #fff; }
+        .badge-practice { background: #444; color: #aaa; }
+        .badge-liquidation { background: var(--orange); color: #000; }
+        .badge-leverage { background: var(--purple); color: #fff; }
+
+        /* Event log entries */
+        .event-entry {
+            padding: 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .event-ts { color: var(--text-dim); }
+        .event-ch { font-weight: bold; min-width: 60px; display: inline-block; }
+        .event-ch.ch-game { color: var(--green); }
+        .event-ch.ch-stats { color: var(--cyan); }
+        .event-ch.ch-trades { color: var(--yellow); }
+        .event-ch.ch-history { color: var(--magenta); }
+        .event-phase { color: var(--text-dim); min-width: 70px; display: inline-block; }
+        .event-summary { color: var(--text); }
+
+        /* Footer */
+        footer {
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            padding: 4px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+        footer span span { color: var(--cyan); }
+
+        /* Throttle info */
+        .throttle-info {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <span class="logo">&#x25A3;</span>
+            <h1>RUGS SANITIZER MONITOR</h1>
+        </div>
+        <div class="header-right">
+            <div class="conn-indicator">
+                <div id="conn-dot" class="conn-dot"></div>
+                <span id="conn-status">DISCONNECTED</span>
+            </div>
+            <div class="stat-inline">Events/sec: <span id="events-rate">0</span></div>
+            <button id="global-pause-btn" class="global-pause" onclick="toggleGlobalPause()">PAUSE</button>
+            <span id="global-buffered" class="buffered-badge">0</span>
+        </div>
+    </header>
+
+    <!-- Main: Sidebar + Feed Area -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Game State -->
+            <div class="sidebar-section">
+                <div class="sidebar-header green" onclick="toggleSection(this)">
+                    <span>GAME STATE</span>
+                    <span class="arrow">&#x25BC;</span>
+                </div>
+                <div class="sidebar-body">
+                    <div class="stat-row"><label>Phase</label><span id="gs-phase" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Game ID</label><span id="gs-gameid" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Price</label><span id="gs-price" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Tick</label><span id="gs-tick" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Cooldown</label><span id="gs-cooldown" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Provably Fair</label><span id="gs-pf" class="value-box hash-value" title="">-</span></div>
+                </div>
+            </div>
+
+            <!-- Session Stats -->
+            <div class="sidebar-section">
+                <div class="sidebar-header cyan" onclick="toggleSection(this)">
+                    <span>SESSION STATS</span>
+                    <span class="arrow">&#x25BC;</span>
+                </div>
+                <div class="sidebar-body">
+                    <div class="stat-row"><label>Players</label><span id="ss-players" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Avg Multiplier</label><span id="ss-avgmult" class="value-box">-</span></div>
+                    <div class="mult-grid">
+                        <div class="stat-row"><label>2x</label><span id="ss-2x" class="value-box">-</span></div>
+                        <div class="stat-row"><label>10x</label><span id="ss-10x" class="value-box">-</span></div>
+                        <div class="stat-row"><label>50x</label><span id="ss-50x" class="value-box">-</span></div>
+                        <div class="stat-row"><label>100x</label><span id="ss-100x" class="value-box">-</span></div>
+                    </div>
+                    <div id="ss-daily-records"></div>
+                </div>
+            </div>
+
+            <!-- Pipeline Status -->
+            <div class="sidebar-section">
+                <div class="sidebar-header magenta" onclick="toggleSection(this)">
+                    <span>PIPELINE STATUS</span>
+                    <span class="arrow">&#x25BC;</span>
+                </div>
+                <div class="sidebar-body">
+                    <div class="stat-row"><label>Events</label><span id="ps-events" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Upstream</label><span id="ps-upstream" class="value-box">-</span></div>
+                    <div class="stat-row"><label>WS Clients</label><span id="ps-clients" class="value-box">-</span></div>
+                    <div id="ps-clients-breakdown" class="client-breakdown"></div>
+                    <div class="stat-row"><label>Rugs Counted</label><span id="ps-rugs" class="value-box">-</span></div>
+                    <div class="stat-row"><label>Histories</label><span id="ps-histories" class="value-box">-</span></div>
+                    <div class="stat-row"><label>God Candles</label><span id="ps-godcandles" class="value-box">-</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Feed Area -->
+        <div class="feed-area">
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="trades" onclick="switchTab('trades')">Trades <span id="trade-count" class="throttle-info">(0)</span></button>
+                <button class="tab-btn" data-tab="events" onclick="switchTab('events')">Events <span id="event-count" class="throttle-info">(0)</span></button>
+            </div>
+
+            <!-- Trade Toolbar -->
+            <div id="toolbar-trades" class="toolbar active">
+                <select id="trade-filter" class="control-select">
+                    <option value="all">All</option>
+                    <option value="buy">Buys</option>
+                    <option value="sell">Sells</option>
+                    <option value="forced">Forced Sells</option>
+                    <option value="practice">Practice</option>
+                    <option value="real">Real</option>
+                </select>
+                <button class="control-btn" onclick="clearTrades()">Clear</button>
+                <label class="toggle-label">
+                    <input type="checkbox" id="trade-autoscroll" checked> Scroll
+                </label>
+            </div>
+
+            <!-- Event Toolbar -->
+            <div id="toolbar-events" class="toolbar">
+                <select id="event-filter" class="control-select">
+                    <option value="all">All Channels</option>
+                    <option value="game">game</option>
+                    <option value="stats">stats</option>
+                    <option value="trades">trades</option>
+                    <option value="history">history</option>
+                </select>
+                <label class="toggle-label" title="Collapse game ticks to 1/sec">
+                    <input type="checkbox" id="tick-throttle" checked> Throttle
+                </label>
+                <button class="control-btn" onclick="clearEvents()">Clear</button>
+                <label class="toggle-label">
+                    <input type="checkbox" id="event-autoscroll" checked> Scroll
+                </label>
+            </div>
+
+            <!-- Feed Content -->
+            <div id="feed-content" class="feed-content">
+                <div id="trade-log" class="log-container active"></div>
+                <div id="event-log" class="log-container"></div>
+                <div class="pause-overlay">PAUSED</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span>Rugs Sanitizer v1.0.0</span>
+        <span>Total: <span id="footer-total">0</span></span>
+        <span>Dropped: <span id="footer-dropped">0</span></span>
+        <span>Uptime: <span id="footer-uptime">0s</span></span>
+        <span>Last: <span id="footer-last">-</span></span>
+    </footer>
+
+    <script>
+    // --- State ---
+    let ws = null;
+    let totalEvents = 0;
+    let droppedWhilePaused = 0;
+    let eventCounts = [];
+    let connectTime = null;
+    let reconnectDelay = 1000;
+    const MAX_RECONNECT_DELAY = 30000;
+    const MAX_LOG_ENTRIES = 300;
+    const MAX_TRADE_ENTRIES = 150;
+
+    // Pause state
+    let globalPaused = false;
+    let pauseBuffer = [];
+    const MAX_PAUSE_BUFFER = 500;
+
+    // Tick throttle state
+    let lastTickLogTime = 0;
+    let throttledTickCount = 0;
+
+    // Counts
+    let tradeLogCount = 0;
+    let eventLogCount = 0;
+
+    // Active tab
+    let activeTab = 'trades';
+
+    // --- Elements ---
+    const $ = id => document.getElementById(id);
+
+    // --- Sidebar Collapse ---
+    function toggleSection(header) {
+        const body = header.nextElementSibling;
+        header.classList.toggle('collapsed');
+        body.classList.toggle('collapsed');
+    }
+
+    // --- Tab Switching ---
+    function switchTab(tab) {
+        activeTab = tab;
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        // Update toolbars
+        $('toolbar-trades').classList.toggle('active', tab === 'trades');
+        $('toolbar-events').classList.toggle('active', tab === 'events');
+        // Update log containers
+        $('trade-log').classList.toggle('active', tab === 'trades');
+        $('event-log').classList.toggle('active', tab === 'events');
+    }
+
+    // --- Global Pause ---
+    function toggleGlobalPause() {
+        globalPaused = !globalPaused;
+        const btn = $('global-pause-btn');
+        const feedContent = $('feed-content');
+        if (globalPaused) {
+            btn.textContent = 'RESUME';
+            btn.classList.add('paused');
+            feedContent.classList.add('paused');
+            pauseBuffer = [];
+            droppedWhilePaused = 0;
+        } else {
+            btn.textContent = 'PAUSE';
+            btn.classList.remove('paused');
+            feedContent.classList.remove('paused');
+            $('global-buffered').classList.remove('visible');
+            // Flush buffer
+            const toRender = pauseBuffer.slice(-50);
+            pauseBuffer = [];
+            toRender.forEach(msg => renderMessage(msg));
+        }
+    }
+
+    // --- WebSocket Connection ---
+    function connect() {
+        const host = window.location.host;
+        const wsUrl = `ws://${host}/feed/all`;
+        $('conn-dot').className = 'conn-dot connecting';
+        $('conn-status').textContent = 'CONNECTING';
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            $('conn-dot').className = 'conn-dot connected';
+            $('conn-status').textContent = 'CONNECTED';
+            connectTime = Date.now();
+            reconnectDelay = 1000;
+            addEventEntry({ channel: 'system', phase: '-', summary: 'WebSocket connected' });
+        };
+
+        ws.onmessage = (evt) => {
+            try {
+                const msg = JSON.parse(evt.data);
+                totalEvents++;
+                eventCounts.push(Date.now());
+                $('footer-total').textContent = totalEvents;
+                $('footer-last').textContent = formatTime(new Date());
+
+                if (globalPaused) {
+                    updateStatusPanels(msg);
+                    if (pauseBuffer.length < MAX_PAUSE_BUFFER) {
+                        pauseBuffer.push(msg);
+                    } else {
+                        droppedWhilePaused++;
+                    }
+                    $('global-buffered').textContent = pauseBuffer.length;
+                    $('global-buffered').classList.add('visible');
+                    $('footer-dropped').textContent = droppedWhilePaused;
+                    return;
+                }
+
+                renderMessage(msg);
+            } catch (e) {
+                // ignore parse errors
+            }
+        };
+
+        ws.onclose = () => {
+            $('conn-dot').className = 'conn-dot';
+            $('conn-status').textContent = 'DISCONNECTED';
+            addEventEntry({ channel: 'system', phase: '-', summary: 'WebSocket disconnected' });
+            scheduleReconnect();
+        };
+
+        ws.onerror = () => {};
+    }
+
+    function scheduleReconnect() {
+        setTimeout(() => {
+            reconnectDelay = Math.min(reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
+            connect();
+        }, reconnectDelay);
+    }
+
+    // --- Update status panels (always, even when paused) ---
+    function updateStatusPanels(msg) {
+        const { channel, data, phase, game_id } = msg;
+        if (channel === 'game') updateGameState(data, phase, game_id);
+        if (channel === 'stats') updateSessionStats(data);
+    }
+
+    // --- Render a message to the log panels ---
+    function renderMessage(msg) {
+        const { channel, data, timestamp, game_id, phase } = msg;
+
+        updateStatusPanels(msg);
+
+        if (channel === 'trades') addTrade(data, timestamp);
+
+        addEventEntry({
+            channel,
+            phase: phase || '-',
+            summary: eventSummary(channel, data, game_id),
+            timestamp
+        });
+    }
+
+    // --- Game State Panel ---
+    function updateGameState(data, phase, gameId) {
+        if (!data) return;
+
+        updateDailyRecords(data);
+
+        const phaseEl = $('gs-phase');
+        phaseEl.textContent = phase || '-';
+        phaseEl.className = 'value-box phase-' + (phase || 'unknown').toLowerCase();
+        $('gs-gameid').textContent = gameId ? '...' + gameId.slice(-8) : '-';
+        $('gs-gameid').title = gameId || '';
+        $('gs-price').textContent = data.price != null ? data.price.toFixed(4) : '-';
+        $('gs-tick').textContent = data.tick_count != null ? data.tick_count : '-';
+        $('gs-cooldown').textContent = data.cooldown_timer > 0 ? data.cooldown_timer + 's' : '-';
+
+        if (data.provably_fair && data.provably_fair.server_seed_hash) {
+            const hash = data.provably_fair.server_seed_hash;
+            $('gs-pf').textContent = hash.slice(0, 8) + '...' + hash.slice(-8);
+            $('gs-pf').title = hash;
+            if (data.provably_fair.server_seed) {
+                $('gs-pf').textContent += ' [REVEALED]';
+                $('gs-pf').style.color = 'var(--yellow)';
+            } else {
+                $('gs-pf').style.color = '';
+            }
+        } else {
+            $('gs-pf').textContent = '-';
+            $('gs-pf').title = '';
+        }
+    }
+
+    // --- Session Stats Panel ---
+    function updateSessionStats(data) {
+        if (!data) return;
+        $('ss-players').textContent = data.connected_players != null ? data.connected_players : '-';
+        $('ss-avgmult').textContent = data.average_multiplier != null ? data.average_multiplier.toFixed(2) + 'x' : '-';
+        $('ss-2x').textContent = data.count_2x != null ? data.count_2x : '-';
+        $('ss-10x').textContent = data.count_10x != null ? data.count_10x : '-';
+        $('ss-50x').textContent = data.count_50x != null ? data.count_50x : '-';
+        $('ss-100x').textContent = data.count_100x != null ? data.count_100x : '-';
+    }
+
+    // --- Trade Feed ---
+    function addTrade(data, timestamp) {
+        if (!data) return;
+
+        const filter = $('trade-filter').value;
+        if (!matchesTradeFilter(data, filter)) return;
+
+        const log = $('trade-log');
+        const entry = document.createElement('div');
+        entry.className = 'trade-entry';
+
+        const time = timestamp ? formatTime(new Date(timestamp)) : formatTime(new Date());
+        const typeClass = data.type === 'buy' ? 'buy' : 'sell';
+        const typeName = data.type ? data.type.toUpperCase() : '?';
+
+        let badges = '';
+        if (data.is_forced_sell) badges += '<span class="badge badge-forced">FORCED</span> ';
+        if (data.is_liquidation) badges += '<span class="badge badge-liquidation">LIQUIDATION</span> ';
+        if (data.is_practice) badges += '<span class="badge badge-practice">PRACTICE</span> ';
+        if (data.leverage && data.leverage > 1) badges += `<span class="badge badge-leverage">${data.leverage}x</span> `;
+
+        entry.innerHTML = `
+            <span class="trade-time">${time}</span>
+            <span class="trade-user">${escapeHtml(data.username || data.player_id || '?')}</span>
+            <span class="trade-type ${typeClass}">${typeName}</span>
+            <span class="trade-price">${data.price != null ? data.price.toFixed(4) : '-'}</span>
+            <span class="trade-amount">${data.amount != null ? data.amount.toFixed(3) : '-'}</span>
+            ${badges}
+        `;
+
+        log.appendChild(entry);
+        tradeLogCount++;
+        $('trade-count').textContent = `(${tradeLogCount})`;
+
+        while (log.children.length > MAX_TRADE_ENTRIES) {
+            log.removeChild(log.firstChild);
+        }
+
+        if ($('trade-autoscroll').checked) {
+            log.scrollTop = log.scrollHeight;
+        }
+    }
+
+    function matchesTradeFilter(data, filter) {
+        if (filter === 'all') return true;
+        if (filter === 'buy') return data.type === 'buy';
+        if (filter === 'sell') return data.type === 'sell' || data.type === 'short_open' || data.type === 'short_close';
+        if (filter === 'forced') return data.is_forced_sell;
+        if (filter === 'practice') return data.is_practice;
+        if (filter === 'real') return data.token_type === 'real';
+        return true;
+    }
+
+    function clearTrades() {
+        $('trade-log').innerHTML = '';
+        tradeLogCount = 0;
+        $('trade-count').textContent = '(0)';
+    }
+
+    // --- Event Log ---
+    function addEventEntry({ channel, phase, summary, timestamp }) {
+        const filter = $('event-filter').value;
+        if (filter !== 'all' && channel !== filter && channel !== 'system') return;
+
+        // Tick throttle
+        if ($('tick-throttle').checked && (channel === 'game' || channel === 'stats')) {
+            const now = Date.now();
+            if (now - lastTickLogTime < 1000) {
+                throttledTickCount++;
+                return;
+            }
+            if (throttledTickCount > 0) {
+                summary += ` (+${throttledTickCount} throttled)`;
+                throttledTickCount = 0;
+            }
+            lastTickLogTime = now;
+        }
+
+        const log = $('event-log');
+        const entry = document.createElement('div');
+        entry.className = 'event-entry';
+
+        const time = timestamp ? formatTime(new Date(timestamp)) : formatTime(new Date());
+        const chClass = 'ch-' + (channel || 'system');
+
+        entry.innerHTML = `
+            <span class="event-ts">${time}</span>
+            <span class="event-ch ${chClass}">[${(channel || 'sys').toUpperCase()}]</span>
+            <span class="event-phase">${phase}</span>
+            <span class="event-summary">${escapeHtml(summary || '')}</span>
+        `;
+
+        log.appendChild(entry);
+        eventLogCount++;
+        $('event-count').textContent = `(${eventLogCount})`;
+
+        while (log.children.length > MAX_LOG_ENTRIES) {
+            log.removeChild(log.firstChild);
+        }
+
+        if ($('event-autoscroll').checked) {
+            log.scrollTop = log.scrollHeight;
+        }
+    }
+
+    function clearEvents() {
+        $('event-log').innerHTML = '';
+        eventLogCount = 0;
+        $('event-count').textContent = '(0)';
+    }
+
+    // --- Event Summary ---
+    function eventSummary(channel, data, gameId) {
+        if (!data) return '';
+        if (channel === 'game') {
+            return `price=${(data.price || 0).toFixed(4)} tick=${data.tick_count || 0}`;
+        }
+        if (channel === 'stats') {
+            return `players=${data.connected_players || 0} avg=${(data.average_multiplier || 0).toFixed(2)}x`;
+        }
+        if (channel === 'trades') {
+            const user = data.username || data.player_id || '?';
+            return `${user} ${(data.type || '?').toUpperCase()} @${(data.price || 0).toFixed(4)}`;
+        }
+        if (channel === 'history') {
+            return `game=${data.id || gameId || '?'} peak=${(data.peak_multiplier || 0).toFixed(2)}x`;
+        }
+        return JSON.stringify(data).slice(0, 80);
+    }
+
+    // --- Daily Records (god candle data as plain text in Session Stats) ---
+    // Sticky: once received, keep showing until replaced by newer data.
+    // daily_records only appears on ~1-2 transition ticks per rug.
+    function updateDailyRecords(data) {
+        const container = $('ss-daily-records');
+        if (!data || !data.daily_records) {
+            return;  // keep last known daily records visible
+        }
+        const dr = data.daily_records;
+        let html = '';
+
+        if (dr.highest_today != null) {
+            const hgid = dr.highest_today_game_id || '';
+            const hshort = hgid.length > 8 ? '...' + hgid.slice(-8) : hgid;
+            const hval = hgid ? `${dr.highest_today.toFixed(2)}x (${escapeHtml(hshort)})` : `${dr.highest_today.toFixed(2)}x`;
+            html += `<div class="stat-row"><label>Daily High</label><span class="value-box" title="${escapeHtml(hgid)}">${hval}</span></div>`;
+        }
+
+        const tiers = [
+            { key: 'god_candle_2x', label: 'GC 2x' },
+            { key: 'god_candle_10x', label: 'GC 10x' },
+            { key: 'god_candle_50x', label: 'GC 50x' }
+        ];
+        for (const tier of tiers) {
+            const entry = dr[tier.key];
+            if (entry && entry.multiplier != null) {
+                const gid = entry.game_id || '';
+                const short = gid.length > 8 ? '...' + gid.slice(-8) : gid;
+                html += `<div class="stat-row"><label>${tier.label}</label><span class="value-box" title="${escapeHtml(gid)}">${entry.multiplier.toFixed(2)}x (${escapeHtml(short)})</span></div>`;
+            }
+        }
+
+        container.innerHTML = html;
+    }
+
+    // --- Pipeline Stats Polling ---
+    // Bug #1 fix: use events_received (not events_processed)
+    // Bug #2 fix: extract .clients from nested channel dicts
+    function pollStats() {
+        fetch('/stats')
+            .then(r => r.json())
+            .then(stats => {
+                if (stats.pipeline) {
+                    $('ps-events').textContent = stats.pipeline.events_received || 0;
+                }
+                if (stats.upstream) {
+                    const connected = stats.upstream.state === 'connected';
+                    $('ps-upstream').textContent = connected ? 'Connected' : 'Disconnected';
+                    $('ps-upstream').style.color = connected ? 'var(--green)' : 'var(--red)';
+                }
+                if (stats.broadcaster) {
+                    const bc = stats.broadcaster;
+                    const ch = bc.channels || {};
+                    let total = 0;
+                    const parts = [];
+                    for (const name in ch) {
+                        const count = (typeof ch[name] === 'object' && ch[name] !== null)
+                            ? (ch[name].clients || 0)
+                            : (typeof ch[name] === 'number' ? ch[name] : 0);
+                        total += count;
+                        if (count > 0) {
+                            parts.push(`${name}:<span>${count}</span>`);
+                        }
+                    }
+                    $('ps-clients').textContent = total;
+                    $('ps-clients-breakdown').innerHTML = parts.length > 0 ? parts.join(' ') : '';
+                }
+                if (stats.history_collector) {
+                    const hc = stats.history_collector;
+                    $('ps-rugs').textContent = hc.rugs_seen || hc.rug_count || 0;
+                    $('ps-histories').textContent = hc.records_collected || hc.histories_captured || 0;
+                    $('ps-godcandles').textContent = hc.god_candle_captures || 0;
+                }
+            })
+            .catch(() => {});
+    }
+
+    // --- Events/sec Rate ---
+    function updateRate() {
+        const now = Date.now();
+        const cutoff = now - 1000;
+        eventCounts = eventCounts.filter(t => t > cutoff);
+        $('events-rate').textContent = eventCounts.length;
+    }
+
+    // --- Uptime ---
+    function updateUptime() {
+        if (!connectTime) { $('footer-uptime').textContent = '-'; return; }
+        const secs = Math.floor((Date.now() - connectTime) / 1000);
+        const mins = Math.floor(secs / 60);
+        const hrs = Math.floor(mins / 60);
+        if (hrs > 0) $('footer-uptime').textContent = `${hrs}h ${mins % 60}m`;
+        else if (mins > 0) $('footer-uptime').textContent = `${mins}m ${secs % 60}s`;
+        else $('footer-uptime').textContent = `${secs}s`;
+    }
+
+    // --- Helpers ---
+    function formatTime(d) {
+        return d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // --- Keyboard shortcuts ---
+    document.addEventListener('keydown', (e) => {
+        if (e.target !== document.body) return;
+        if (e.key === ' ') {
+            e.preventDefault();
+            toggleGlobalPause();
+        }
+        if (e.key === 'c' && !e.ctrlKey) {
+            if (activeTab === 'trades') clearTrades();
+            else clearEvents();
+        }
+        if (e.key === '1') switchTab('trades');
+        if (e.key === '2') switchTab('events');
+    });
+
+    // --- Init ---
+    connect();
+    setInterval(pollStats, 5000);
+    setInterval(updateRate, 1000);
+    setInterval(updateUptime, 1000);
+    pollStats();
+    </script>
+</body>
+</html>

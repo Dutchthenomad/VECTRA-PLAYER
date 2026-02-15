@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Trace Viewer — v2-explorer</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-dim: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); font-size: 13px; }
+
+  /* Layout */
+  .app { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; gap: 4px; padding: 8px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .header h1 { font-size: 14px; color: var(--accent); white-space: nowrap; }
+  .header select, .header button, .header input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit;
+  }
+  .header button { cursor: pointer; }
+  .header button:hover { border-color: var(--accent); }
+  .header .status { margin-left: auto; color: var(--text-dim); font-size: 11px; }
+
+  /* Tick slider */
+  .slider-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-row .tick-label { min-width: 100px; text-align: center; font-weight: bold; }
+
+  /* Main content */
+  .main { display: grid; grid-template-columns: 1fr 340px; gap: 4px; overflow: hidden; }
+
+  /* Left: charts + pipeline nodes */
+  .left-panel { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+
+  /* Pipeline nodes */
+  .pipeline { display: flex; gap: 4px; }
+  .node {
+    flex: 1; padding: 8px; background: var(--surface); border: 2px solid var(--border);
+    border-radius: 6px; cursor: pointer; transition: border-color 0.15s;
+    text-align: center; min-height: 56px;
+  }
+  .node:hover { border-color: var(--accent); }
+  .node.selected { border-color: var(--accent); background: #161b2e; }
+  .node.pass { border-color: var(--green); }
+  .node.veto { border-color: var(--red); }
+  .node.bet { border-color: var(--yellow); }
+  .node .label { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
+  .node .value { font-size: 14px; font-weight: bold; }
+  .node .sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Charts */
+  .chart-container { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+  .chart-container canvas { width: 100% !important; }
+
+  /* Right: detail panel */
+  .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-y: auto; }
+  .detail-panel h3 { color: var(--accent); margin-bottom: 8px; font-size: 13px; }
+  .detail-section { margin-bottom: 12px; }
+  .detail-section h4 { color: var(--text-dim); font-size: 11px; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+  .kv { display: flex; justify-content: space-between; padding: 2px 0; }
+  .kv .k { color: var(--text-dim); }
+  .kv .v { font-weight: bold; }
+  .kv .v.green { color: var(--green); }
+  .kv .v.red { color: var(--red); }
+  .kv .v.yellow { color: var(--yellow); }
+  .kv .v.purple { color: var(--purple); }
+
+  /* P(rug) sparkline */
+  .sparkline-row { padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .sparkline-row canvas { width: 100%; height: 48px; }
+  .sparkline-label { font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between; }
+
+  /* Loading overlay */
+  .loading { position: fixed; inset: 0; background: rgba(13,17,23,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .loading.hidden { display: none; }
+  .loading span { color: var(--accent); font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading"><span>Loading game data...</span></div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <h1>Pipeline Trace</h1>
+    <label>Game:</label>
+    <select id="gameSelect"><option value="">— loading —</option></select>
+    <button id="loadBtn">Load</button>
+    <span class="status" id="statusText">No game loaded</span>
+  </div>
+
+  <!-- Tick slider -->
+  <div class="slider-row">
+    <button id="prevBtn" title="Previous tick">&lt;</button>
+    <input type="range" id="tickSlider" min="1" max="1" value="1" />
+    <button id="nextBtn" title="Next tick">&gt;</button>
+    <span class="tick-label" id="tickLabel">Tick 0 / 0</span>
+    <span id="priceLabel" style="color:var(--yellow)">—</span>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="left-panel">
+      <!-- Pipeline nodes -->
+      <div class="pipeline">
+        <div class="node" data-stage="features" id="nodeFeatures">
+          <div class="label">1. Features</div>
+          <div class="value" id="nfVal">—</div>
+          <div class="sub" id="nfSub">16 features</div>
+        </div>
+        <div class="node" data-stage="model_a" id="nodeModelA">
+          <div class="label">2. Model A</div>
+          <div class="value" id="naVal">—</div>
+          <div class="sub" id="naSub">P(rug)</div>
+        </div>
+        <div class="node" data-stage="model_b" id="nodeModelB">
+          <div class="label">3. Model B</div>
+          <div class="value" id="nbVal">—</div>
+          <div class="sub" id="nbSub">regime</div>
+        </div>
+        <div class="node" data-stage="arbitration" id="nodeArb">
+          <div class="label">4. Arbitration</div>
+          <div class="value" id="narVal">—</div>
+          <div class="sub" id="narSub">action</div>
+        </div>
+        <div class="node" data-stage="risk" id="nodeRisk">
+          <div class="label">5. Risk</div>
+          <div class="value" id="nrVal">—</div>
+          <div class="sub" id="nrSub">state</div>
+        </div>
+      </div>
+
+      <!-- Price chart -->
+      <div class="chart-container" style="flex:1; min-height:200px;">
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail-panel" id="detailPanel">
+      <h3 id="detailTitle">Select a pipeline node</h3>
+      <div id="detailContent"><p style="color:var(--text-dim)">Click one of the 5 pipeline nodes above to see its data at the current tick.</p></div>
+    </div>
+  </div>
+
+  <!-- P(rug) sparkline -->
+  <div class="sparkline-row">
+    <div class="sparkline-label">
+      <span>P(rug) timeline</span>
+      <span id="prugLabel">—</span>
+    </div>
+    <canvas id="sparkline"></canvas>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+// Detect base URL: works both directly (localhost:9040) and via reverse proxy (/proxy/explorer/)
+const _path = window.location.pathname;
+const _proxyIdx = _path.indexOf('/static/');
+const API = _proxyIdx > 0
+    ? window.location.origin + _path.substring(0, _proxyIdx)   // proxied: /proxy/explorer
+    : window.location.origin;                                    // direct: http://localhost:9040
+let traceData = null;   // full TracedReplayResult
+let traces = [];        // tick_traces array
+let currentIdx = 0;     // index into traces
+let selectedStage = 'model_a';
+
+// DOM refs
+const $ = (s) => document.getElementById(s);
+const loading    = $('loading');
+const gameSelect = $('gameSelect');
+const loadBtn    = $('loadBtn');
+const tickSlider = $('tickSlider');
+const tickLabel  = $('tickLabel');
+const priceLabel = $('priceLabel');
+const statusText = $('statusText');
+const detailTitle   = $('detailTitle');
+const detailContent = $('detailContent');
+const prugLabel  = $('prugLabel');
+
+// ============================================================
+// Init — fetch game list
+// ============================================================
+async function init() {
+  try {
+    const resp = await fetch(`${API}/api/sidebet/games?limit=200`);
+    const games = await resp.json();
+    gameSelect.innerHTML = games.map(g =>
+      `<option value="${g.game_id}">${g.game_id.slice(-12)} (${g.tick_count}t, ${g.peak_multiplier}x)</option>`
+    ).join('');
+    loading.classList.add('hidden');
+    statusText.textContent = `${games.length} games available`;
+  } catch (e) {
+    loading.querySelector('span').textContent = `Error: ${e.message}. Is the server running on port 9040?`;
+  }
+}
+
+// ============================================================
+// Load game trace
+// ============================================================
+async function loadGame() {
+  const gid = gameSelect.value;
+  if (!gid) return;
+  loading.classList.remove('hidden');
+  loading.querySelector('span').textContent = 'Running traced replay...';
+  try {
+    const resp = await fetch(`${API}/api/sidebet/replay-traced`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({game_id: gid}),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    traceData = await resp.json();
+    traces = traceData.tick_traces;
+    currentIdx = 0;
+    tickSlider.min = 0;
+    tickSlider.max = traces.length - 1;
+    tickSlider.value = 0;
+    statusText.textContent =
+      `${traceData.game_id.slice(-12)} — ${traceData.ticks} ticks, rug@${traceData.rug_tick}, ` +
+      `${traceData.bets_placed} bets (${traceData.bets_won}W/${traceData.bets_lost}L), PnL ${traceData.net_pnl >= 0 ? '+' : ''}${traceData.net_pnl.toFixed(4)}`;
+    drawPriceChart();
+    drawSparkline();
+    updateTick();
+    loading.classList.add('hidden');
+  } catch (e) {
+    loading.querySelector('span').textContent = `Error: ${e.message}`;
+    setTimeout(() => loading.classList.add('hidden'), 3000);
+  }
+}
+
+// ============================================================
+// Tick navigation
+// ============================================================
+function updateTick() {
+  if (!traces.length) return;
+  const t = traces[currentIdx];
+  tickLabel.textContent = `Tick ${t.tick} / ${traces[traces.length-1].tick}`;
+  priceLabel.textContent = `${t.price.toFixed(4)}x`;
+
+  // Update pipeline nodes
+  updateNodes(t);
+  // Update detail panel
+  renderDetail(t);
+  // Update chart marker
+  drawChartMarker();
+  drawSparklineMarker();
+}
+
+function updateNodes(t) {
+  // Features
+  const nFired = Object.keys(t.model_a.multipliers_fired).length;
+  $('nfVal').textContent = `${nFired} active`;
+  $('nfSub').textContent = t.features.is_falling ? 'falling' : t.features.is_rising ? 'rising' : 'neutral';
+
+  // Model A
+  $('naVal').textContent = (t.model_a.p_rug * 100).toFixed(1) + '%';
+  $('naSub').textContent = `base ${(t.model_a.base_prob * 100).toFixed(1)}% × ${t.model_a.feature_adjustment.toFixed(2)}`;
+  const naNode = $('nodeModelA');
+  naNode.className = 'node' + (selectedStage === 'model_a' ? ' selected' : '') + (t.model_a.p_rug >= 0.20 ? ' pass' : '');
+
+  // Model B
+  $('nbVal').textContent = t.model_b.regime;
+  $('nbSub').textContent = `dur ${t.model_b.predicted_duration}t`;
+  const nbNode = $('nodeModelB');
+  nbNode.className = 'node' + (selectedStage === 'model_b' ? ' selected' : '');
+
+  // Arbitration
+  $('narVal').textContent = t.arbitration.action;
+  $('narSub').textContent = t.arbitration.vetoed ? `VETO: ${t.arbitration.veto_reason.split(' ')[0]}` : t.arbitration.reason.split(' ')[0];
+  const arbNode = $('nodeArb');
+  arbNode.className = 'node' + (selectedStage === 'arbitration' ? ' selected' : '');
+  if (t.arbitration.vetoed) arbNode.classList.add('veto');
+  else if (t.arbitration.action === 'BET') arbNode.classList.add('bet');
+  else arbNode.classList.add('pass');
+
+  // Risk
+  $('nrVal').textContent = t.risk.trading_state;
+  $('nrSub').textContent = `DD ${t.risk.drawdown_pct.toFixed(1)}%`;
+  const rNode = $('nodeRisk');
+  rNode.className = 'node' + (selectedStage === 'risk' ? ' selected' : '') +
+    (t.risk.trading_state === 'active' ? ' pass' : t.risk.trading_state === 'paused' ? ' veto' : '');
+
+  // Features node
+  const fNode = $('nodeFeatures');
+  fNode.className = 'node' + (selectedStage === 'features' ? ' selected' : '');
+}
+
+// ============================================================
+// Detail panel rendering
+// ============================================================
+function renderDetail(t) {
+  const stageNames = {
+    features: '1. Features', model_a: '2. Model A', model_b: '3. Model B',
+    arbitration: '4. Arbitration', risk: '5. Risk',
+  };
+  detailTitle.textContent = stageNames[selectedStage] + ` @ Tick ${t.tick}`;
+
+  let html = '';
+  const data = t[selectedStage];
+  if (!data) { detailContent.innerHTML = '<p>No data</p>'; return; }
+
+  if (selectedStage === 'features') {
+    html += section('Price & Trend', [
+      kv('price', fmt(data.price, 4)),
+      kv('peak_so_far', fmt(data.peak_so_far, 4)),
+      kv('distance_from_peak', pct(data.distance_from_peak)),
+      kv('is_rising', bool(data.is_rising)),
+      kv('is_falling', bool(data.is_falling)),
+      kv('rapid_rise', bool(data.rapid_rise)),
+      kv('rapid_fall', bool(data.rapid_fall)),
+    ]);
+    html += section('Momentum & Volatility', [
+      kv('momentum_3', fmt(data.momentum_3, 6)),
+      kv('momentum_5', fmt(data.momentum_5, 6)),
+      kv('price_acceleration', fmt(data.price_acceleration, 6)),
+      kv('volatility_5', fmt(data.volatility_5, 6)),
+      kv('volatility_10', fmt(data.volatility_10, 6)),
+    ]);
+    html += section('Other', [
+      kv('age', data.age),
+      kv('ticks_since_peak', data.ticks_since_peak),
+      kv('mean_reversion', fmt(data.mean_reversion, 4)),
+    ]);
+
+  } else if (selectedStage === 'model_a') {
+    html += section('Survival Model', [
+      kv('base_prob', pct(data.base_prob), data.base_prob >= 0.20 ? 'green' : 'red'),
+      kv('feature_adjustment', `${data.feature_adjustment}x`, data.feature_adjustment > 1 ? 'yellow' : ''),
+      kv('p_rug', pct(data.p_rug), data.p_rug >= 0.20 ? 'green' : 'red'),
+    ]);
+    html += section('Multipliers Fired', Object.entries(data.multipliers_fired).length > 0
+      ? Object.entries(data.multipliers_fired).map(([k, v]) => kv(k, `${v}x`, v > 1 ? 'yellow' : 'purple'))
+      : ['<div class="kv"><span class="k">none</span><span class="v" style="color:var(--text-dim)">—</span></div>']
+    );
+
+  } else if (selectedStage === 'model_b') {
+    html += section('Bayesian Forecaster', [
+      kv('predicted_peak', `${data.predicted_peak}x`),
+      kv('predicted_duration', `${data.predicted_duration} ticks`),
+      kv('regime', data.regime, regimeColor(data.regime)),
+      kv('confidence', pct(data.confidence)),
+    ]);
+
+  } else if (selectedStage === 'arbitration') {
+    html += section('Decision', [
+      kv('action', data.action, data.action === 'BET' ? 'yellow' : ''),
+      kv('vetoed', bool(data.vetoed)),
+      kv('veto_reason', data.veto_reason || '—', data.vetoed ? 'red' : ''),
+    ]);
+    html += section('Bucketing', [
+      kv('bucket', data.bucket),
+      kv('bucket_upgraded', data.bucket_upgraded, data.bucket !== data.bucket_upgraded ? 'yellow' : ''),
+      kv('consensus_lookup', data.consensus_lookup || 'none'),
+      kv('size_modifier', data.size_modifier ? `${(data.size_modifier * 100).toFixed(0)}%` : '0%'),
+    ]);
+    html += section('Reason', [
+      `<div style="padding:4px 0; color:var(--text-dim); word-break:break-all;">${data.reason}</div>`,
+    ]);
+    // Show bet outcome if bet was placed on this tick
+    if (t.bet_placed) {
+      html += section('Bet Outcome', [
+        kv('bet_amount', `${t.bet_amount} SOL`),
+        kv('outcome', t.bet_outcome, t.bet_outcome === 'WON' ? 'green' : 'red'),
+      ]);
+    }
+
+  } else if (selectedStage === 'risk') {
+    html += section('Account State', [
+      kv('trading_state', data.trading_state, stateColor(data.trading_state)),
+      kv('bankroll', `${data.bankroll.toFixed(4)} SOL`),
+      kv('drawdown', `${data.drawdown_pct.toFixed(1)}%`, data.drawdown_pct > 15 ? 'red' : data.drawdown_pct > 5 ? 'yellow' : 'green'),
+    ]);
+    html += section('Streaks', [
+      kv('consecutive_wins', data.consecutive_wins, data.consecutive_wins > 0 ? 'green' : ''),
+      kv('consecutive_losses', data.consecutive_losses, data.consecutive_losses >= 5 ? 'red' : data.consecutive_losses >= 3 ? 'yellow' : ''),
+    ]);
+    html += section('Sizing', [
+      kv('position_size', `${data.position_size.toFixed(4)} SOL`),
+      kv('kelly_fraction', pct(data.kelly_fraction)),
+      kv('ev', `${data.ev >= 0 ? '+' : ''}${data.ev.toFixed(6)}`, data.ev >= 0 ? 'green' : 'red'),
+    ]);
+  }
+
+  detailContent.innerHTML = html;
+}
+
+// Helpers
+function section(title, items) {
+  return `<div class="detail-section"><h4>${title}</h4>${items.join('')}</div>`;
+}
+function kv(key, val, cls) {
+  return `<div class="kv"><span class="k">${key}</span><span class="v${cls ? ' ' + cls : ''}">${val}</span></div>`;
+}
+function fmt(n, d) { return typeof n === 'number' ? n.toFixed(d) : n; }
+function pct(n) { return typeof n === 'number' ? (n * 100).toFixed(2) + '%' : n; }
+function bool(b) { return b ? '<span style="color:var(--green)">true</span>' : '<span style="color:var(--text-dim)">false</span>'; }
+function regimeColor(r) { return {suppressed:'purple', inflated:'yellow', volatile:'red', normal:''}[r] || ''; }
+function stateColor(s) { return {active:'green', reduced:'yellow', paused:'red', recovery:'purple'}[s] || ''; }
+
+// ============================================================
+// Canvas drawing — Price chart
+// ============================================================
+let priceCtx, sparkCtx;
+let priceCanvas, sparkCanvas;
+
+function drawPriceChart() {
+  priceCanvas = $('priceChart');
+  priceCtx = priceCanvas.getContext('2d');
+  const rect = priceCanvas.parentElement.getBoundingClientRect();
+  priceCanvas.width = rect.width - 16;
+  priceCanvas.height = rect.height - 16;
+  const W = priceCanvas.width, H = priceCanvas.height;
+  const ctx = priceCtx;
+
+  const prices = traces.map(t => t.price);
+  const minP = Math.min(...prices) * 0.98;
+  const maxP = Math.max(...prices) * 1.02;
+  const rangeP = maxP - minP || 1;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = H * i / 4;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = '#484f58';
+    ctx.font = '10px monospace';
+    ctx.fillText((maxP - (rangeP * i / 4)).toFixed(2), 2, y + 12);
+  }
+
+  // Rug line
+  if (traceData) {
+    const rugIdx = traces.findIndex(t => t.tick >= traceData.rug_tick);
+    if (rugIdx >= 0) {
+      const rugX = (rugIdx / (traces.length - 1)) * W;
+      ctx.strokeStyle = '#f8514955';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(rugX, 0); ctx.lineTo(rugX, H); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#f85149';
+      ctx.font = '10px monospace';
+      ctx.fillText(`rug@${traceData.rug_tick}`, rugX + 4, 14);
+    }
+  }
+
+  // Bet markers
+  traces.forEach((t, i) => {
+    if (t.bet_placed) {
+      const x = (i / (traces.length - 1)) * W;
+      const y = ((maxP - t.price) / rangeP) * H;
+      ctx.fillStyle = t.bet_outcome === 'WON' ? '#3fb950' : '#f85149';
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // Price line
+  ctx.strokeStyle = '#d29922';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  prices.forEach((p, i) => {
+    const x = (i / (prices.length - 1)) * W;
+    const y = ((maxP - p) / rangeP) * H;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Store for marker drawing
+  priceCanvas._minP = minP;
+  priceCanvas._maxP = maxP;
+  priceCanvas._rangeP = rangeP;
+}
+
+function drawChartMarker() {
+  if (!priceCtx || !traces.length) return;
+  drawPriceChart(); // redraw base
+
+  const W = priceCanvas.width, H = priceCanvas.height;
+  const ctx = priceCtx;
+  const t = traces[currentIdx];
+  const x = (currentIdx / (traces.length - 1)) * W;
+  const y = ((priceCanvas._maxP - t.price) / priceCanvas._rangeP) * H;
+
+  // Vertical scrubber line
+  ctx.strokeStyle = '#58a6ff88';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Dot
+  ctx.fillStyle = '#58a6ff';
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ============================================================
+// Canvas drawing — P(rug) sparkline
+// ============================================================
+function drawSparkline() {
+  sparkCanvas = $('sparkline');
+  sparkCtx = sparkCanvas.getContext('2d');
+  const rect = sparkCanvas.parentElement.getBoundingClientRect();
+  sparkCanvas.width = rect.width - 24;
+  sparkCanvas.height = 48;
+  drawSparklineContent();
+}
+
+function drawSparklineContent() {
+  const W = sparkCanvas.width, H = sparkCanvas.height;
+  const ctx = sparkCtx;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!traces.length) return;
+
+  const values = traces.map(t => t.model_a.p_rug);
+  const maxV = Math.max(...values, 0.3);
+
+  // Breakeven line at 16.67%
+  const beY = H - (0.1667 / maxV) * H;
+  ctx.strokeStyle = '#f8514944';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(0, beY); ctx.lineTo(W, beY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f8514966';
+  ctx.font = '9px monospace';
+  ctx.fillText('16.7%', W - 36, beY - 2);
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#3fb95033');
+  grad.addColorStop(1, '#3fb95000');
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  values.forEach((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - (v / maxV) * H;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = '#3fb950';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - (v / maxV) * H;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  sparkCanvas._maxV = maxV;
+}
+
+function drawSparklineMarker() {
+  if (!sparkCtx || !traces.length) return;
+  drawSparklineContent(); // redraw base
+
+  const W = sparkCanvas.width, H = sparkCanvas.height;
+  const ctx = sparkCtx;
+  const t = traces[currentIdx];
+  const x = (currentIdx / (traces.length - 1)) * W;
+  const y = H - (t.model_a.p_rug / sparkCanvas._maxV) * H;
+
+  ctx.strokeStyle = '#58a6ff88';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#58a6ff';
+  ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+
+  prugLabel.textContent = `P(rug) = ${(t.model_a.p_rug * 100).toFixed(2)}%`;
+}
+
+// ============================================================
+// Event handlers
+// ============================================================
+loadBtn.addEventListener('click', loadGame);
+gameSelect.addEventListener('dblclick', loadGame);
+
+tickSlider.addEventListener('input', () => {
+  currentIdx = parseInt(tickSlider.value);
+  updateTick();
+});
+
+$('prevBtn').addEventListener('click', () => {
+  if (currentIdx > 0) { currentIdx--; tickSlider.value = currentIdx; updateTick(); }
+});
+$('nextBtn').addEventListener('click', () => {
+  if (currentIdx < traces.length - 1) { currentIdx++; tickSlider.value = currentIdx; updateTick(); }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') { $('prevBtn').click(); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { $('nextBtn').click(); e.preventDefault(); }
+  if (e.key >= '1' && e.key <= '5') {
+    const stages = ['features', 'model_a', 'model_b', 'arbitration', 'risk'];
+    selectedStage = stages[parseInt(e.key) - 1];
+    updateTick();
+  }
+});
+
+// Pipeline node clicks
+document.querySelectorAll('.node').forEach(node => {
+  node.addEventListener('click', () => {
+    selectedStage = node.dataset.stage;
+    updateTick();
+  });
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  if (traces.length) {
+    drawPriceChart();
+    drawSparkline();
+    drawChartMarker();
+    drawSparklineMarker();
+  }
+});
+
+// Start
+init();
+</script>
+</body>
+</html>

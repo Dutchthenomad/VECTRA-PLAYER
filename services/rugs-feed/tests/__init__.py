@@ -1,0 +1,1 @@
+"""Rugs Feed Service tests."""

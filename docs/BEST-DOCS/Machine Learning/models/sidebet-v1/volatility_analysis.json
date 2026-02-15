@@ -1,0 +1,215 @@
+{
+  "distribution": {
+    "total_games": 943,
+    "playable_games": 771,
+    "optimal_zone_games": 362,
+    "return_std": {
+      "min": 0.07301727672781709,
+      "max": 0.4976842271732273,
+      "median": 0.10291701673335427,
+      "mean": 0.10985948017446394,
+      "std": 0.02734546748810326,
+      "percentiles": {
+        "5": 0.08189371127726956,
+        "10": 0.0846791919070285,
+        "25": 0.09096756422027621,
+        "50": 0.10291701673335427,
+        "75": 0.12300514278078031,
+        "90": 0.14489872736373505,
+        "95": 0.15558657744831858,
+        "99": 0.17307818736605662
+      }
+    },
+    "log_return_std": {
+      "min": 0.14436228877293975,
+      "max": 0.7258110364163738,
+      "median": 0.3688103998171546,
+      "mean": 0.39038199232279047,
+      "std": 0.11899962705586883,
+      "percentiles": {
+        "5": 0.2258790961134218,
+        "10": 0.25363355651373515,
+        "25": 0.30119593456124655,
+        "50": 0.3688103998171546,
+        "75": 0.4660007975656808,
+        "90": 0.566856616492656,
+        "95": 0.6208623551569643,
+        "99": 0.6914557981508478
+      }
+    },
+    "price_range": {
+      "min": 1.1086173049391186,
+      "max": 9.470362090952873,
+      "median": 1.8938899844313806,
+      "mean": 2.1819812143421786,
+      "std": 1.0381014603359582,
+      "percentiles": {
+        "5": 1.2867314891914063,
+        "10": 1.3596779525002973,
+        "25": 1.5565298305246884,
+        "50": 1.8938899844313806,
+        "75": 2.445904806879137,
+        "90": 3.2807031745317237,
+        "95": 4.010552853924035,
+        "99": 6.391689119726866
+      }
+    },
+    "spike_count": {
+      "min": 2.0,
+      "max": 298.0,
+      "median": 31.0,
+      "mean": 40.57587548638132,
+      "std": 33.715045608287284,
+      "percentiles": {
+        "5": 8.0,
+        "10": 10.0,
+        "25": 16.0,
+        "50": 31.0,
+        "75": 54.0,
+        "90": 85.0,
+        "95": 107.0,
+        "99": 161.0
+      }
+    },
+    "max_spike_magnitude": {
+      "min": 0.9799999999999999,
+      "max": 9.0,
+      "median": 0.9911252112639575,
+      "mean": 1.000895057586247,
+      "std": 0.28851156098820724,
+      "percentiles": {
+        "5": 0.9805997306762462,
+        "10": 0.9817147283188683,
+        "25": 0.986110576721068,
+        "50": 0.9911252112639575,
+        "75": 0.9952424145869955,
+        "90": 0.9979702190580717,
+        "95": 0.9989244983977036,
+        "99": 0.9998032301095566
+      }
+    },
+    "volatility_of_volatility": {
+      "min": 0.031058003020451745,
+      "max": 0.47696674251240756,
+      "median": 0.03921375649261888,
+      "mean": 0.041093618019252785,
+      "std": 0.016676994501124268,
+      "percentiles": {
+        "5": 0.0338729494714123,
+        "10": 0.03472018435892867,
+        "25": 0.03658418701714978,
+        "50": 0.03921375649261888,
+        "75": 0.043453540010834846,
+        "90": 0.0481691916708856,
+        "95": 0.05158292901567163,
+        "99": 0.058228036522990155
+      }
+    },
+    "correlations": {
+      "return_std_vs_duration_ticks": -0.6259326190861688,
+      "return_std_vs_peak_multiplier": 0.10784571909690249,
+      "log_return_std_vs_duration_ticks": -0.7349770412407541,
+      "log_return_std_vs_peak_multiplier": -0.06643013899389195,
+      "price_range_vs_duration_ticks": 0.7173991206202947,
+      "price_range_vs_peak_multiplier": 0.5196771861684433,
+      "spike_count_vs_duration_ticks": 0.9793703598184539,
+      "spike_count_vs_peak_multiplier": 0.3961603160588298,
+      "max_spike_magnitude_vs_duration_ticks": 0.02809596058360099,
+      "max_spike_magnitude_vs_peak_multiplier": 0.5122245146237727,
+      "volatility_of_volatility_vs_duration_ticks": -0.17447542980717198,
+      "volatility_of_volatility_vs_peak_multiplier": 0.42792836439112186
+    },
+    "volatility_regimes": {
+      "low": {
+        "threshold": 0.09401065323203736,
+        "description": "Bottom third of volatility"
+      },
+      "medium": {
+        "threshold": 0.11607124862988819,
+        "description": "Middle third of volatility"
+      },
+      "high": {
+        "threshold": 0.4976842271732273,
+        "description": "Top third of volatility"
+      }
+    }
+  },
+  "zone_comparison": {
+    "return_std": {
+      "optimal_zone": {
+        "median": 0.09006763423153835,
+        "mean": 0.0916966661300693
+      },
+      "non_optimal_zone": {
+        "median": 0.12174169582125774,
+        "mean": 0.12593512487879363
+      },
+      "ratio": 0.7398256909758877
+    },
+    "log_return_std": {
+      "optimal_zone": {
+        "median": 0.29711493948210005,
+        "mean": 0.29919421426894516
+      },
+      "non_optimal_zone": {
+        "median": 0.46140591118464513,
+        "mean": 0.47109097925553384
+      },
+      "ratio": 0.6439339685078304
+    },
+    "spike_count": {
+      "optimal_zone": {
+        "median": 56.5,
+        "mean": 65.72099447513813
+      },
+      "non_optimal_zone": {
+        "median": 17.0,
+        "mean": 18.320293398533007
+      },
+      "ratio": 3.323529411764706
+    },
+    "max_spike_magnitude": {
+      "optimal_zone": {
+        "median": 0.9944779043991857,
+        "mean": 1.0154198170514757
+      },
+      "non_optimal_zone": {
+        "median": 0.987938739731972,
+        "mean": 0.988039402509443
+      },
+      "ratio": 1.006618998126329
+    }
+  },
+  "recommendations": {
+    "baseline_volatility": 0.10291701673335427,
+    "sizing_tiers": {
+      "very_low_vol": {
+        "threshold": 0.09096756422027621,
+        "position_multiplier": 1.5,
+        "description": "Below 25th percentile volatility - increase position"
+      },
+      "low_vol": {
+        "threshold": 0.10291701673335427,
+        "position_multiplier": 1.25,
+        "description": "25th-50th percentile - slightly larger position"
+      },
+      "normal_vol": {
+        "threshold": 0.12300514278078031,
+        "position_multiplier": 1.0,
+        "description": "50th-75th percentile - standard position"
+      },
+      "high_vol": {
+        "threshold": 0.14489872736373505,
+        "position_multiplier": 0.75,
+        "description": "75th-90th percentile - reduce position"
+      },
+      "very_high_vol": {
+        "threshold": 0.17307818736605662,
+        "position_multiplier": 0.5,
+        "description": "Above 90th percentile - half position or skip"
+      }
+    },
+    "spike_warning_threshold": 85.0,
+    "formula": "position_size = base_size * (baseline_vol / current_vol)"
+  }
+}

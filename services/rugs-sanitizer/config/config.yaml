@@ -1,0 +1,19 @@
+# Rugs Sanitizer Service Configuration
+# All values can be overridden by environment variables
+
+# Upstream rugs-feed WebSocket URL
+# Docker: ws://vectra-rugs-feed:9016/feed
+# Local:  ws://localhost:9016/feed
+upstream_url: "ws://localhost:9016/feed"
+
+# Service port
+port: 9017
+
+# Bind address
+host: "0.0.0.0"
+
+# Log level
+log_level: "INFO"
+
+# Capture gameHistory every N-th rug (10 = zero overlap)
+history_collection_interval: 10

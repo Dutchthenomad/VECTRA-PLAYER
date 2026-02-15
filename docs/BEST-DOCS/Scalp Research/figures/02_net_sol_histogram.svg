@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-label="Net SOL Distribution (Full Grid)">
+<rect x="0" y="0" width="1200" height="760" fill="#0b1220"/>
+<text x="100" y="52" font-size="28" fill="#e2e8f0" font-weight="700">Net SOL Distribution (Full Grid)</text>
+<text x="100" y="80" font-size="16" fill="#93c5fd">How often each net-SOL band appears across 2,100 parameter combinations.</text>
+<rect x="100" y="110" width="1060" height="480" fill="#111827" stroke="#334155"/>
+<line x1="100" y1="590.00" x2="1160" y2="590.00" stroke="#1f2937"/>
+<text x="90" y="594.00" text-anchor="end" font-size="12" fill="#94a3b8">0.0</text>
+<line x1="100" y1="494.00" x2="1160" y2="494.00" stroke="#1f2937"/>
+<text x="90" y="498.00" text-anchor="end" font-size="12" fill="#94a3b8">91.6</text>
+<line x1="100" y1="398.00" x2="1160" y2="398.00" stroke="#1f2937"/>
+<text x="90" y="402.00" text-anchor="end" font-size="12" fill="#94a3b8">183.2</text>
+<line x1="100" y1="302.00" x2="1160" y2="302.00" stroke="#1f2937"/>
+<text x="90" y="306.00" text-anchor="end" font-size="12" fill="#94a3b8">274.8</text>
+<line x1="100" y1="206.00" x2="1160" y2="206.00" stroke="#1f2937"/>
+<text x="90" y="210.00" text-anchor="end" font-size="12" fill="#94a3b8">366.5</text>
+<line x1="100" y1="110.00" x2="1160" y2="110.00" stroke="#1f2937"/>
+<text x="90" y="114.00" text-anchor="end" font-size="12" fill="#94a3b8">458.1</text>
+<line x1="100" y1="590" x2="1160" y2="590" stroke="#64748b"/>
+<line x1="100" y1="110" x2="100" y2="590" stroke="#64748b"/>
+<rect x="100.00" y="161.43" width="43.17" height="428.57" fill="#38bdf8"/>
+<text x="122.08" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 122.08 612)">0.0-0.8</text>
+<rect x="144.17" y="430.73" width="43.17" height="159.27" fill="#38bdf8"/>
+<rect x="188.33" y="379.38" width="43.17" height="210.62" fill="#38bdf8"/>
+<rect x="232.50" y="382.53" width="43.17" height="207.47" fill="#38bdf8"/>
+<text x="254.58" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 254.58 612)">2.4-3.2</text>
+<rect x="276.67" y="415.01" width="43.17" height="174.99" fill="#38bdf8"/>
+<rect x="320.83" y="440.16" width="43.17" height="149.84" fill="#38bdf8"/>
+<rect x="365.00" y="453.78" width="43.17" height="136.22" fill="#38bdf8"/>
+<text x="387.08" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 387.08 612)">4.8-5.6</text>
+<rect x="409.17" y="459.02" width="43.17" height="130.98" fill="#38bdf8"/>
+<rect x="453.33" y="488.36" width="43.17" height="101.64" fill="#38bdf8"/>
+<rect x="497.50" y="509.32" width="43.17" height="80.68" fill="#38bdf8"/>
+<text x="519.58" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 519.58 612)">7.2-7.9</text>
+<rect x="541.67" y="501.98" width="43.17" height="88.02" fill="#38bdf8"/>
+<rect x="585.83" y="515.60" width="43.17" height="74.40" fill="#38bdf8"/>
+<rect x="630.00" y="530.27" width="43.17" height="59.73" fill="#38bdf8"/>
+<text x="652.08" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 652.08 612)">9.5-10.3</text>
+<rect x="674.17" y="540.75" width="43.17" height="49.25" fill="#38bdf8"/>
+<rect x="718.33" y="539.70" width="43.17" height="50.30" fill="#38bdf8"/>
+<rect x="762.50" y="561.71" width="43.17" height="28.29" fill="#38bdf8"/>
+<text x="784.58" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 784.58 612)">11.9-12.7</text>
+<rect x="806.67" y="570.09" width="43.17" height="19.91" fill="#38bdf8"/>
+<rect x="850.83" y="569.04" width="43.17" height="20.96" fill="#38bdf8"/>
+<rect x="895.00" y="584.76" width="43.17" height="5.24" fill="#38bdf8"/>
+<text x="917.08" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 917.08 612)">14.3-15.1</text>
+<rect x="939.17" y="579.52" width="43.17" height="10.48" fill="#38bdf8"/>
+<rect x="983.33" y="582.67" width="43.17" height="7.33" fill="#38bdf8"/>
+<rect x="1027.50" y="586.86" width="43.17" height="3.14" fill="#38bdf8"/>
+<text x="1049.58" y="612" text-anchor="middle" font-size="10" fill="#cbd5e1" transform="rotate(35 1049.58 612)">16.7-17.5</text>
+<rect x="1071.67" y="588.95" width="43.17" height="1.05" fill="#38bdf8"/>
+<rect x="1115.83" y="587.90" width="43.17" height="2.10" fill="#38bdf8"/>
+<text x="630.00" y="742" text-anchor="middle" font-size="14" fill="#94a3b8">Net SOL bins</text>
+<text x="26" y="128" font-size="14" fill="#94a3b8" transform="rotate(-90 26 128)">Config count</text>
+</svg>

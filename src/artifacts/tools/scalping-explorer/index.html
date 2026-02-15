@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalping Strategy Explorer - Dev Lab</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        .layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 12px;
+            min-height: calc(100vh - 130px);
+        }
+
+        .panel-col {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .card pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .desc {
+            color: var(--color-text-muted);
+            font-size: 13px;
+            line-height: 1.35;
+            margin: 0 0 8px;
+        }
+
+        .quick-steps {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--color-text-muted);
+        }
+
+        .quick-steps li {
+            margin-bottom: 4px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-row label {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        .control-row-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-top: 16px;
+        }
+
+        .control-row-inline label {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin: 0;
+        }
+
+        .muted {
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .pill {
+            border: 1px solid var(--color-border);
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 12px;
+            background: var(--ctp-surface0);
+            display: inline-block;
+        }
+
+        .regime-trend { color: var(--color-success); }
+        .regime-expansion { color: var(--color-warning); }
+        .regime-chop { color: var(--color-info); }
+        .regime-uncertain { color: var(--color-error); }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: 340px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--color-border);
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: var(--ctp-mantle);
+            z-index: 2;
+            font-weight: 600;
+        }
+
+        canvas {
+            width: 100%;
+            height: 280px;
+            background: var(--ctp-crust);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .log-box {
+            background: var(--ctp-crust);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 8px;
+            max-height: 220px;
+            overflow: auto;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .help-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 17, 27, 0.82);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .help-modal {
+            width: min(940px, 96vw);
+            max-height: 88vh;
+            overflow: auto;
+            background: var(--ctp-base);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .help-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .help-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .help-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+
+        .help-tab-btn.active {
+            background: var(--ctp-surface1);
+            border-color: var(--color-info);
+        }
+
+        .help-section {
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 8px;
+            background: var(--ctp-mantle);
+        }
+
+        .help-section h3 {
+            margin: 0 0 6px;
+            font-size: 14px;
+        }
+
+        .help-section p {
+            margin: 0 0 6px;
+            font-size: 12px;
+            color: var(--color-text-muted);
+            line-height: 1.35;
+        }
+
+        .help-section ul {
+            margin: 0;
+            padding-left: 16px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        @media (max-width: 1100px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .help-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <header class="artifact-header">
+            <h1>Scalping Strategy Explorer (Prototype Dev Lab)</h1>
+            <div class="connection-status">
+                <span class="connection-dot connected"></span>
+                <span>Offline Analysis Mode</span>
+            </div>
+        </header>
+
+        <main class="artifact-main">
+            <p class="desc">
+                This page lets you test scalp ideas on prerecorded games in a simple offline workflow:
+                load data, run the simulation, and read outcomes.
+            </p>
+
+            <div class="layout">
+                <div class="panel-col">
+                    <div class="card">
+                        <div class="card-header">Start Here (simple flow)</div>
+                        <ol class="quick-steps">
+                            <li>Load one or more recorded game files.</li>
+                            <li>Set your simulation values and bot values.</li>
+                            <li>Click <strong>Run Test</strong>.</li>
+                            <li>Read outcomes in <strong>Bot Simulation Results</strong> and the inspector chart.</li>
+                        </ol>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" id="quickStartBtn">Quick Start Overlay</button>
+                            <button class="btn btn-secondary" id="controlsGuideBtn">Controls Overlay</button>
+                            <button class="btn btn-secondary" id="resultsGuideBtn">Results Overlay</button>
+                            <button class="btn btn-secondary" id="glossaryBtn">Glossary Overlay</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Load Recorded Games</div>
+                        <p class="desc">
+                            Accepts <code>.json</code> and <code>.jsonl</code>. Files should contain games with tick-by-tick <code>prices[]</code>.
+                        </p>
+                        <div class="toolbar">
+                            <input type="file" id="fileInput" multiple accept=".json,.jsonl">
+                            <button class="btn btn-primary" id="loadBtn">Load Selected Files</button>
+                            <button class="btn btn-secondary" id="clearBtn">Clear Dataset</button>
+                        </div>
+                        <div class="toolbar">
+                            <span class="pill" id="datasetStats">no dataset loaded</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Simulation Controls</div>
+                        <p class="desc">
+                            These settings control how games are filtered and when entries are allowed.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row">
+                                <label for="holdTicks">Hold Ticks</label>
+                                <select id="holdTicks">
+                                    <option value="3">3</option>
+                                    <option value="5" selected>5</option>
+                                    <option value="7">7</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="maxGames">Max Games (quick runs)</label>
+                                <input id="maxGames" type="number" min="1" max="20000" value="500">
+                            </div>
+                            <div class="control-row">
+                                <label for="minTicks">Min Game Length</label>
+                                <input id="minTicks" type="number" min="30" max="5000" value="60">
+                            </div>
+                            <div class="control-row">
+                                <label for="classifyTicks">Classification Ticks</label>
+                                <input id="classifyTicks" type="number" min="12" max="800" value="25">
+                            </div>
+                            <div class="control-row">
+                                <label for="entryCutoffTick">No-New-Entry After Tick</label>
+                                <input id="entryCutoffTick" type="number" min="1" max="5000" value="50">
+                            </div>
+                            <div class="control-row">
+                                <label for="gameSelect">Inspect Specific Game</label>
+                                <select id="gameSelect"></select>
+                            </div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn btn-success" id="runBtn">Run Test</button>
+                            <button class="btn" id="inspectBtn">Inspect Selected Game</button>
+                            <button class="btn btn-secondary" id="helpBtn">Open Help Overlay</button>
+                        </div>
+                        <p class="muted" id="controlStatus">Ready. Load games, then click Run Test.</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Bot Strategy Menu</div>
+                        <p class="desc">
+                            This controls one simulated bot: signal source, SOL position sizing, max hold ticks,
+                            and drift-based TP/SL permutations derived from one-tick movement potential.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row-inline">
+                                <input id="botEnabled" type="checkbox" checked>
+                                <label for="botEnabled">Enable Bot Simulator</label>
+                            </div>
+                            <div class="control-row">
+                                <label for="botPlaybookMode">Bot Signal Source</label>
+                                <select id="botPlaybookMode">
+                                    <option value="AUTO_REGIME" selected>Auto (regime-gated playbooks)</option>
+                                    <option value="P1_MOMENTUM">Force P1_MOMENTUM</option>
+                                    <option value="P2_PULLBACK_CONT">Force P2_PULLBACK_CONT</option>
+                                    <option value="P3_MEAN_REVERT">Force P3_MEAN_REVERT</option>
+                                    <option value="P4_BREAKOUT">Force P4_BREAKOUT</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="botStakeSol">Stake Per Trade (SOL)</label>
+                                <input id="botStakeSol" type="number" min="0.001" max="1000" step="0.001" value="0.1">
+                            </div>
+                            <div class="control-row">
+                                <label for="botStartingBankrollSol">Starting Bankroll (SOL)</label>
+                                <input id="botStartingBankrollSol" type="number" min="0.01" max="100000" step="0.01" value="10">
+                            </div>
+                            <div class="control-row">
+                                <label for="botDriftReference">One-Tick Drift Reference</label>
+                                <select id="botDriftReference">
+                                    <option value="P50">P50 (conservative)</option>
+                                    <option value="P75" selected>P75 (balanced)</option>
+                                    <option value="P90">P90 (aggressive)</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="botTpMultMin">TP Multiplier Min</label>
+                                <input id="botTpMultMin" type="number" min="1" max="8" value="1">
+                            </div>
+                            <div class="control-row">
+                                <label for="botTpMultMax">TP Multiplier Max</label>
+                                <input id="botTpMultMax" type="number" min="1" max="8" value="3">
+                            </div>
+                            <div class="control-row">
+                                <label for="botSlMultMin">SL Multiplier Min</label>
+                                <input id="botSlMultMin" type="number" min="1" max="8" value="1">
+                            </div>
+                            <div class="control-row">
+                                <label for="botSlMultMax">SL Multiplier Max</label>
+                                <input id="botSlMultMax" type="number" min="1" max="8" value="3">
+                            </div>
+                            <div class="control-row">
+                                <label for="botMaxHoldTicks">Max Hold Ticks</label>
+                                <input id="botMaxHoldTicks" type="number" min="1" max="200" value="5">
+                            </div>
+                            <div class="control-row">
+                                <label for="botCooldownTicks">Cooldown Ticks</label>
+                                <input id="botCooldownTicks" type="number" min="0" max="500" value="0">
+                            </div>
+                            <div class="control-row">
+                                <label for="botMaxTradesPerGame">Max Trades Per Game</label>
+                                <input id="botMaxTradesPerGame" type="number" min="1" max="1000" value="25">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Why This Game Was Classified This Way</div>
+                        <pre id="classifierText">No game inspected yet.</pre>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Debug Log</div>
+                        <div class="log-box" id="debugLog">[boot] ready\n</div>
+                    </div>
+                </div>
+
+                <div class="panel-col">
+                    <div class="card">
+                        <div class="card-header">Playbook Results (all qualifying games)</div>
+                        <p class="desc">
+                            Technical summary by playbook. Use this for comparison across strategies.
+                        </p>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Playbook</th>
+                                        <th>Trades</th>
+                                        <th>Win %</th>
+                                        <th>Mean %</th>
+                                        <th>Median %</th>
+                                        <th>P10 / P90</th>
+                                        <th>Gated By Regimes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Bot Simulation Results (main outcome window)</div>
+                        <p class="desc">
+                            This view is SOL-first: it reports permutation results and end-of-game SOL outcomes.
+                        </p>
+                        <pre id="botSummaryText">No bot run yet.</pre>
+                        <div class="table-wrap" style="margin-top: 8px; max-height: 210px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>TPx / SLx</th>
+                                        <th>TP % / SL %</th>
+                                        <th>Trades</th>
+                                        <th>Win %</th>
+                                        <th>Net SOL</th>
+                                        <th>End SOL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="botPermutationBody"></tbody>
+                            </table>
+                        </div>
+                        <p class="desc" style="margin-top: 8px;">
+                            End-of-game SOL outcomes for the selected best permutation:
+                        </p>
+                        <div class="table-wrap" style="margin-top: 8px; max-height: 230px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Game</th>
+                                        <th>Trades</th>
+                                        <th>Win %</th>
+                                        <th>Net SOL</th>
+                                        <th>End SOL</th>
+                                        <th>TP/SL/TIME</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="botResultsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="split">
+                        <div class="card">
+                            <div class="card-header">Game Type Breakdown</div>
+                            <pre id="regimeText">No run yet.</pre>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">Advanced Rule Notes</div>
+                            <pre id="ruleText"></pre>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Game Inspector Chart + Trade Markers</div>
+                        <p class="desc">
+                            Green marker = simulated entry, red marker = simulated exit.
+                        </p>
+                        <canvas id="gameCanvas" width="1100" height="320"></canvas>
+                        <div class="table-wrap" style="margin-top: 8px; max-height: 210px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Playbook</th>
+                                        <th>Entry Tick</th>
+                                        <th>Exit Tick</th>
+                                        <th>Entry Px</th>
+                                        <th>Exit Px</th>
+                                        <th>Return %</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tradeBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="artifact-footer">
+            <span>Prototype scope: offline strategy exploration for scalping profile design</span>
+            <span id="footerInfo">No dataset</span>
+        </footer>
+    </div>
+
+    <div class="help-overlay hidden" id="helpOverlay">
+        <div class="help-modal">
+            <div class="help-head">
+                <div class="card-header">Scalping Explorer Help</div>
+                <button class="btn" id="helpCloseBtn">Close</button>
+            </div>
+            <p class="desc">
+                Choose a help mode below. This overlay is designed for quick learning and plain-language clarification.
+            </p>
+            <div class="help-tabs">
+                <button class="btn help-tab-btn" data-help-tab="quickstart">Quick Start</button>
+                <button class="btn help-tab-btn" data-help-tab="controls">Controls</button>
+                <button class="btn help-tab-btn" data-help-tab="results">Reading Results</button>
+                <button class="btn help-tab-btn" data-help-tab="glossary">Glossary</button>
+            </div>
+            <div class="help-grid">
+                <div class="help-section help-panel" data-help-panel="quickstart">
+                    <h3>Quick Start</h3>
+                    <ul>
+                        <li>Load recordings from your local dataset files.</li>
+                        <li>Leave defaults if you are unsure, then click <strong>Run Test</strong>.</li>
+                        <li>Read <strong>Bot Simulation Results</strong> first for practical outcomes.</li>
+                        <li>Use <strong>Inspect Selected Game</strong> to validate behavior on one game.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="controls">
+                    <h3>Controls (simple meaning)</h3>
+                    <ul>
+                        <li><strong>Classification Ticks</strong>: how much early game history is used to label game type.</li>
+                        <li><strong>No-New-Entry After Tick</strong>: bot stops opening new trades after this tick.</li>
+                        <li><strong>Min Game Length</strong>: ignore games shorter than this.</li>
+                        <li><strong>Bot Drift Settings</strong>: TP/SL are generated from one-tick drift potential x selected multipliers.</li>
+                        <li><strong>Stake + Starting Bankroll (SOL)</strong>: converts returns into SOL PnL and end-of-game SOL.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="results">
+                    <h3>Reading Results</h3>
+                    <ul>
+                        <li><strong>Permutation table</strong>: compares TP/SL multiplier combinations in SOL.</li>
+                        <li><strong>Net SOL</strong>: total SOL won/lost by the simulated bot.</li>
+                        <li><strong>End SOL</strong>: starting bankroll + net SOL under that configuration.</li>
+                        <li><strong>End-of-game SOL table</strong>: per-game outcomes for the selected best permutation.</li>
+                    </ul>
+                </div>
+                <div class="help-section help-panel" data-help-panel="glossary">
+                    <h3>Glossary</h3>
+                    <ul>
+                        <li><strong>trend_up</strong>: early ticks drift upward with cleaner direction.</li>
+                        <li><strong>trend_down</strong>: early ticks drift downward with cleaner direction.</li>
+                        <li><strong>expansion</strong>: wider swings and bursty movement.</li>
+                        <li><strong>chop</strong>: back-and-forth movement with low net progress.</li>
+                        <li><strong>uncertain</strong>: no strong game type signal.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

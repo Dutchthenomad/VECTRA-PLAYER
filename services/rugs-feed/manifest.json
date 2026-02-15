@@ -1,0 +1,13 @@
+{
+  "name": "rugs-feed",
+  "version": "1.0.0",
+  "layer": "L1",
+  "port": 9016,
+  "upstream": null,
+  "feeds": ["feed/raw"],
+  "health": "/health",
+  "stats": "/stats",
+  "events_consumed": [],
+  "events_produced": ["raw.game_state", "raw.trade", "raw.sidebet", "raw.seed_reveal"],
+  "description": "Direct WebSocket capture service for rugs.fun events"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "scalping-explorer",
+  "version": "0.1.0",
+  "description": "Offline dev/debug explorer for first-25-tick regime classification and deterministic scalp playbook simulation",
+  "author": "VECTRA",
+  "created": "2026-02-07",
+  "requires": {
+    "vectra-styles": "^1.0.0"
+  },
+  "events_consumed": [],
+  "events_emitted": [],
+  "api_endpoints": []
+}

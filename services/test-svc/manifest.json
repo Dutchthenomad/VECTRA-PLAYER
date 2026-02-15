@@ -1,0 +1,13 @@
+{
+  "name": "test-svc",
+  "version": "1.0.0",
+  "layer": "L2",
+  "port": 9021,
+  "upstream": "ws://localhost:9017/feed",
+  "feeds": ["feed/data"],
+  "health": "/health",
+  "stats": "/stats",
+  "events_consumed": [],
+  "events_produced": [],
+  "description": "TODO: Add service description"
+}

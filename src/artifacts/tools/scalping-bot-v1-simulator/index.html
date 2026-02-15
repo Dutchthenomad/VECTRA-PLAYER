@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalping Bot V1 Simulator - Dev Lab</title>
+    <link rel="stylesheet" href="../../shared/vectra-styles.css">
+    <style>
+        .v1sim .layout {
+            display: grid;
+            grid-template-columns: 390px 1fr;
+            gap: 12px;
+            min-height: calc(100vh - 132px);
+        }
+
+        .v1sim .panel-col {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .v1sim .desc {
+            color: var(--color-text-muted);
+            font-size: 13px;
+            line-height: 1.35;
+            margin: 0 0 8px;
+        }
+
+        .v1sim .steps {
+            margin: 0;
+            padding-left: 16px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .v1sim .steps li {
+            margin-bottom: 3px;
+        }
+
+        .v1sim .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .v1sim .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .v1sim .control-row label {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        .v1sim .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .v1sim .muted {
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        .v1sim .card pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .v1sim .pill {
+            display: inline-block;
+            border: 1px solid var(--color-border);
+            background: var(--ctp-surface0);
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .v1sim .table-wrap {
+            overflow: auto;
+            max-height: 280px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .v1sim table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .v1sim th,
+        .v1sim td {
+            border-bottom: 1px solid var(--color-border);
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .v1sim th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            font-weight: 600;
+            background: var(--ctp-mantle);
+        }
+
+        .v1sim .log-box {
+            background: var(--ctp-crust);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 8px;
+            max-height: 220px;
+            overflow: auto;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .v1sim .inspector-canvas {
+            width: 100%;
+            height: 280px;
+            background: var(--ctp-crust);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+        }
+
+        .v1sim .help-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 17, 27, 0.82);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .v1sim .help-modal {
+            width: min(920px, 96vw);
+            max-height: 88vh;
+            overflow: auto;
+            background: var(--ctp-base);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .v1sim .help-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .v1sim .help-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .v1sim .help-section {
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background: var(--ctp-mantle);
+            padding: 8px;
+        }
+
+        .v1sim .help-section h3 {
+            margin: 0 0 6px;
+            font-size: 14px;
+        }
+
+        .v1sim .help-section ul {
+            margin: 0;
+            padding-left: 16px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .v1sim .help-section p {
+            margin: 0 0 6px;
+            font-size: 12px;
+            color: var(--color-text-muted);
+            line-height: 1.35;
+        }
+
+        .v1sim .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 1100px) {
+            .v1sim .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .v1sim .help-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container v1sim">
+        <header class="artifact-header">
+            <h1>Scalping Bot V1 Simulator (Prototype Dev Lab)</h1>
+            <div class="connection-status">
+                <span class="connection-dot connected"></span>
+                <span>Offline Analysis Mode</span>
+            </div>
+        </header>
+
+        <main class="artifact-main">
+            <p class="desc">
+                V1 bot design sandbox. Load prerecorded games, toggle between system presets, run drift-anchored TP/SL permutations,
+                and inspect outcome windows in SOL before any live implementation decisions.
+            </p>
+
+            <div class="layout">
+                <section class="panel-col">
+                    <article class="card">
+                        <div class="card-header">Start Here (simple flow)</div>
+                        <ol class="steps">
+                            <li>Load one or more game recording files.</li>
+                            <li>Select a V1 bot profile preset (or custom).</li>
+                            <li>Run simulation on the selected exploration window.</li>
+                            <li>Read primary and secondary outcome windows.</li>
+                            <li>Inspect one game trace to understand why entries/exits fired.</li>
+                        </ol>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" id="helpBtn">Open Help Overlay</button>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Load Recorded Games</div>
+                        <p class="desc">
+                            Accepts <code>.json</code> and <code>.jsonl</code>. Compatible with exported scalping datasets and nested game history payloads.
+                        </p>
+                        <input class="input" id="fileInput" type="file" accept=".json,.jsonl" multiple>
+                        <div class="toolbar">
+                            <button class="btn btn-primary" id="loadBtn">Load Selected Files</button>
+                            <button class="btn btn-secondary" id="clearBtn">Clear Dataset</button>
+                        </div>
+                        <div class="pill" id="datasetStats">no dataset loaded</div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Exploration Window</div>
+                        <p class="desc">
+                            Defines the baseline classification scope and the latest tick where new entries are allowed.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row">
+                                <label for="classificationTicks">Classification Ticks</label>
+                                <input class="input" id="classificationTicks" type="number" min="12" step="1" value="20">
+                            </div>
+                            <div class="control-row">
+                                <label for="entryCutoffTick">No-New-Entry Tick</label>
+                                <input class="input" id="entryCutoffTick" type="number" min="1" step="1" value="55">
+                            </div>
+                            <div class="control-row">
+                                <label for="minTicks">Min Game Length</label>
+                                <input class="input" id="minTicks" type="number" min="30" step="1" value="60">
+                            </div>
+                            <div class="control-row">
+                                <label for="maxGames">Max Games (quick runs)</label>
+                                <input class="input" id="maxGames" type="number" min="1" step="1" value="500">
+                            </div>
+                        </div>
+                        <div class="muted" id="windowSummary">entry window starts at tick 21 and ends at tick 55</div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Bot Strategy Menu (V1)</div>
+                        <p class="desc">
+                            Use presets to toggle known systems quickly. Switch to custom if you want manual controls.
+                        </p>
+                        <div class="control-grid">
+                            <div class="control-row" style="grid-column: 1 / span 2;">
+                                <label for="profilePreset">Profile Preset</label>
+                                <select class="input" id="profilePreset">
+                                    <option value="V1_MOMENTUM_CORE">V1 Momentum Core (Recommended)</option>
+                                    <option value="V1_AUTO_BALANCED">V1 Auto Regime Balanced</option>
+                                    <option value="V1_AUTO_CONSERVATIVE">V1 Auto Conservative</option>
+                                    <option value="V1_BREAKOUT_PROBE">V1 Breakout Probe</option>
+                                    <option value="CUSTOM">Custom (manual)</option>
+                                </select>
+                            </div>
+                            <div class="control-row" style="grid-column: 1 / span 2;">
+                                <label for="profileNotes">Preset Notes</label>
+                                <pre id="profileNotes">Preset note not loaded yet.</pre>
+                            </div>
+                            <div class="control-row">
+                                <label for="playbookMode">Bot Signal Source</label>
+                                <select class="input" id="playbookMode">
+                                    <option value="AUTO_REGIME">Auto (regime-gated playbooks)</option>
+                                    <option value="P1_MOMENTUM">P1 Momentum</option>
+                                    <option value="P2_PULLBACK_CONT">P2 Pullback Continuation</option>
+                                    <option value="P3_MEAN_REVERT">P3 Mean Revert</option>
+                                    <option value="P4_BREAKOUT">P4 Breakout</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="driftReference">One-Tick Drift Reference</label>
+                                <select class="input" id="driftReference">
+                                    <option value="P50">P50 (smaller thresholds)</option>
+                                    <option value="P75" selected>P75 (balanced)</option>
+                                    <option value="P90">P90 (wider thresholds)</option>
+                                </select>
+                            </div>
+                            <div class="control-row">
+                                <label for="stakeSol">Stake Per Trade (SOL)</label>
+                                <input class="input" id="stakeSol" type="number" min="0.001" step="0.001" value="0.1">
+                            </div>
+                            <div class="control-row">
+                                <label for="startingBankrollSol">Starting Bankroll (SOL)</label>
+                                <input class="input" id="startingBankrollSol" type="number" min="0.01" step="0.01" value="10">
+                            </div>
+                            <div class="control-row">
+                                <label for="tpMultMin">TP Multiplier Min</label>
+                                <input class="input" id="tpMultMin" type="number" min="1" step="1" value="2">
+                            </div>
+                            <div class="control-row">
+                                <label for="tpMultMax">TP Multiplier Max</label>
+                                <input class="input" id="tpMultMax" type="number" min="1" step="1" value="4">
+                            </div>
+                            <div class="control-row">
+                                <label for="slMultMin">SL Multiplier Min</label>
+                                <input class="input" id="slMultMin" type="number" min="1" step="1" value="2">
+                            </div>
+                            <div class="control-row">
+                                <label for="slMultMax">SL Multiplier Max</label>
+                                <input class="input" id="slMultMax" type="number" min="1" step="1" value="4">
+                            </div>
+                            <div class="control-row">
+                                <label for="maxHoldTicks">Max Hold Ticks</label>
+                                <input class="input" id="maxHoldTicks" type="number" min="1" step="1" value="9">
+                            </div>
+                            <div class="control-row">
+                                <label for="cooldownTicks">Cooldown Ticks</label>
+                                <input class="input" id="cooldownTicks" type="number" min="0" step="1" value="0">
+                            </div>
+                            <div class="control-row" style="grid-column: 1 / span 2;">
+                                <label for="maxTradesPerGame">Max Trades Per Game</label>
+                                <input class="input" id="maxTradesPerGame" type="number" min="1" step="1" value="25">
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Run Controls</div>
+                        <div class="control-grid">
+                            <div class="control-row" style="grid-column: 1 / span 2;">
+                                <label for="gameSelect">Inspect Specific Game</label>
+                                <select class="input" id="gameSelect"></select>
+                            </div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn btn-success" id="runBtn">Run V1 Simulation</button>
+                            <button class="btn btn-secondary" id="inspectBtn">Inspect Selected Game</button>
+                        </div>
+                        <p class="muted" id="runStatus">Ready. Load data, pick profile, run simulation.</p>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Debug Log</div>
+                        <div class="log-box" id="debugLog">booting...</div>
+                    </article>
+                </section>
+
+                <section class="panel-col">
+                    <article class="card">
+                        <div class="card-header">Primary Results Window (best permutation + leaderboard)</div>
+                        <p class="desc">
+                            Reads all TP/SL permutations in your active profile window, then ranks by net SOL (tie-break by win rate, then trades).
+                        </p>
+                        <pre id="primarySummary">No run yet.</pre>
+                        <div class="table-wrap" style="margin-top: 8px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>TP / SL</th>
+                                        <th>TP% / SL%</th>
+                                        <th>Trades</th>
+                                        <th>Win %</th>
+                                        <th>Net SOL</th>
+                                        <th>End SOL</th>
+                                        <th>Exit Mix</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="permutationsBody">
+                                    <tr><td colspan="8">No run yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Secondary Results Window (per-game SOL outcomes)</div>
+                        <p class="desc">
+                            Outcome table for the selected top permutation so you can inspect min/max game contributions in SOL.
+                        </p>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Game</th>
+                                        <th>Regime</th>
+                                        <th>Trades</th>
+                                        <th>Win %</th>
+                                        <th>Net SOL</th>
+                                        <th>End SOL</th>
+                                        <th>Exit Mix</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gameOutcomesBody">
+                                    <tr><td colspan="8">No run yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">Game Inspector (single-game trace)</div>
+                        <p class="desc">
+                            Green marker = entry, red marker = exit. Yellow area = classification baseline. Pink area = no-new-entry zone.
+                        </p>
+                        <pre id="inspectSummary">No game inspected yet.</pre>
+                        <canvas class="inspector-canvas" id="chartCanvas" width="980" height="280"></canvas>
+                        <div class="table-wrap" style="margin-top: 8px; max-height: 230px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Playbook</th>
+                                        <th>Entry Tick</th>
+                                        <th>Exit Tick</th>
+                                        <th>Entry Px</th>
+                                        <th>Exit Px</th>
+                                        <th>Return %</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tradesBody">
+                                    <tr><td colspan="8">No game inspected yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </section>
+            </div>
+        </main>
+
+        <footer class="artifact-footer">
+            <span>Prototype scope: V1 toggleable bot architecture exploration on prerecorded games</span>
+            <span id="footerInfo">No dataset</span>
+        </footer>
+
+        <div class="help-overlay hidden" id="helpOverlay">
+            <div class="help-modal">
+                <div class="help-head">
+                    <h2 style="font-size: 16px; margin: 0;">V1 Help Overlay</h2>
+                    <button class="btn btn-secondary" id="helpCloseBtn">Close</button>
+                </div>
+                <div class="help-grid">
+                    <section class="help-section">
+                        <h3>How outcomes are defined</h3>
+                        <p>All outcomes are simulated from recorded tick series with one active position at a time.</p>
+                        <ul>
+                            <li>Classifier uses first N ticks to assign regime.</li>
+                            <li>Entry logic is either regime-gated auto mode or a forced single playbook.</li>
+                            <li>Exit occurs at TP, SL, or time limit (max hold ticks).</li>
+                            <li>Net SOL = sum of trade returns applied to fixed stake.</li>
+                            <li>End SOL = starting bankroll + net SOL.</li>
+                        </ul>
+                    </section>
+                    <section class="help-section">
+                        <h3>Preset toggles</h3>
+                        <p>Presets define a starting policy band. You can still switch to custom and override fields.</p>
+                        <ul>
+                            <li>Momentum Core: strongest current frontier from research checkpoint.</li>
+                            <li>Auto Balanced: regime-gated with wider playbook coverage.</li>
+                            <li>Auto Conservative: smaller baseline window and tighter hold.</li>
+                            <li>Breakout Probe: isolates breakout behavior for comparison.</li>
+                        </ul>
+                    </section>
+                    <section class="help-section">
+                        <h3>Reading the windows</h3>
+                        <ul>
+                            <li>Primary window: permutation leaderboard and selected best setting.</li>
+                            <li>Secondary window: per-game outcome spread under selected setting.</li>
+                            <li>Inspector: trade-by-trade trace for one selected game.</li>
+                        </ul>
+                    </section>
+                    <section class="help-section">
+                        <h3>Recommended starter dataset</h3>
+                        <ul>
+                            <li><code>/home/devops/rugs_data/exports/scalping_explorer/scalping_unique_games_min60_quick500.jsonl</code></li>
+                            <li><code>/home/devops/rugs_data/exports/scalping_explorer/scalping_unique_games_min60.jsonl</code></li>
+                        </ul>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

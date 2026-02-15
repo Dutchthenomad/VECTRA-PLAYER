@@ -1,201 +1,153 @@
-# VECTRA-PLAYER Session Scratchpad
+# VECTRA-BOILERPLATE Session Scratchpad
 
-Last Updated: 2026-01-13 22:00 UTC
-
----
-
-## CURRENT STATUS: Unified Control Panel COMPLETE
-
-**Unified Dashboard:** Flask web dashboard with integrated trading controls
-**One-Command Startup:** `./scripts/start.sh` launches Chrome + Dashboard
-**All Tabs Verified:** Recording, Explorer, Backtest with live WebSocket feed
+Last Updated: 2026-01-25 (Current Session)
 
 ---
 
-## What Was Accomplished (Jan 13, 2026 - Unified Control Panel Session)
+## CURRENT STATUS: Trade API + Minimal Trading UI COMPLETE
 
-### Session: Merge Tkinter MinimalWindow into Flask Dashboard
+**Just Completed:**
+- Trade API endpoints in Foundation HTTP server
+- Minimal Trading artifact with full button mapping
+- Recording Control bug fixes (16 issues)
 
-**Goal:** Create unified web control panel that replaces the separate Tkinter UI
-
-**Problem Solved:**
-- Previously required running TWO separate applications (Tkinter + Flask Dashboard)
-- Flask dashboard couldn't connect to Chrome or execute trades
-- Recording didn't work because EventBus wasn't started
-
-**Architecture:**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  UNIFIED FLASK DASHBOARD                     │
-├─────────────────────────────────────────────────────────────┤
-│  start.sh                                                    │
-│     ├── Launch Chrome with rugs_bot profile (CDP port 9222) │
-│     └── Start Flask dashboard (port 5000)                   │
-│                                                              │
-│  Flask App (app.py)                                          │
-│     ├── event_bus.start()          ← CRITICAL FIX           │
-│     ├── EventStoreService          ← Parquet persistence    │
-│     ├── BrowserService             ← Chrome/CDP integration │
-│     └── Trading API endpoints      ← /api/trade/*           │
-│                                                              │
-│  Backtest Tab (backtest.html)                               │
-│     ├── BUY / SIDE / SELL buttons                           │
-│     ├── Bet amount controls                                  │
-│     ├── Live WebSocket feed                                  │
-│     └── Browser connection status                            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Files Created/Modified
-
-**1. `src/recording_ui/services/browser_service.py` (NEW - ~400 lines)**
-   - Flask-compatible wrapper for BrowserBridge
-   - Synchronous API methods for Flask endpoints
-   - EventBus → SocketIO forwarding for real-time updates
-   - GameState tracking for UI display
-
-**2. `src/recording_ui/app.py` (MODIFIED)**
-   - Added imports: `event_bus`, `EventStoreService`
-   - Added `event_bus.start()` - **CRITICAL FIX** (events weren't being delivered)
-   - Added `EventStoreService` initialization and startup
-   - Added browser control endpoints: `/api/browser/connect`, `/api/browser/disconnect`, `/api/browser/status`
-   - Added trading endpoints: `/api/trade/buy`, `/api/trade/sell`, `/api/trade/sidebet`
-   - Added bet control endpoints: `/api/trade/increment`, `/api/trade/percentage`, `/api/trade/clear`, `/api/trade/half`, `/api/trade/double`, `/api/trade/max`
-   - Updated `/api/status` to use EventStoreService directly
-   - Updated `/api/recording/toggle` to use EventStoreService.toggle_recording()
-
-**3. `src/recording_ui/templates/backtest.html` (MODIFIED)**
-   - Added Browser Control card in sidebar
-   - Added Trading card with compact BUY/SIDE/SELL buttons
-   - Added bet amount display and increment buttons
-   - Added percentage buttons (25%, 50%, 100%)
-
-**4. `src/recording_ui/static/js/backtest.js` (MODIFIED)**
-   - Added trading control functions: `clickBuy()`, `clickSell()`, `clickSidebet()`
-   - Added `toggleConnection()` for browser connect/disconnect
-   - Added `clickIncrement()` for bet amount adjustment
-   - Added `updateBrowserUI()` and `updateGameStateUI()` for real-time updates
-
-**5. `scripts/start.sh` (MODIFIED)**
-   - Fixed Chrome profile path to match CDPBrowserManager
-   - Uses `--user-data-dir="$HOME/.gamebot/chrome_profiles/rugs_bot"`
-   - Single command launches Chrome + Dashboard
+**Ready for Testing:** `./vectra start` then test Trade API
 
 ---
 
-## Critical Bug Fixed
+## Session Summary (2026-01-25)
 
-### EventBus Processing Thread Not Started
+### Trade API Implementation
 
-**Symptom:** Recording toggle worked but no events were captured
+Added `/api/trade/*` endpoints to Foundation HTTP server (port 9001):
 
-**Root Cause:** Flask app initialized EventStoreService but never called `event_bus.start()` to start the processing thread
+| Endpoint | Action |
+|----------|--------|
+| `POST /api/trade/buy` | Click BUY in browser |
+| `POST /api/trade/sell` | Click SELL (optional percentage) |
+| `POST /api/trade/sidebet` | Click SIDEBET |
+| `POST /api/trade/increment` | Click +0.001/+0.01/+0.1/+1 |
+| `POST /api/trade/percentage` | Click 10%/25%/50%/100% |
+| `POST /api/trade/clear` | Click X (clear) |
+| `POST /api/trade/half` | Click 1/2 |
+| `POST /api/trade/double` | Click X2 |
+| `POST /api/trade/max` | Click MAX |
 
-**Fix Applied to `app.py`:**
-```python
-# Start the event bus processing thread (required for event delivery)
-event_bus.start()
-logger.info("EventBus processing thread started")
+### Files Modified
 
-# Initialize EventStoreService for Parquet persistence
-event_store_service = EventStoreService(event_bus)
-event_store_service.start()
-```
+| File | Change |
+|------|--------|
+| `src/foundation/http_server.py` | Added Trade API endpoints |
+| `src/foundation/launcher.py` | BrowserExecutor injection |
+| `src/artifacts/tools/minimal-trading/app.js` | TradeExecutor + button wiring |
+| `src/artifacts/tools/minimal-trading/styles.css` | Loading/feedback states |
+| `src/artifacts/tools/recording-control/app.js` | 16 bug fixes |
 
-**Result:** Recording now captures events correctly (verified: 2198 events, 13 games in testing)
+### Recording Control Bug Fixes
+
+**Critical (5):**
+1. Wrong ticks field name (now tries multiple)
+2. Missing lastError display
+3. No interval cleanup (added cleanup())
+4. Null refs in updateRecordingStatus
+5. Null refs in updateStats
+
+**Logic (4):**
+6. Hardcoded 50GB max (now from API)
+7. XSS in color param (regex validation)
+8. RUG event race condition (debouncing)
+9. No API response validation
+
+**Minor (7):**
+10-16. Error handling, null checks, debouncing, etc.
 
 ---
 
-## Verification Results
-
-### Recording Tab ✅
-- Recording toggle works
-- Events captured: 2198
-- Games captured: 13
-- Training data: 10+ games, 200+ sidebets, 1400+ ticks
-- EventStoreService persists to Parquet
-
-### Explorer Tab ✅
-- Page loads correctly
-- API returns data: 943 total games, 362 playable
-- Strategy stats and price curves available
-
-### Backtest Tab ✅
-- Trading buttons execute via Chrome CDP:
-  - BUY → POST /api/trade/buy 200 ✅
-  - SIDEBET → POST /api/trade/sidebet 200 ✅
-  - SELL → POST /api/trade/sell 200 ✅
-- Bet amount controls work (+.01 incremented bet)
-- Live WebSocket feed receives real-time game data
-- SocketIO connection established
-
----
-
-## Commands
+## Verification Commands
 
 ```bash
-# Start unified control panel (one command)
-./scripts/start.sh
+# Start Foundation with Trade API
+./vectra start
 
-# Or start without auto-opening browser
-./scripts/start.sh --no-browser
+# Test API directly
+curl -X POST http://localhost:9001/api/trade/buy
+curl -X POST http://localhost:9001/api/trade/increment -H "Content-Type: application/json" -d '{"amount": 0.01}'
 
-# Dashboard URL
-http://localhost:5000
+# Open minimal-trading UI
+xdg-open http://localhost:9001/artifacts/minimal-trading/
 
-# Dashboard tabs:
-# - Recording: Toggle recording, view captured games
-# - Explorer: Strategy analysis, Monte Carlo
-# - Backtest: Live trading with WebSocket feed
-# - Profiles: Trading profile management
+# Check recording service
+curl http://localhost:9010/health
 ```
 
 ---
 
-## API Reference (New Endpoints)
+## Architecture Reference
 
-### Browser Control
 ```
-POST /api/browser/connect     # Connect to Chrome via CDP
-POST /api/browser/disconnect  # Disconnect (keep Chrome running)
-GET  /api/browser/status      # Connection status + game state
-```
-
-### Trading Actions
-```
-POST /api/trade/buy           # Click BUY button
-POST /api/trade/sell          # Click SELL button
-POST /api/trade/sidebet       # Click SIDEBET button
-POST /api/trade/increment     # {"amount": 0.01} - add to bet
-POST /api/trade/percentage    # {"pct": 50} - set sell percentage
-POST /api/trade/clear         # Clear bet to 0
-POST /api/trade/half          # Halve current bet
-POST /api/trade/double        # Double current bet
-POST /api/trade/max           # Set to max balance
+┌─────────────────────────────────────────────────────────────┐
+│                    FOUNDATION SERVICE (9000/9001)           │
+│  ├── CDP Interceptor → Captures rugs.fun WebSocket         │
+│  ├── Normalizer → Converts to game.tick, player.state      │
+│  ├── Broadcaster → ws://localhost:9000/feed                │
+│  └── Trade API → /api/trade/* (BrowserExecutor)            │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+         ┌────────────────────┼────────────────────┐
+         ↓                    ↓                    ↓
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│minimal-trading  │  │recording-control│  │ Future Tools    │
+│/artifacts/...   │  │/artifacts/...   │  │                 │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
 ---
 
-## Previous Session (Monte Carlo)
+## Next Steps (Priority Order)
 
-Monte Carlo strategy comparison remains intact:
-- `src/recording_ui/services/monte_carlo.py` - Simulation engine
-- `src/recording_ui/services/monte_carlo_service.py` - 8 strategies
-- `/api/explorer/monte-carlo` endpoint
-- Game Explorer "Monte Carlo" tab
+1. **Test Trade API end-to-end**
+   - Start `./vectra start`
+   - Open minimal-trading artifact
+   - Click buttons, verify browser clicks
+
+2. **Build Prediction Engine artifact**
+   - Port Bayesian forecaster from Python
+   - Real-time price predictions
+   - Confidence intervals
+
+3. **Build Seed Bruteforce artifact**
+   - Port PRNG analysis
+   - Pattern detection UI
+
+4. **Build Orchestrator**
+   - Tab wrapper for all artifacts
+   - Single WebSocket connection
+
+5. **Pipeline D: Training Data**
+   - Observation builder
+   - Episode segmenter
+   - Training generator
 
 ---
 
-## Related Files
+## Port Allocation (from PORT-ALLOCATION-SPEC)
 
-| Component | Location |
-|-----------|----------|
-| Browser Bridge | `src/browser/bridge.py` |
-| CDP Manager | `src/browser/manager.py` |
-| EventBus | `src/services/event_bus.py` |
-| EventStoreService | `src/services/event_store/service.py` |
-| Start Script | `scripts/start.sh` |
+| Port | Service | Status |
+|------|---------|--------|
+| 9000 | Foundation WS | **SACRED** |
+| 9001 | Foundation HTTP + Trade API | **SACRED** |
+| 9010 | Recording Service | Active |
+| 9011-9019 | Future Subscribers | Available |
+| 9222 | Chrome CDP | Fixed |
 
 ---
 
-*Scratchpad updated - Unified Control Panel complete, all tabs verified*
+## Commit Reference
+
+```
+7efa6cc feat(trading): Add Trade API and fix recording-control bugs
+```
+
+---
+
+*Scratchpad updated for session continuity*

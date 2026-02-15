@@ -1,0 +1,13 @@
+{
+  "name": "scalping-bot-v1-simulator",
+  "version": "0.1.0",
+  "description": "Offline V1 bot simulator for profile-toggle scalp exploration using prerecorded tick data",
+  "author": "VECTRA",
+  "created": "2026-02-08",
+  "requires": {
+    "vectra-styles": "^1.0.0"
+  },
+  "events_consumed": [],
+  "events_emitted": [],
+  "api_endpoints": []
+}

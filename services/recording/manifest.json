@@ -1,0 +1,13 @@
+{
+  "name": "recording",
+  "version": "1.0.0",
+  "layer": "L1",
+  "port": 9010,
+  "upstream": "ws://localhost:9000/feed",
+  "feeds": [],
+  "health": "/health",
+  "stats": "/recording/stats",
+  "events_consumed": ["game.tick"],
+  "events_produced": [],
+  "description": "Game data capture via gameHistory extraction on RUG events"
+}

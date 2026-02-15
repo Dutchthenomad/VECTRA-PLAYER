@@ -1,0 +1,8 @@
+# Rugs Sanitizer Service - Pinned Dependencies
+# Last pinned: 2026-02-14 (VEC-001)
+
+pydantic==2.12.5
+fastapi==0.128.0
+uvicorn==0.40.0
+websockets==12.0
+pyyaml==6.0.3
