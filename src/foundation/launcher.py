@@ -29,6 +29,7 @@ src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
+from foundation.auth_waiter import AuthenticationWaiter
 from foundation.config import FoundationConfig
 from foundation.http_server import FoundationHTTPServer
 from foundation.service import FoundationService
@@ -62,7 +63,12 @@ class FoundationLauncher:
     """
 
     MONITOR_URL = "http://localhost:{port}"
-    AUTH_TIMEOUT = 10.0  # seconds to wait for usernameStatus
+
+    # Authentication configuration (exponential backoff)
+    AUTH_MAX_WAIT = 60.0  # Maximum wait time (was 10.0)
+    AUTH_INITIAL_INTERVAL = 0.5  # Start checking every 0.5s
+    AUTH_MAX_INTERVAL = 5.0  # Cap at 5s between checks
+    AUTH_BACKOFF_MULTIPLIER = 1.5  # Grow interval by 50% each time
 
     def __init__(self, config: FoundationConfig = None):
         self.config = config or FoundationConfig()
@@ -83,8 +89,15 @@ class FoundationLauncher:
         self._browser_manager = None
         self._interceptor = None
         self._cdp_session = None
-        self._auth_event = asyncio.Event()
         self._broadcaster_task = None
+
+        # Event-driven authentication with exponential backoff
+        self._auth_waiter = AuthenticationWaiter(
+            max_wait_seconds=self.AUTH_MAX_WAIT,
+            initial_check_interval=self.AUTH_INITIAL_INTERVAL,
+            max_check_interval=self.AUTH_MAX_INTERVAL,
+            backoff_multiplier=self.AUTH_BACKOFF_MULTIPLIER,
+        )
 
         logger.info("FoundationLauncher initialized")
 
@@ -230,7 +243,9 @@ class FoundationLauncher:
         if self._browser_manager and self._browser_manager.page:
             # Reload the page to trigger fresh WebSocket connection
             # (interception is already active, so we'll capture the auth event)
-            await self._browser_manager.page.reload(wait_until="networkidle")
+            # Use "domcontentloaded" instead of "networkidle" because rugs.fun
+            # has constant WebSocket activity that prevents network idle
+            await self._browser_manager.page.reload(wait_until="domcontentloaded")
             logger.info("  Tab 1: https://rugs.fun (reloaded)")
 
             # Wait for page to settle and extensions to inject
@@ -252,12 +267,12 @@ class FoundationLauncher:
         if self._browser_manager and self._browser_manager.context:
             # Tab 2: Foundation System Monitor (detailed event view)
             monitor_page = await self._browser_manager.context.new_page()
-            await monitor_page.goto(monitor_url, wait_until="networkidle")
+            await monitor_page.goto(monitor_url, wait_until="domcontentloaded")
             logger.info(f"  Tab 2: {monitor_url} (System Monitor)")
 
             # Tab 3: VECTRA Control Panel (service management)
             control_page = await self._browser_manager.context.new_page()
-            await control_page.goto(control_panel_url, wait_until="networkidle")
+            await control_page.goto(control_panel_url, wait_until="domcontentloaded")
             logger.info(f"  Tab 3: {control_panel_url} (Control Panel)")
         else:
             logger.info(f"  System Monitor: {monitor_url}")
@@ -265,40 +280,98 @@ class FoundationLauncher:
             logger.info("  (Open manually in Chrome)")
 
     async def _wait_for_authentication(self) -> bool:
-        """Wait for usernameStatus event."""
-        logger.info(f"Waiting for authentication (timeout: {self.AUTH_TIMEOUT}s)...")
+        """
+        Wait for player authentication using event-driven detection.
 
+        Uses exponential backoff checking and supports multiple event sources
+        for extracting player identity (connection.authenticated, player.state,
+        game.tick leaderboard, connection.status).
+
+        Returns:
+            True if fully authenticated, False if partial/timeout
+        """
         self.service.set_connecting()
 
         try:
-            await asyncio.wait_for(self._auth_event.wait(), timeout=self.AUTH_TIMEOUT)
-            return True
-        except TimeoutError:
-            logger.warning("Authentication timeout")
+            auth_state = await self._auth_waiter.wait_for_authentication()
+
+            if auth_state.is_fully_authenticated:
+                # Update connection state with player identity
+                self.service.connection_state.username = auth_state.username
+                self.service.connection_state.player_id = auth_state.player_id
+                self.service.connection_state.status = (
+                    self.service.connection_state.status.__class__.AUTHENTICATED
+                )
+
+                # Broadcast authentication event to monitor UI
+                # (usernameStatus may have been empty, so we emit manually)
+                import time
+
+                from foundation.normalizer import NormalizedEvent
+
+                auth_event = NormalizedEvent(
+                    type="connection.authenticated",
+                    ts=int(time.time() * 1000),
+                    game_id=auth_state.game_id,
+                    seq=0,  # Sequence will be set by broadcaster
+                    data={
+                        "username": auth_state.username,
+                        "player_id": auth_state.player_id,
+                    },
+                )
+                self.service.broadcaster.broadcast(auth_event)
+                logger.info(f"Broadcast authentication: {auth_state.username}")
+
+                return True
+            else:
+                # Partial authentication (game data but no player identity)
+                logger.warning("Running in read-only mode (no player identity)")
+                return False
+
+        except TimeoutError as e:
+            logger.error(f"Authentication failed: {e}")
             return False
 
     def _on_cdp_event(self, event: dict):
         """
         Handle event from CDP interception.
 
-        Feeds events to Foundation service for normalization and broadcast.
+        Feeds events to:
+        1. Foundation service for normalization and broadcast
+        2. AuthenticationWaiter for player identity extraction
         """
-        event_name = event.get("event", "")
-
         # Feed to Foundation service
         self.service.on_raw_event(event)
 
-        # Check for authentication event
+        # Convert raw CDP event to normalized format for auth waiter
+        # The normalizer converts "gameStateUpdate" -> "game.tick", etc.
+        event_name = event.get("event", "")
+        data = event.get("data") or {}
+        game_id = event.get("gameId") or data.get("gameId")
+
+        # Map raw event names to normalized types for auth waiter
+        type_map = {
+            "gameStateUpdate": "game.tick",
+            "playerUpdate": "player.state",
+            "usernameStatus": "connection.authenticated",
+            "playerLeaderboardPosition": "player.leaderboard",  # Contains YOUR identity
+        }
+
+        normalized_type = type_map.get(event_name, event_name)
+
+        # Feed to auth waiter for player identity extraction
+        normalized_event = {
+            "type": normalized_type,
+            "gameId": game_id,
+            "data": data,
+        }
+        self._auth_waiter._update_state_from_event(normalized_event)
+
+        # Legacy: Also handle usernameStatus for connection state
         if event_name == "usernameStatus":
-            data = event.get("data") or {}
             logger.debug(f"usernameStatus data: {data}")
-            if data.get("hasUsername") and data.get("username"):
-                logger.info(f"  Authenticated as: {data.get('username')}")
-                self._auth_event.set()
-            elif data.get("username"):
-                # Alternative: just check for username presence
-                logger.info(f"  Authenticated as: {data.get('username')}")
-                self._auth_event.set()
+            if data.get("username"):
+                logger.info(f"  usernameStatus received: {data.get('username')}")
 
     async def _create_trade_executor(self):
         """Create BrowserExecutor for Trade API and inject into HTTP server."""

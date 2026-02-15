@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VECTRA-PLAYER Project Status</title>
+    <style>
+        /* Catppuccin Mocha Theme */
+        :root {
+            --ctp-rosewater: #f5e0dc;
+            --ctp-flamingo: #f2cdcd;
+            --ctp-pink: #f5c2e7;
+            --ctp-mauve: #cba6f7;
+            --ctp-red: #f38ba8;
+            --ctp-maroon: #eba0ac;
+            --ctp-peach: #fab387;
+            --ctp-yellow: #f9e2af;
+            --ctp-green: #a6e3a1;
+            --ctp-teal: #94e2d5;
+            --ctp-sky: #89dceb;
+            --ctp-sapphire: #74c7ec;
+            --ctp-blue: #89b4fa;
+            --ctp-lavender: #b4befe;
+            --ctp-text: #cdd6f4;
+            --ctp-subtext1: #bac2de;
+            --ctp-subtext0: #a6adc8;
+            --ctp-overlay2: #9399b2;
+            --ctp-overlay1: #7f849c;
+            --ctp-overlay0: #6c7086;
+            --ctp-surface2: #585b70;
+            --ctp-surface1: #45475a;
+            --ctp-surface0: #313244;
+            --ctp-base: #1e1e2e;
+            --ctp-mantle: #181825;
+            --ctp-crust: #11111b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--ctp-base);
+            color: var(--ctp-text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--ctp-mantle), var(--ctp-crust));
+            border-bottom: 2px solid var(--ctp-mauve);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: var(--ctp-mauve);
+            margin-bottom: 0.5rem;
+        }
+
+        header .subtitle {
+            color: var(--ctp-subtext0);
+            font-size: 1.1rem;
+        }
+
+        .meta-info {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            background: var(--ctp-surface0);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .meta-item strong {
+            color: var(--ctp-peach);
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--ctp-surface0);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--ctp-surface1);
+        }
+
+        .card h2 {
+            color: var(--ctp-lavender);
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--ctp-surface1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card h2 .icon {
+            font-size: 1.5rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: var(--ctp-mantle);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--ctp-green);
+        }
+
+        .stat-box .label {
+            font-size: 0.8rem;
+            color: var(--ctp-subtext0);
+            margin-top: 0.25rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--ctp-surface1);
+        }
+
+        th {
+            background: var(--ctp-mantle);
+            color: var(--ctp-subtext1);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: var(--ctp-surface1);
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-complete {
+            background: var(--ctp-green);
+            color: var(--ctp-crust);
+        }
+
+        .badge-ready {
+            background: var(--ctp-yellow);
+            color: var(--ctp-crust);
+        }
+
+        .badge-pending {
+            background: var(--ctp-overlay0);
+            color: var(--ctp-text);
+        }
+
+        .badge-active {
+            background: var(--ctp-blue);
+            color: var(--ctp-crust);
+        }
+
+        .badge-healthy {
+            background: var(--ctp-green);
+            color: var(--ctp-crust);
+        }
+
+        .badge-warning {
+            background: var(--ctp-peach);
+            color: var(--ctp-crust);
+        }
+
+        /* Architecture Diagram */
+        .architecture {
+            background: var(--ctp-mantle);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+
+        .architecture .highlight {
+            color: var(--ctp-mauve);
+        }
+
+        .architecture .port {
+            color: var(--ctp-peach);
+        }
+
+        .architecture .service {
+            color: var(--ctp-green);
+        }
+
+        /* Progress Bars */
+        .progress-container {
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--ctp-surface1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ctp-green), var(--ctp-teal));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        /* File Tree */
+        .file-tree {
+            background: var(--ctp-mantle);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .file-tree .folder {
+            color: var(--ctp-blue);
+        }
+
+        .file-tree .file {
+            color: var(--ctp-text);
+        }
+
+        .file-tree .comment {
+            color: var(--ctp-overlay0);
+        }
+
+        /* Commits */
+        .commit {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--ctp-mantle);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+
+        .commit-hash {
+            font-family: 'Courier New', monospace;
+            color: var(--ctp-peach);
+            font-size: 0.85rem;
+            min-width: 70px;
+        }
+
+        .commit-message {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .commit-type {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: var(--ctp-surface1);
+            color: var(--ctp-subtext0);
+        }
+
+        /* Full Width Card */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Lists */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--ctp-surface1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        ul li:last-child {
+            border-bottom: none;
+        }
+
+        ul li::before {
+            content: '→';
+            color: var(--ctp-mauve);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--ctp-overlay0);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--ctp-surface1);
+            margin-top: 2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .meta-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VECTRA-PLAYER</h1>
+            <p class="subtitle">Unified Data Architecture for rugs.fun</p>
+            <div class="meta-info">
+                <div class="meta-item"><strong>Status:</strong> Active Development</div>
+                <div class="meta-item"><strong>Schema:</strong> v2.0.0</div>
+                <div class="meta-item"><strong>Tests:</strong> 1,149+ passing</div>
+                <div class="meta-item"><strong>Updated:</strong> 2026-01-18</div>
+            </div>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="card full-width">
+            <h2><span class="icon">📊</span> Quick Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="value">32K+</div>
+                    <div class="label">Parquet Events</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">2,835</div>
+                    <div class="label">Games Dataset</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">204</div>
+                    <div class="label">Button Events</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">1,149</div>
+                    <div class="label">Tests Passing</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">18</div>
+                    <div class="label">Artifact Files</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">4,045</div>
+                    <div class="label">Lines of Code</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Phase Status -->
+            <div class="card">
+                <h2><span class="icon">🎯</span> Phase Status</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>12A-12D</td>
+                            <td>Event Schemas & Storage</td>
+                            <td><span class="badge badge-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Schema v2</td>
+                            <td>Expanded Event Schema</td>
+                            <td><span class="badge badge-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Pipeline A-C</td>
+                            <td>Server State & Actions</td>
+                            <td><span class="badge badge-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Foundation</td>
+                            <td>WebSocket Broadcaster</td>
+                            <td><span class="badge badge-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Artifacts</td>
+                            <td>HTML Tool Framework</td>
+                            <td><span class="badge badge-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Pipeline D</td>
+                            <td>Training Data Pipeline</td>
+                            <td><span class="badge badge-ready">Ready</span></td>
+                        </tr>
+                        <tr>
+                            <td>12E</td>
+                            <td>Protocol Explorer UI</td>
+                            <td><span class="badge badge-pending">Pending</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Service Status -->
+            <div class="card">
+                <h2><span class="icon">🔌</span> Service Status</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Port</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Flask Recording UI</td>
+                            <td>5000</td>
+                            <td><span class="badge badge-healthy">Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td>Foundation WebSocket</td>
+                            <td>9000</td>
+                            <td><span class="badge badge-healthy">Ready</span></td>
+                        </tr>
+                        <tr>
+                            <td>Foundation Monitor</td>
+                            <td>9001</td>
+                            <td><span class="badge badge-healthy">Ready</span></td>
+                        </tr>
+                        <tr>
+                            <td>Chrome CDP</td>
+                            <td>9222</td>
+                            <td><span class="badge badge-healthy">Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td>rugs-expert MCP (VPS)</td>
+                            <td>8001</td>
+                            <td><span class="badge badge-healthy">Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td>RAG API (VPS)</td>
+                            <td>8000</td>
+                            <td><span class="badge badge-healthy">Healthy</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Recent Commits -->
+            <div class="card">
+                <h2><span class="icon">📝</span> Recent Commits</h2>
+                <div class="commit">
+                    <span class="commit-hash">b2ea9c7</span>
+                    <span class="commit-message">Update GLOBAL-DEVELOPMENT-PLAN with Foundation Service</span>
+                    <span class="commit-type">docs</span>
+                </div>
+                <div class="commit">
+                    <span class="commit-hash">8eb1101</span>
+                    <span class="commit-message">Add HTML artifact framework (18 files)</span>
+                    <span class="commit-type">feat</span>
+                </div>
+                <div class="commit">
+                    <span class="commit-hash">7098bf0</span>
+                    <span class="commit-message">Add Foundation Service from feature branch</span>
+                    <span class="commit-type">feat</span>
+                </div>
+                <div class="commit">
+                    <span class="commit-hash">adb89ba</span>
+                    <span class="commit-message">Add project status, architecture, and consolidation plan</span>
+                    <span class="commit-type">docs</span>
+                </div>
+            </div>
+
+            <!-- Core Components -->
+            <div class="card">
+                <h2><span class="icon">🧩</span> Core Components</h2>
+                <ul>
+                    <li><strong>EventBus</strong> - Central pub/sub for all events</li>
+                    <li><strong>EventStore</strong> - Parquet persistence layer</li>
+                    <li><strong>LiveStateProvider</strong> - Real-time game state</li>
+                    <li><strong>BrowserBridge</strong> - Chrome CDP interface</li>
+                    <li><strong>Foundation Service</strong> - WebSocket broadcaster</li>
+                    <li><strong>BotActionInterface</strong> - Trading automation</li>
+                </ul>
+            </div>
+
+            <!-- Architecture Diagram -->
+            <div class="card full-width">
+                <h2><span class="icon">🏗️</span> System Architecture</h2>
+                <div class="architecture">
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              <span class="highlight">VECTRA-PLAYER</span>                                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   <span class="service">Chrome</span> (<span class="port">9222</span>)                                                              │
+│       │                                                                         │
+│       ▼                                                                         │
+│   <span class="service">BrowserBridge</span> ──────► <span class="service">EventBus</span> ──────► <span class="service">EventStore</span> ──────► <span class="highlight">Parquet</span>           │
+│       │                    │                                                    │
+│       │                    ▼                                                    │
+│       │              <span class="service">LiveStateProvider</span>                                         │
+│       │                    │                                                    │
+│       ▼                    ▼                                                    │
+│   <span class="service">Foundation Service</span>   <span class="service">Recording UI</span> (<span class="port">5000</span>)                                    │
+│   (<span class="port">9000</span>/<span class="port">9001</span>)                                                                │
+│       │                                                                         │
+│       ▼                                                                         │
+│   <span class="highlight">HTML Artifacts</span>                                                               │
+│   ├── Seed Bruteforce                                                           │
+│   ├── Prediction Engine                                                         │
+│   └── Orchestrator                                                              │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <!-- Artifact Framework -->
+            <div class="card">
+                <h2><span class="icon">📦</span> Artifact Framework</h2>
+                <div class="file-tree">
+<span class="folder">src/artifacts/</span>
+├── <span class="folder">shared/</span>
+│   ├── <span class="file">foundation-ws-client.js</span> <span class="comment"># WebSocket client</span>
+│   └── <span class="file">vectra-styles.css</span> <span class="comment"># Catppuccin theme</span>
+├── <span class="folder">templates/</span>
+│   ├── <span class="file">artifact-template.html</span>
+│   └── <span class="file">artifact-template.js</span>
+├── <span class="folder">tools/</span>
+│   ├── <span class="folder">seed-bruteforce/</span> <span class="comment"># PRNG analysis</span>
+│   └── <span class="folder">prediction-engine/</span> <span class="comment"># Bayesian predictor</span>
+│       └── <span class="folder">components/</span>
+│           ├── <span class="file">equilibrium-tracker.js</span>
+│           ├── <span class="file">dynamic-weighter.js</span>
+│           ├── <span class="file">stochastic-oscillator.js</span>
+│           └── <span class="file">bayesian-forecaster.js</span>
+└── <span class="folder">orchestrator/</span> <span class="comment"># Tab wrapper</span>
+    ├── <span class="file">index.html</span>
+    ├── <span class="file">orchestrator.js</span>
+    └── <span class="file">registry.json</span>
+                </div>
+            </div>
+
+            <!-- Event Types -->
+            <div class="card">
+                <h2><span class="icon">📡</span> Event Types (Foundation)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Source</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>game.tick</code></td>
+                            <td>gameStateUpdate</td>
+                            <td>Price/tick stream</td>
+                        </tr>
+                        <tr>
+                            <td><code>player.state</code></td>
+                            <td>playerUpdate</td>
+                            <td>Balance/position</td>
+                        </tr>
+                        <tr>
+                            <td><code>player.trade</code></td>
+                            <td>standard/newTrade</td>
+                            <td>Trade events</td>
+                        </tr>
+                        <tr>
+                            <td><code>sidebet.placed</code></td>
+                            <td>currentSidebet</td>
+                            <td>Sidebet events</td>
+                        </tr>
+                        <tr>
+                            <td><code>connection.*</code></td>
+                            <td>usernameStatus</td>
+                            <td>Auth status</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Progress -->
+            <div class="card full-width">
+                <h2><span class="icon">📈</span> Overall Progress</h2>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Core Infrastructure</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Event Schemas (v2.0.0)</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Foundation Service</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>HTML Artifact Framework</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Pipeline D (Training Data)</span>
+                        <span>0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Protocol Explorer UI</span>
+                        <span>0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Steps -->
+            <div class="card">
+                <h2><span class="icon">🎯</span> Next Priority: Pipeline D</h2>
+                <p style="margin-bottom: 1rem; color: var(--ctp-subtext0);">
+                    Generate RL training data from captured gameplay sessions.
+                </p>
+                <ul>
+                    <li>Observation vector builder (36 features)</li>
+                    <li>Episode boundary detection</li>
+                    <li>Training dataset generator</li>
+                    <li>RL environment integration</li>
+                </ul>
+            </div>
+
+            <!-- Key Documents -->
+            <div class="card">
+                <h2><span class="icon">📚</span> Key Documents</h2>
+                <ul>
+                    <li><code>CLAUDE.md</code> - Project instructions</li>
+                    <li><code>docs/STATUS.md</code> - Current state</li>
+                    <li><code>docs/ARCHITECTURE.md</code> - System design</li>
+                    <li><code>docs/plans/GLOBAL-DEVELOPMENT-PLAN.md</code> - Master roadmap</li>
+                    <li><code>docs/plans/2026-01-17-consolidation-plan.md</code> - Latest plan</li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p>VECTRA-PLAYER &bull; Schema v2.0.0 &bull; Generated 2026-01-18</p>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+                Fork of REPLAYER &bull; Unified Data Architecture for rugs.fun
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-refresh timestamp
+        document.addEventListener('DOMContentLoaded', () => {
+            const now = new Date().toLocaleString();
+            console.log('Project status loaded at:', now);
+        });
+    </script>
+</body>
+</html>

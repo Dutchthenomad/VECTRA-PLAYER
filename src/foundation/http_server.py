@@ -102,6 +102,12 @@ class FoundationHTTPServer:
         if self.static_dir.exists():
             self.app.router.add_static("/static", self.static_dir)
 
+        # Artifacts directory - HTML tools (prediction engine, seed bruteforce, etc.)
+        # Served at /artifacts/* - e.g., /artifacts/orchestrator/index.html
+        if self.artifacts_dir.exists():
+            self.app.router.add_static("/artifacts", self.artifacts_dir)
+            logger.info(f"Serving artifacts from {self.artifacts_dir}")
+
     async def _handle_health(self, request: web.Request) -> web.Response:
         """
         Health check endpoint.

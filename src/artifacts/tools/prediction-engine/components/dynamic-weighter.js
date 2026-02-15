@@ -32,8 +32,8 @@ class DynamicWeighter {
         const strength = state.regimeStrength;
         const volatility = state.sigma;
 
-        // Base weights from regime
-        const baseWeights = { ...this.regimeWeights[regime] };
+        // Base weights from regime (fallback to NORMAL if unknown regime)
+        const baseWeights = { ...(this.regimeWeights[regime] || this.regimeWeights.NORMAL) };
 
         // Adjust by regime strength
         if (regime !== 'NORMAL') {

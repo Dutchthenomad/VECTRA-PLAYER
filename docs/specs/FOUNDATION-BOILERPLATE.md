@@ -374,8 +374,126 @@ def on_raw_event(self, event: dict) -> None:
 
 ---
 
+## Event Data Schemas
+
+### game.tick
+
+```typescript
+interface GameTickData {
+  active: boolean;           // Game is active
+  rugged: boolean;           // Game ended (rug pulled)
+  price: number;             // Current price (1.0 = starting)
+  tickCount: number;         // Ticks since game start
+  cooldownTimer: number;     // Cooldown ms remaining
+  allowPreRoundBuys: boolean;// Pre-round buying allowed
+  tradeCount: number;        // Total trades this game
+  phase: string;             // COOLDOWN|PRESALE|ACTIVE|RUGGED
+  gameHistory: object|null;  // Previous game results
+  leaderboard: object[]|null;// Current leaderboard
+}
+```
+
+### player.state
+
+```typescript
+interface PlayerStateData {
+  cash: number;              // Available balance
+  positionQty: number;       // Current position size
+  avgCost: number;           // Average entry price
+  cumulativePnL: number;     // Total profit/loss
+  totalInvested: number;     // Total invested
+}
+```
+
+### player.trade
+
+```typescript
+interface PlayerTradeData {
+  username: string;          // Trader username
+  type: "buy" | "sell";      // Trade direction
+  qty: number;               // Trade quantity
+  price: number;             // Execution price
+  playerId: string;          // Trader ID
+}
+```
+
+### connection.authenticated
+
+```typescript
+interface AuthData {
+  player_id: string;         // Player ID
+  username: string;          // Username
+  hasUsername: boolean;      // Has set username
+}
+```
+
+---
+
+## Game Phases
+
+The `game.tick` event includes a `phase` field:
+
+| Phase | Condition | Description |
+|-------|-----------|-------------|
+| `COOLDOWN` | `cooldownTimer > 0` | Between games |
+| `PRESALE` | `allowPreRoundBuys && !active` | Pre-round buying |
+| `ACTIVE` | `active && !rugged` | Game in progress |
+| `RUGGED` | `rugged` | Game ended (rug pulled) |
+
+---
+
+## Error Handling Pattern
+
+```python
+import asyncio
+import websockets
+
+RECONNECT_DELAY = 5  # seconds
+
+async def resilient_subscribe():
+    while True:
+        try:
+            async with websockets.connect("ws://localhost:9000/feed") as ws:
+                print("Connected")
+                async for message in ws:
+                    handle_event(json.loads(message))
+        except websockets.ConnectionClosed:
+            print(f"Disconnected, reconnecting in {RECONNECT_DELAY}s...")
+        except Exception as e:
+            print(f"Error: {e}, reconnecting in {RECONNECT_DELAY}s...")
+        await asyncio.sleep(RECONNECT_DELAY)
+```
+
+---
+
+## Configuration
+
+Environment variables for custom ports:
+
+```bash
+FOUNDATION_PORT=9000        # WebSocket broadcaster
+FOUNDATION_HTTP_PORT=9001   # HTTP server
+CDP_PORT=9222               # Chrome DevTools Protocol
+FOUNDATION_HEADLESS=false   # Headless Chrome mode
+```
+
+---
+
+## Related Files
+
+| Component | Location |
+|-----------|----------|
+| Config | `src/foundation/config.py` |
+| Normalizer | `src/foundation/normalizer.py` |
+| Broadcaster | `src/foundation/broadcaster.py` |
+| HTTP Server | `src/foundation/http_server.py` |
+| Launcher | `src/foundation/launcher.py` |
+| Service | `src/foundation/service.py` |
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | 2026-01-18 | Initial specification |
+| 1.0.0 | 2026-01-18 | Initial specification with merged framework rules and service documentation |

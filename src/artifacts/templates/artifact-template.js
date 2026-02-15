@@ -122,12 +122,6 @@ function handleConnectionChange(data) {
  * Handle incoming events.
  */
 function handleEvent(type, data) {
-    // Update footer stats
-    if (data.gameId) {
-        state.currentGameId = data.gameId;
-        ui.currentGameId.textContent = data.gameId.slice(-8);
-    }
-
     // Route to specific handlers
     switch (type) {
         case 'game.tick':
@@ -149,18 +143,22 @@ function handleEvent(type, data) {
  */
 function handleGameTick(data) {
     const tickData = data.data || data;
+    const incomingGameId = data.gameId || tickData.gameId;
+
+    // Detect game change and reset history BEFORE updating state
+    if (incomingGameId) {
+        if (incomingGameId !== state.currentGameId) {
+            state.currentGameId = incomingGameId;
+            state.history = [];
+        }
+        ui.currentGameId.textContent = incomingGameId.slice(-8);
+    }
 
     state.currentTick = tickData.tick || tickData.tickCount || 0;
     state.currentPrice = tickData.price || 1.0;
     state.gamePhase = tickData.phase || 'BETTING';
 
     ui.currentTick.textContent = state.currentTick;
-
-    // Detect game change
-    if (data.gameId && data.gameId !== state.currentGameId) {
-        state.currentGameId = data.gameId;
-        state.history = [];
-    }
 
     // Add to history
     state.history.push({

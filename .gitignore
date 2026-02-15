@@ -146,3 +146,12 @@ node_modules/
 # Frontend build artifacts
 services/nexus-ui/dist/
 services/nexus-ui/storybook-static/
+
+# Dashboard screenshots (can be regenerated)
+dashboard_*.png
+
+# Jupyter workspace config
+notebooks/.jupyter/
+
+# Claude Code local hookify rules (machine-specific)
+.claude/hookify.*.local.md
