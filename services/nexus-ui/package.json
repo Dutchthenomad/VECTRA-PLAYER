@@ -16,8 +16,11 @@
   },
   "dependencies": {
     "@google/genai": "^0.7.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^8.6.14",
